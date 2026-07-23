@@ -1,0 +1,32 @@
+# Contexte de build Docker — n'envoyer que le nécessaire au démon.
+# Régénérables ou lourds :
+node_modules
+**/node_modules
+.next
+apps/web/.next
+.turbo
+**/.turbo
+dist
+build
+out
+coverage
+*.tsbuildinfo
+
+# Secrets — ne JAMAIS copier dans une image (injectés au runtime via env_file).
+.env
+.env.*
+!.env.example
+!.env.production.example
+
+# Git & divers
+.git
+.github
+*.log
+.DS_Store
+.vscode
+.idea
+
+# Documents volumineux inutiles au runtime
+CampusGest_Conception_v2.pdf
+CampusGest_Conception_v2.html
+docs

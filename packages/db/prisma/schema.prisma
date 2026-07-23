@@ -1,0 +1,444 @@
+// CampusGest — Schéma de données (v2.0)
+// Conventions : PK UUID, montants XAF en BigInt (entiers), soft-delete via isActive.
+// Voir le document de conception §3 (Modèle de données).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────── Enums ───────────────────────────
+enum Role {
+  admin
+  bailleur
+  locataire
+}
+
+enum CompteurType {
+  eau
+  electricite
+}
+
+enum CompteurScope {
+  cite
+  bloc
+  chambre
+}
+
+enum FacturePubStatut {
+  brouillon
+  publiee
+}
+
+enum LigneStatut {
+  en_attente
+  partiel
+  paye
+  retard
+}
+
+enum PaiementMode {
+  especes
+  orange_money
+  mtn_momo
+  virement
+}
+
+enum EvenementStatut {
+  en_attente
+  approuve
+  rejete
+}
+
+enum TicketCategorie {
+  plomberie
+  electricite
+  mobilier
+  autre
+}
+
+enum TicketStatut {
+  ouvert
+  en_cours
+  resolu
+}
+
+enum NotificationType {
+  annonce
+  alerte_facture
+  anniversaire
+  detresse
+  lecture
+  evenement
+  prediction
+  maintenance
+  sondage
+  systeme
+}
+
+// ─────────────────────────── Utilisateurs ───────────────────────────
+model User {
+  id               String   @id @default(uuid()) @db.Uuid
+  username         String   @unique @db.VarChar(50)
+  passwordHash     String   @map("password_hash") @db.VarChar(255)
+  role             Role
+  fullName         String   @map("full_name") @db.VarChar(100)
+  email            String?  @unique @db.VarChar(150)
+  phone            String?  @db.VarChar(20)
+  roomId           String?  @map("room_id") @db.Uuid
+  room             Chambre? @relation(fields: [roomId], references: [id])
+  language         String   @default("fr") @db.VarChar(5)
+  firstLogin       Boolean  @default(true) @map("first_login")
+  isActive         Boolean  @default(true) @map("is_active")
+  totpSecret       String?  @map("totp_secret")
+  tokenVersion     Int      @default(0) @map("token_version")
+  distressDisabled Boolean  @default(false) @map("distress_disabled")
+  distressReview   Boolean  @default(false) @map("distress_review")
+  birthday         DateTime? @db.Date
+  birthdayPublic   Boolean  @default(false) @map("birthday_public")
+  birthdayYearHidden Boolean @default(false) @map("birthday_year_hidden")
+  notifPrefs       Json?    @map("notif_prefs")
+  pushSubscription Json?    @map("push_subscription")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  factureLignes         FactureLocataire[]
+  facturesCreated       Facture[]            @relation("FactureCreatedBy")
+  paiementsRecorded     Paiement[]           @relation("PaiementRecordedBy")
+  notificationsSent     Notification[]       @relation("NotifSender")
+  notificationsReceived Notification[]       @relation("NotifTarget")
+  suggestions           Suggestion[]
+  evenements            Evenement[]
+  portfolio             Portfolio?
+  distressSignals       DistressSignal[]     @relation("DistressSender")
+  posts                 PostInfo[]
+  projets               ProjetCommun[]
+  contributions         ProjetContribution[]
+  predictions           PredictionFacture[]
+  ticketsAuthored       MaintenanceTicket[]  @relation("TicketAuthor")
+  ticketsAssigned       MaintenanceTicket[]  @relation("TicketAssignee")
+  sondages              Sondage[]
+  votes                 SondageVote[]
+  documents             Document[]
+  auditLogs             AuditLog[]
+
+  @@map("users")
+}
+
+// ─────────────────────────── Chambres & compteurs ───────────────────────────
+model Chambre {
+  id             String    @id @default(uuid()) @db.Uuid
+  bloc           String    @db.VarChar(20)
+  numero         String    @db.VarChar(20)
+  compteurElecId String?   @map("compteur_elec_id") @db.Uuid
+  compteurElec   Compteur? @relation(fields: [compteurElecId], references: [id])
+  capacite       Int       @default(1)
+  isActive       Boolean   @default(true) @map("is_active")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  occupants User[]
+
+  @@unique([bloc, numero])
+  @@map("chambres")
+}
+
+model Compteur {
+  id           String        @id @default(uuid()) @db.Uuid
+  type         CompteurType
+  libelle      String        @db.VarChar(60)
+  dernierIndex BigInt        @default(0) @map("dernier_index")
+  scope        CompteurScope @default(cite)
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  chambres Chambre[]
+  factures Facture[]
+
+  @@map("compteurs")
+}
+
+// ─────────────────────────── Factures & paiements ───────────────────────────
+model Facture {
+  id                 String           @id @default(uuid()) @db.Uuid
+  type               String           @db.VarChar(60)
+  montantTotal       BigInt           @map("montant_total")
+  sommeCoeff         Decimal          @default(0) @map("somme_coeff") @db.Decimal(8, 2)
+  baseUnitaire       BigInt           @default(0) @map("base_unitaire")
+  compteurId         String?          @map("compteur_id") @db.Uuid
+  compteur           Compteur?        @relation(fields: [compteurId], references: [id])
+  mois               String           @db.VarChar(7)
+  dateLimite         DateTime         @map("date_limite") @db.Date
+  statutPub          FacturePubStatut @default(brouillon) @map("statut_pub")
+  isReconducted      Boolean          @default(false) @map("is_reconducted")
+  reconductionStreak Int              @default(0) @map("reconduction_streak")
+  createdById        String           @map("created_by") @db.Uuid
+  createdBy          User             @relation("FactureCreatedBy", fields: [createdById], references: [id])
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  lignes FactureLocataire[]
+
+  @@index([mois])
+  @@index([type, mois])
+  @@map("factures")
+}
+
+model FactureLocataire {
+  id           String      @id @default(uuid()) @db.Uuid
+  factureId    String      @map("facture_id") @db.Uuid
+  facture      Facture     @relation(fields: [factureId], references: [id], onDelete: Cascade)
+  locataireId  String      @map("locataire_id") @db.Uuid
+  locataire    User        @relation(fields: [locataireId], references: [id])
+  coefficient  Decimal     @default(1.0) @db.Decimal(4, 2)
+  montantDu    BigInt      @map("montant_du")
+  montantPaye  BigInt      @default(0) @map("montant_paye")
+  statut       LigneStatut @default(en_attente)
+  datePaiement DateTime?   @map("date_paiement") @db.Date
+  createdAt    DateTime    @default(now()) @map("created_at") @db.Timestamptz
+
+  paiements Paiement[]
+
+  @@unique([factureId, locataireId])
+  @@index([locataireId])
+  @@map("facture_locataire")
+}
+
+model Paiement {
+  id                 String           @id @default(uuid()) @db.Uuid
+  factureLocataireId String           @map("facture_locataire_id") @db.Uuid
+  ligne              FactureLocataire @relation(fields: [factureLocataireId], references: [id], onDelete: Cascade)
+  montant            BigInt
+  mode               PaiementMode
+  reference          String?          @db.VarChar(80)
+  justificatifUrl    String?          @map("justificatif_url")
+  recordedById       String           @map("recorded_by") @db.Uuid
+  recordedBy         User             @relation("PaiementRecordedBy", fields: [recordedById], references: [id])
+  recuPdfUrl         String?          @map("recu_pdf_url")
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([factureLocataireId])
+  @@map("paiements")
+}
+
+// ─────────────────────────── Notifications ───────────────────────────
+model Notification {
+  id           String           @id @default(uuid()) @db.Uuid
+  senderId     String?          @map("sender_id") @db.Uuid
+  sender       User?            @relation("NotifSender", fields: [senderId], references: [id])
+  targetRole   String?          @map("target_role") @db.VarChar(20)
+  targetUserId String?          @map("target_user") @db.Uuid
+  targetUser   User?            @relation("NotifTarget", fields: [targetUserId], references: [id])
+  type         NotificationType
+  title        String           @db.VarChar(200)
+  body         String
+  channels     Json?
+  isRead       Boolean          @default(false) @map("is_read")
+  createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([targetUserId, isRead])
+  @@index([targetRole])
+  @@map("notifications")
+}
+
+// ─────────────────────────── Communauté ───────────────────────────
+model Suggestion {
+  id            String    @id @default(uuid()) @db.Uuid
+  authorId      String    @map("author_id") @db.Uuid
+  author        User      @relation(fields: [authorId], references: [id])
+  contenu       String
+  ordre         Int
+  isReadAdmin   Boolean   @default(false) @map("is_read_admin")
+  bailleurVisible Boolean @default(true) @map("bailleur_visible")
+  readAt        DateTime? @map("read_at") @db.Timestamptz
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("suggestions")
+}
+
+model Evenement {
+  id          String          @id @default(uuid()) @db.Uuid
+  creatorId   String          @map("creator_id") @db.Uuid
+  creator     User            @relation(fields: [creatorId], references: [id])
+  titre       String          @db.VarChar(200)
+  description String?
+  dateEvent   DateTime        @map("date_event") @db.Date
+  heure       String          @db.VarChar(5)
+  statut      EvenementStatut @default(en_attente)
+  createdAt   DateTime        @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("evenements")
+}
+
+model Portfolio {
+  id                 String   @id @default(uuid()) @db.Uuid
+  userId             String   @unique @map("user_id") @db.Uuid
+  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bio                String?
+  photoUrl           String?  @map("photo_url")
+  competences        Json?
+  diplomes           Json?
+  realisations       Json?
+  contact            String?  @db.VarChar(150)
+  emailPro           String?  @map("email_pro") @db.VarChar(150)
+  dispoRecommandation Boolean @default(false) @map("dispo_recommandation")
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("portfolios")
+}
+
+model DistressSignal {
+  id           String   @id @default(uuid()) @db.Uuid
+  senderId     String   @map("sender_id") @db.Uuid
+  sender       User     @relation("DistressSender", fields: [senderId], references: [id])
+  sentAt       DateTime @default(now()) @map("sent_at") @db.Timestamptz
+  latitude     Float?
+  longitude    Float?
+  geoConsent   Boolean  @default(false) @map("geo_consent")
+  resolved     Boolean  @default(false)
+  resolvedById String?  @map("resolved_by") @db.Uuid
+
+  @@index([senderId, sentAt])
+  @@map("distress_signals")
+}
+
+model PostInfo {
+  id          String   @id @default(uuid()) @db.Uuid
+  authorId    String   @map("author_id") @db.Uuid
+  author      User     @relation(fields: [authorId], references: [id])
+  titre       String   @db.VarChar(100)
+  description String   @db.VarChar(300)
+  imageUrl    String   @map("image_url")
+  isHidden    Boolean  @default(false) @map("is_hidden")
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([createdAt])
+  @@map("posts_info")
+}
+
+model ProjetCommun {
+  id                  String   @id @default(uuid()) @db.Uuid
+  createdById         String   @map("created_by") @db.Uuid
+  createdBy           User     @relation(fields: [createdById], references: [id])
+  titre               String   @db.VarChar(200)
+  description         String
+  objectifs           Json?
+  vision              String?
+  besoinsFinanciers   BigInt?  @map("besoins_financiers")
+  montantContribution BigInt?  @map("montant_contribution")
+  imageUrl            String?  @map("image_url")
+  visibleRoles        Json?    @map("visible_roles")
+  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  contributions ProjetContribution[]
+
+  @@map("projets_communs")
+}
+
+model ProjetContribution {
+  id        String       @id @default(uuid()) @db.Uuid
+  projetId  String       @map("projet_id") @db.Uuid
+  projet    ProjetCommun @relation(fields: [projetId], references: [id], onDelete: Cascade)
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id])
+  montant   BigInt
+  paiementId String?     @map("paiement_id") @db.Uuid
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("projet_contributions")
+}
+
+model PredictionFacture {
+  id             String   @id @default(uuid()) @db.Uuid
+  mois           String   @db.VarChar(7)
+  type           String   @db.VarChar(60)
+  indiceDiff     BigInt?  @map("indice_diff")
+  prixUnit       BigInt?  @map("prix_unit")
+  tva            BigInt?
+  locCompteur    BigInt?  @map("loc_compteur")
+  transport      BigInt?
+  montantCalcule BigInt   @map("montant_calcule")
+  montantReel    BigInt?  @map("montant_reel")
+  createdById    String   @map("created_by") @db.Uuid
+  createdBy      User     @relation(fields: [createdById], references: [id])
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("predictions_facture")
+}
+
+model MaintenanceTicket {
+  id           String          @id @default(uuid()) @db.Uuid
+  authorId     String          @map("author_id") @db.Uuid
+  author       User            @relation("TicketAuthor", fields: [authorId], references: [id])
+  roomId       String?         @map("room_id") @db.Uuid
+  categorie    TicketCategorie
+  description  String
+  imageUrl     String?         @map("image_url")
+  statut       TicketStatut    @default(ouvert)
+  priorite     Int             @default(0)
+  assignedToId String?         @map("assigned_to") @db.Uuid
+  assignedTo   User?           @relation("TicketAssignee", fields: [assignedToId], references: [id])
+  createdAt    DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt    DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([statut])
+  @@map("maintenance_tickets")
+}
+
+model Sondage {
+  id          String        @id @default(uuid()) @db.Uuid
+  question    String        @db.VarChar(300)
+  options     Json
+  isOpen      Boolean       @default(true) @map("is_open")
+  createdById String        @map("created_by") @db.Uuid
+  createdBy   User          @relation(fields: [createdById], references: [id])
+  createdAt   DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  votes SondageVote[]
+
+  @@map("sondages")
+}
+
+model SondageVote {
+  id        String   @id @default(uuid()) @db.Uuid
+  sondageId String   @map("sondage_id") @db.Uuid
+  sondage   Sondage  @relation(fields: [sondageId], references: [id], onDelete: Cascade)
+  userId    String   @map("user_id") @db.Uuid
+  user      User     @relation(fields: [userId], references: [id])
+  choix     Int
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@unique([sondageId, userId])
+  @@map("sondage_votes")
+}
+
+model Document {
+  id           String   @id @default(uuid()) @db.Uuid
+  titre        String   @db.VarChar(200)
+  fichierUrl   String   @map("fichier_url")
+  categorie    String   @db.VarChar(40)
+  visibleRoles Json?    @map("visible_roles")
+  uploadedById String   @map("uploaded_by") @db.Uuid
+  uploadedBy   User     @relation(fields: [uploadedById], references: [id])
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@map("documents")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  userId     String?  @map("user_id") @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id])
+  action     String   @db.VarChar(80)
+  resource   String   @db.VarChar(80)
+  resourceId String?  @map("resource_id") @db.Uuid
+  ipAddress  String?  @map("ip_address") @db.VarChar(64)
+  userAgent  String?  @map("user_agent")
+  metadata   Json?
+  createdAt  DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([userId])
+  @@index([resource, resourceId])
+  @@map("audit_logs")
+}

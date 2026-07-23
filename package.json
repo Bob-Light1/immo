@@ -1,0 +1,30 @@
+{
+  "name": "campusgest",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Application Web de Gestion de Cité Universitaire — Cameroun",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "typecheck": "turbo run typecheck",
+    "db:generate": "npm run generate -w @campusgest/db",
+    "db:migrate": "npm run migrate -w @campusgest/db",
+    "db:deploy": "npm run migrate:deploy -w @campusgest/db",
+    "db:seed": "npm run seed -w @campusgest/db",
+    "db:studio": "npm run studio -w @campusgest/db"
+  },
+  "devDependencies": {
+    "turbo": "^2.1.3",
+    "typescript": "^5.4.5"
+  },
+  "packageManager": "npm@10.8.2",
+  "engines": {
+    "node": ">=20"
+  }
+}

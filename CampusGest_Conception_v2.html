@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<title>CampusGest — Document de Conception Technique v2.0</title>
+<style>
+  :root{
+    --navy:#1A3C6E; --navy-dark:#13294B; --orange:#E8821E; --orange-soft:#F4A340;
+    --ink:#1f2937; --muted:#475569; --line:#d7dde6; --bg-soft:#f1f5fb; --bg-code:#0f1f38;
+    --ok:#1b8a4b; --warn:#c2410c; --crit:#b91c1c; --info:#2563eb;
+  }
+  @page{ size:A4; margin:18mm 16mm 16mm 16mm;
+    @bottom-left{ content:"CampusGest — Document de Conception Technique v2.0"; font-size:8px; color:#94a3b8; }
+    @bottom-right{ content:"Page " counter(page); font-size:8px; color:#94a3b8; }
+  }
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:"Helvetica Neue",Arial,"Segoe UI",sans-serif; color:var(--ink); font-size:10.5px; line-height:1.5; }
+  h1,h2,h3,h4{ color:var(--navy); margin:0 0 .4em; line-height:1.2; }
+  h2{ font-size:18px; background:var(--navy); color:#fff; padding:9px 14px; border-radius:5px; margin:0 0 14px;
+      border-left:6px solid var(--orange); page-break-after:avoid; }
+  h3{ font-size:13.5px; color:var(--navy); margin-top:16px; border-bottom:2px solid var(--bg-soft); padding-bottom:3px; page-break-after:avoid; }
+  h4{ font-size:11.5px; color:var(--navy-dark); margin-top:11px; page-break-after:avoid; }
+  p{ margin:.35em 0; }
+  ul,ol{ margin:.3em 0 .6em; padding-left:18px; }
+  li{ margin:.18em 0; }
+  code{ font-family:"SF Mono",Consolas,"Courier New",monospace; background:#eef2f7; color:#0b3a82; padding:1px 5px; border-radius:3px; font-size:9.5px; }
+  a{ color:var(--info); text-decoration:none; }
+  .section{ page-break-before:always; }
+  .small{ font-size:9px; color:var(--muted); }
+  .lead{ color:var(--muted); font-size:11px; }
+
+  /* Cover */
+  .cover{ height:262mm; background:linear-gradient(160deg,var(--navy) 0%,var(--navy-dark) 100%); color:#fff;
+          border-radius:6px; padding:40px; position:relative; overflow:hidden; }
+  .cover .frame{ border:2px solid var(--orange); border-radius:6px; padding:40px 36px; height:100%; position:relative; z-index:2; }
+  .cover .logo{ font-size:40px; font-weight:800; letter-spacing:-1px; }
+  .cover .logo .sq{ color:var(--orange); }
+  .cover .logo .gest{ color:var(--orange); }
+  .cover h1{ color:#fff; font-size:21px; margin-top:6px; letter-spacing:.5px; }
+  .cover .sub{ color:#cdd8ea; font-size:15px; margin-top:2px; }
+  .cover hr{ border:none; border-top:2px solid var(--orange); width:240px; margin:26px 0; }
+  .cover .meta{ margin-top:40px; color:#dbe5f4; font-size:12px; line-height:2.1; }
+  .cover .meta b{ color:#fff; }
+  .cover .foot{ position:absolute; bottom:40px; left:36px; right:36px; }
+  .cover .ver{ color:#fff; font-size:13px; font-weight:600; }
+  .cover .conf{ color:#9fb3d4; font-style:italic; font-size:10px; margin-top:4px; }
+  .cover .blob{ position:absolute; border-radius:50%; background:rgba(255,255,255,.045); z-index:1; }
+  .cover .b1{ width:360px; height:360px; right:-120px; top:-90px; }
+  .cover .b2{ width:240px; height:240px; left:-90px; bottom:-80px; }
+
+  /* Tables */
+  table{ border-collapse:collapse; width:100%; margin:10px 0 14px; font-size:9.3px; }
+  th{ background:var(--navy); color:#fff; text-align:left; padding:7px 9px; font-weight:600; }
+  td{ border:1px solid var(--line); padding:6px 9px; vertical-align:top; }
+  tbody tr:nth-child(even){ background:var(--bg-soft); }
+  table.zebra th:first-child{ border-top-left-radius:4px; }
+  caption{ caption-side:top; text-align:left; font-weight:700; color:var(--navy); margin-bottom:5px; font-size:11px; }
+  td code{ font-size:9px; }
+
+  /* TOC */
+  .toc{ font-size:10.5px; }
+  .toc .row{ display:flex; justify-content:space-between; border-bottom:1px solid var(--bg-soft); padding:5px 2px; }
+  .toc .row .n{ color:var(--orange); font-weight:700; width:34px; }
+  .toc .row .t{ flex:1; }
+  .toc .row .p{ color:var(--muted); }
+  .toc .sub{ padding-left:34px; color:var(--muted); }
+
+  /* badges & callouts */
+  .badge{ display:inline-block; padding:1px 7px; border-radius:10px; font-size:8.5px; font-weight:700; color:#fff; }
+  .b-crit{ background:var(--crit); } .b-high{ background:var(--warn); } .b-med{ background:#b45309; }
+  .b-ok{ background:var(--ok); } .b-info{ background:var(--info); } .b-new{ background:var(--orange); }
+  .b-gray{ background:#64748b; }
+  .yes{ color:var(--ok); font-weight:700; } .no{ color:#94a3b8; } .cond{ color:var(--warn); font-weight:700; }
+
+  .note{ border:1px solid var(--line); border-left:5px solid var(--info); background:#f5f9ff; border-radius:5px; padding:9px 13px; margin:11px 0; }
+  .note.warn{ border-left-color:var(--warn); background:#fff7ed; }
+  .note.crit{ border-left-color:var(--crit); background:#fef2f2; }
+  .note.fix{ border-left-color:var(--ok); background:#f1fbf4; }
+  .note .lbl{ font-weight:700; font-size:9px; text-transform:uppercase; letter-spacing:.5px; }
+  .note.warn .lbl{ color:var(--warn); } .note.crit .lbl{ color:var(--crit); }
+  .note.fix .lbl{ color:var(--ok); } .note .lbl{ color:var(--info); }
+
+  pre{ background:var(--bg-code); color:#e6edf6; padding:12px 14px; border-radius:6px; font-size:8.8px; line-height:1.45;
+       overflow:auto; font-family:"SF Mono",Consolas,monospace; margin:10px 0; white-space:pre-wrap; }
+  pre .c{ color:#7c93b3; } pre .k{ color:#f4a340; } pre .s{ color:#8fd694; } pre .t{ color:#6fb6ff; }
+
+  .grid2{ display:flex; gap:14px; } .grid2 > div{ flex:1; }
+  .card{ border:1px solid var(--line); border-radius:6px; padding:11px 13px; margin:8px 0; background:#fff; }
+  .card h4{ margin-top:0; }
+  .kpi{ display:inline-block; background:var(--bg-soft); border:1px solid var(--line); border-radius:5px;
+        padding:5px 10px; margin:3px 4px 3px 0; font-size:9px; }
+  .kpi b{ color:var(--navy); }
+  .tag{ display:inline-block; background:#eef2f7; border:1px solid var(--line); border-radius:4px; padding:1px 7px; margin:2px; font-size:9px; }
+  .formula{ background:#fff7ed; border:1px solid var(--orange-soft); border-radius:6px; padding:11px 14px; margin:10px 0; font-size:10px; }
+  hr.sep{ border:none; border-top:1px solid var(--line); margin:14px 0; }
+  .pill-row{ margin:6px 0; }
+</style>
+</head>
+<body>
+
+<!-- ============ COVER ============ -->
+<div class="cover">
+  <div class="blob b1"></div><div class="blob b2"></div>
+  <div class="frame">
+    <div class="logo"><span class="sq">■</span> Campus<span class="gest">Gest</span></div>
+    <h1>DOCUMENT DE CONCEPTION TECHNIQUE</h1>
+    <div class="sub">Application Web de Gestion de Cité Universitaire</div>
+    <hr>
+    <div class="meta">
+      <div><b>Contexte&nbsp;:</b> Cité Universitaire — Cameroun</div>
+      <div><b>Stack&nbsp;:</b> Next.js · Tailwind CSS · Node.js · PostgreSQL · Prisma</div>
+      <div><b>Cible&nbsp;:</b> PWA multi-rôles · offline-first · multilingue (FR / EN / DE)</div>
+      <div><b>Paiement&nbsp;:</b> Mobile Money (Orange Money / MTN MoMo) · rappels SMS</div>
+    </div>
+    <div class="foot">
+      <div class="ver">Version 2.0 — Juin 2026</div>
+      <div class="conf">Révision technique de la v1.0 · Réservé aux développeurs Backend &amp; Frontend · Confidentiel</div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ TOC ============ -->
+<div class="section">
+  <h2>Table des matières</h2>
+  <div class="toc">
+    <div class="row"><span class="n">0.</span><span class="t">Revue critique &amp; évolution v1.0 → v2.0</span><span class="p">3</span></div>
+    <div class="row"><span class="n">1.</span><span class="t">Introduction &amp; objectifs</span><span class="p">5</span></div>
+    <div class="row"><span class="n">2.</span><span class="t">Architecture technique</span><span class="p">6</span></div>
+    <div class="row"><span class="n">3.</span><span class="t">Modèle de données (PostgreSQL / Prisma)</span><span class="p">8</span></div>
+    <div class="row"><span class="n">4.</span><span class="t">Rôles &amp; authentification</span><span class="p">12</span></div>
+    <div class="row"><span class="n">5.</span><span class="t">Modules fonctionnels</span><span class="p">14</span></div>
+    <div class="row sub"><span class="t">5.1 Facturation &amp; coefficients &nbsp;·&nbsp; 5.2 Paiements &amp; Mobile Money &nbsp;·&nbsp; 5.3 Notifications</span><span></span></div>
+    <div class="row sub"><span class="t">5.4 Suggestions &nbsp;·&nbsp; 5.5 Événements &nbsp;·&nbsp; 5.6 Anniversaires &nbsp;·&nbsp; 5.7 Portfolio</span><span></span></div>
+    <div class="row sub"><span class="t">5.8 Signal de détresse &nbsp;·&nbsp; 5.9 Posts &nbsp;·&nbsp; 5.10 Projet commun &nbsp;·&nbsp; 5.11 Prédiction</span><span></span></div>
+    <div class="row sub"><span class="t">5.12 Maintenance/tickets &nbsp;·&nbsp; 5.13 Sondages &nbsp;·&nbsp; 5.14 Annuaire &nbsp;·&nbsp; 5.15 Documents</span><span></span></div>
+    <div class="row"><span class="n">6.</span><span class="t">Dashboards Admin &amp; Bailleur</span><span class="p">21</span></div>
+    <div class="row"><span class="n">7.</span><span class="t">PWA, offline-first &amp; internationalisation</span><span class="p">22</span></div>
+    <div class="row"><span class="n">8.</span><span class="t">API REST — Endpoints</span><span class="p">23</span></div>
+    <div class="row"><span class="n">9.</span><span class="t">Sécurité &amp; bonnes pratiques</span><span class="p">25</span></div>
+    <div class="row"><span class="n">10.</span><span class="t">Structure du projet (monorepo)</span><span class="p">26</span></div>
+    <div class="row"><span class="n">11.</span><span class="t">Plan de déploiement</span><span class="p">27</span></div>
+    <div class="row"><span class="n">12.</span><span class="t">Roadmap par phases &amp; estimations</span><span class="p">28</span></div>
+  </div>
+</div>
+
+<!-- ============ 0. REVUE ============ -->
+<div class="section">
+  <h2>0. Revue critique &amp; évolution v1.0 → v2.0</h2>
+  <p class="lead">Cette section recense les anomalies relevées dans la conception v1.0 et les décisions retenues en v2.0.
+  Elle sert de journal de décisions techniques pour l'équipe.</p>
+
+  <h3>0.1 Corrections (bugs de conception)</h3>
+  <table>
+    <thead><tr><th style="width:14%">Réf.</th><th style="width:43%">Problème v1.0</th><th>Décision v2.0</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge b-crit">FIX-1</span></td>
+        <td><code>montant_unit</code> déclaré <code>COMPUTED</code> : impossible en PostgreSQL, une colonne générée ne peut dépendre d'une agrégation (Σ coefficients) portant sur d'autres lignes.</td>
+        <td>Calcul porté dans le service <code>CalculFacture</code> ; persistance dans <code>facture_locataire.montant_du</code>. Aucune colonne générée inter-lignes.</td></tr>
+      <tr><td><span class="badge b-crit">FIX-2</span></td>
+        <td><code>nb_personnes</code> saisi à la main et redondant avec Σ coefficients. La v1.0 ne précise jamais <i>quels</i> locataires sont rattachés à une facture.</td>
+        <td>Table de liaison <code>facture_locataire</code> = source de vérité. <code>nb_personnes</code> devient dérivé (count) et non saisi. Sélection explicite des locataires concernés (ou « tous les actifs »).</td></tr>
+      <tr><td><span class="badge b-crit">FIX-3</span></td>
+        <td>Table <code>paiements</code> absente du modèle alors que <code>POST /api/paiements</code> et le workflow l'invoquent. Pas de mode, ni référence, ni paiement partiel.</td>
+        <td>Table <code>paiements</code> dédiée (montant, mode, référence MoMo/OM, encaisseur, justificatif). Paiements partiels supportés ; statut recalculé.</td></tr>
+      <tr><td><span class="badge b-high">FIX-4</span></td>
+        <td><code>DECIMAL(12,2)</code> pour des montants en XAF : le franc CFA n'a pas de subdivision en usage.</td>
+        <td>Montants en entiers : <code>BIGINT</code> (XAF). Les coefficients restent <code>DECIMAL(4,2)</code>.</td></tr>
+      <tr><td><span class="badge b-high">FIX-5</span></td>
+        <td>Contradiction « eau / électricité » dans la prédiction : la formule <code>I·P+TVA+LC+T</code> est propre à l'électricité.</td>
+        <td>Module de prédiction paramétré <b>par type</b> de charge (électricité, eau…), chaque type ayant sa formule. Renommé « estimation » (déterministe, pas du ML).</td></tr>
+      <tr><td><span class="badge b-med">FIX-6</span></td>
+        <td>Audit trail cité en §9 mais absent du modèle de données.</td>
+        <td>Table <code>audit_logs</code> formalisée + middleware d'audit sur toutes les actions sensibles.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>0.2 Risques de conception revus</h3>
+  <div class="note crit"><span class="lbl">Risque sécurité — Signal de détresse</span>
+    <p style="margin:.3em 0 0">La désactivation automatique du bouton après « 3 signaux en 3 jours » s'applique à une <b>fonction de sécurité vitale</b>. Bloquer un résident réellement en danger plusieurs jours d'affilée est inacceptable et engage la responsabilité de la cité.
+    <b>v2.0&nbsp;:</b> on remplace le blocage dur par (a) un anti-abus progressif (throttle + cooldown), (b) une <b>mise en revue admin</b> au lieu d'une coupure, (c) la possibilité pour l'admin de lever toute restriction instantanément. Le ban manuel admin reste possible mais journalisé.</p>
+  </div>
+  <div class="note warn"><span class="lbl">Mot de passe ≥ 4 caractères</span>
+    <p style="margin:.3em 0 0">Avec un login = simple <code>username</code>, 4 caractères exposent à du bruteforce trivial. <b>v2.0&nbsp;:</b> minimum <b>8 caractères</b> (la 1<sup>re</sup> connexion impose le changement), rate-limit strict, verrouillage temporaire, et <b>2FA TOTP optionnel</b> pour l'Admin. Le « 4 caractères » initial n'est toléré que pour le mot de passe <i>temporaire</i> généré, jamais conservé.</p>
+  </div>
+  <div class="note warn"><span class="lbl">Reconduction automatique des factures</span>
+    <p style="margin:.3em 0 0">Reconduire en silence peut propager un montant erroné indéfiniment. <b>v2.0&nbsp;:</b> la reconduction crée un brouillon <code>is_reconducted=true</code> <b>non publié</b>, notifie l'admin pour validation, et un compteur <code>reconduction_streak</code> déclenche une alerte au-delà de 2 mois consécutifs.</p>
+  </div>
+
+  <h3>0.3 Adaptations au contexte camerounais (ajouts v2.0)</h3>
+  <ul>
+    <li><span class="badge b-new">+ Mobile Money</span> Enregistrement natif des paiements <b>Orange Money / MTN MoMo</b> (mode + référence + capture). Intégration API en option (phase 2).</li>
+    <li><span class="badge b-new">+ SMS</span> Canal <b>SMS</b> (passerelle locale type Nexah/Twilio) pour les rappels d'échéance et signaux de détresse — plus fiable que l'email localement.</li>
+    <li><span class="badge b-new">+ Offline-first</span> Stratégie PWA renforcée pour connexion intermittente et data coûteuse : cache agressif, compression d'images, file de synchronisation différée.</li>
+    <li><span class="badge b-new">+ Compteurs</span> Modélisation des <b>chambres / blocs / compteurs</b> pour répartir eau &amp; électricité par compteur physique.</li>
+    <li><span class="badge b-gray">? Allemand</span> Les langues officielles sont FR/EN. Le DE est conservé (architecture i18n prête) mais marqué <b>optionnel</b> : à confirmer selon le public réel, vu le coût de traduction/maintenance.</li>
+  </ul>
+
+  <h3>0.4 Nouveaux modules fonctionnels proposés</h3>
+  <div class="pill-row">
+    <span class="tag">5.12 Maintenance / tickets (pannes)</span>
+    <span class="tag">5.13 Sondages &amp; votes</span>
+    <span class="tag">5.14 Annuaire des résidents (recherche par compétence)</span>
+    <span class="tag">5.15 Documents &amp; règlement intérieur</span>
+    <span class="tag">Reçus de paiement PDF</span>
+    <span class="tag">Suivi de cotisation au projet commun</span>
+    <span class="tag">Export comptable CSV/Excel</span>
+    <span class="tag">Graphiques de consommation par locataire</span>
+    <span class="tag">Mode sombre</span>
+  </div>
+</div>
+
+<!-- ============ 1. INTRO ============ -->
+<div class="section">
+  <h2>1. Introduction &amp; objectifs</h2>
+  <h3>1.1 Contexte</h3>
+  <p>CampusGest est une <b>Progressive Web App (PWA)</b> de gestion complète d'une cité universitaire au Cameroun. Elle digitalise et centralise les interactions entre l'<b>Administration</b>, le <b>Bailleur</b> et les <b>Locataires</b> : facturation et paiements, communication, vie communautaire et suivi financier. L'objectif d'usage est une <b>ouverture quotidienne</b> par chaque résident, soutenue par les notifications push et SMS.</p>
+
+  <h3>1.2 Objectifs principaux</h3>
+  <table>
+    <thead><tr><th style="width:8%">#</th><th>Objectif</th><th style="width:16%">Priorité</th></tr></thead>
+    <tbody>
+      <tr><td>O1</td><td>Facturation automatisée avec coefficients individuels &amp; répartition par compteur</td><td><span class="badge b-crit">CRITIQUE</span></td></tr>
+      <tr><td>O2</td><td>Paiements &amp; suivi des encaissements (Mobile Money, reçus PDF)</td><td><span class="badge b-crit">CRITIQUE</span></td></tr>
+      <tr><td>O3</td><td>Communication interne multicanal (push, SMS, email, annonces, suggestions)</td><td><span class="badge b-high">HAUTE</span></td></tr>
+      <tr><td>O4</td><td>Suivi financier temps réel pour Admin &amp; Bailleur</td><td><span class="badge b-high">HAUTE</span></td></tr>
+      <tr><td>O5</td><td>Sécurité communautaire (signal de détresse encadré, alertes)</td><td><span class="badge b-high">HAUTE</span></td></tr>
+      <tr><td>O6</td><td>Vie communautaire (événements, anniversaires, portfolio, posts, projets)</td><td><span class="badge b-med">MOYENNE</span></td></tr>
+      <tr><td>O7</td><td>Estimation des charges du mois suivant</td><td><span class="badge b-med">MOYENNE</span></td></tr>
+      <tr><td>O8</td><td>PWA offline-first multilingue (FR / EN / DE)</td><td><span class="badge b-high">HAUTE</span></td></tr>
+    </tbody>
+  </table>
+
+  <h3>1.3 Périmètre &amp; contraintes</h3>
+  <ul>
+    <li>Seul l'<b>administrateur</b> est créé au déploiement (seed idempotent). Tout autre compte est créé via l'interface Admin.</li>
+    <li>Le mot de passe temporaire généré doit être changé dès la première connexion ; le mot de passe permanent fait ≥ 8 caractères.</li>
+    <li>Les coefficients sont saisis mensuellement ; à défaut, <code>n = 1</code> pour tous.</li>
+    <li>En l'absence de nouvelle facture pour un type donné, un <b>brouillon reconduit</b> du mois précédent est proposé à l'admin (jamais publié automatiquement).</li>
+    <li>Les abus de signal de détresse passent en <b>revue admin</b> (jamais de coupure silencieuse de la sécurité).</li>
+    <li>Montants en <b>XAF entiers</b>. Devise et formats respectent la locale de chaque utilisateur.</li>
+  </ul>
+</div>
+
+<!-- ============ 2. ARCHITECTURE ============ -->
+<div class="section">
+  <h2>2. Architecture technique</h2>
+  <h3>2.1 Vue d'ensemble de la stack</h3>
+  <table>
+    <thead><tr><th style="width:22%">Couche</th><th style="width:34%">Technologie</th><th>Rôle</th></tr></thead>
+    <tbody>
+      <tr><td>Frontend</td><td><code>Next.js 14</code> (App Router)</td><td>SSR/SSG, Server Components, routes API</td></tr>
+      <tr><td>Styling / UI</td><td><code>Tailwind CSS 3</code> + <code>shadcn/ui</code></td><td>Design responsive, thème (#1A3C6E / #E8821E), mode sombre</td></tr>
+      <tr><td>Backend</td><td><code>Node.js</code> + Next.js Route Handlers</td><td>Logique métier, endpoints REST (couche Services)</td></tr>
+      <tr><td>Base de données</td><td><code>PostgreSQL 15</code></td><td>Stockage relationnel principal</td></tr>
+      <tr><td>ORM</td><td><code>Prisma</code></td><td>Modélisation, migrations, requêtes typées</td></tr>
+      <tr><td>Validation</td><td><code>Zod</code></td><td>Validation/sanitisation de toutes les entrées API (schemas partagés)</td></tr>
+      <tr><td>Auth</td><td><code>JWT</code> (access 15&nbsp;min) + refresh (HttpOnly) + <code>bcrypt</code></td><td>Sessions, 2FA TOTP admin optionnel</td></tr>
+      <tr><td>Temps réel</td><td><code>SSE</code> (défaut) / Socket.io (option)</td><td>Notifications live ; SSE privilégié (compatible reverse-proxy)</td></tr>
+      <tr><td>Push / SMS / Email</td><td>Web Push (VAPID) · SMS (Nexah/Twilio) · Nodemailer/SMTP</td><td>Multicanal, selon préférences &amp; criticité</td></tr>
+      <tr><td>Files d'attente</td><td><code>BullMQ</code> + Redis</td><td>Jobs (alertes, SMS, reconductions, anniversaires), retries</td></tr>
+      <tr><td>PWA</td><td><code>next-pwa</code> (Workbox)</td><td>Service Worker, offline-first, install A2HS</td></tr>
+      <tr><td>i18n</td><td><code>next-intl</code></td><td>FR / EN / DE, détection auto, persistée en base</td></tr>
+      <tr><td>Stockage fichiers</td><td>Cloudinary (ou MinIO self-host)</td><td>Images portfolio, posts, projets, justificatifs</td></tr>
+      <tr><td>Observabilité</td><td>Sentry + logs <code>pino</code> + health checks</td><td>Erreurs, traces, métriques</td></tr>
+      <tr><td>Déploiement</td><td>VPS Ubuntu + Docker Compose / Railway</td><td>Nginx reverse-proxy + SSL Let's Encrypt</td></tr>
+      <tr><td>CI/CD</td><td>GitHub Actions</td><td>Lint, typecheck, tests, build, déploiement</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><span class="lbl">Choix temps réel</span>
+    <p style="margin:.3em 0 0">SSE est retenu par défaut : unidirectionnel (serveur→client), suffisant pour des notifications, simple à passer derrière Nginx, et plus économe qu'une connexion WebSocket persistante sur un VPS modeste. Socket.io reste une option si un besoin bidirectionnel (chat, présence) émerge.</p>
+  </div>
+
+  <h3>2.2 Architecture logicielle — couches</h3>
+<pre><span class="c">┌──────────────────────────────────────────────────────────┐</span>
+<span class="c">│</span>  NAVIGATEUR / PWA (mobile + desktop)  —  Service Worker     <span class="c">│</span>
+<span class="c">│</span>  Cache offline · file de sync · badge notifs               <span class="c">│</span>
+<span class="c">└──────────────────────────────┬───────────────────────────┘</span>
+                 HTTPS / SSE    │
+<span class="c">┌──────────────────────────────▼───────────────────────────┐</span>
+<span class="c">│</span>  NEXT.JS — Pages /login /admin /bailleur /locataire /...    <span class="c">│</span>
+<span class="c">│</span>  Server Components · SWR/React Query · Charts (recharts)    <span class="c">│</span>
+<span class="c">└──────────────────────────────┬───────────────────────────┘</span>
+              API (fetch)        │
+<span class="c">┌──────────────────────────────▼───────────────────────────┐</span>
+<span class="c">│</span>  ROUTE HANDLERS / SERVICES                                  <span class="c">│</span>
+<span class="c">│</span>  Middlewares: <span class="k">authJWT · roleGuard · rateLimit · audit · zod</span>  <span class="c">│</span>
+<span class="c">│</span>  Services: <span class="t">FactureService · PaiementService · NotifService</span>   <span class="c">│</span>
+<span class="c">│</span>            <span class="t">UserService · DistressService · PredictionService</span>  <span class="c">│</span>
+<span class="c">└───────┬───────────────────────┬─────────────────┬─────────┘</span>
+   Prisma│                  BullMQ│ (jobs)    Webhooks│
+<span class="c">┌───────▼────────┐   ┌──────────▼───────┐  ┌───────▼─────────┐</span>
+<span class="c">│</span> PostgreSQL 15  <span class="c">│</span>   <span class="c">│</span> Redis + Workers  <span class="c">│</span>  <span class="c">│</span> Services tiers  <span class="c">│</span>
+<span class="c">│</span> users·factures <span class="c">│</span>   <span class="c">│</span> CRON · alertes   <span class="c">│</span>  <span class="c">│</span> Cloudinary·SMTP <span class="c">│</span>
+<span class="c">│</span> paiements·...   <span class="c">│</span>   <span class="c">│</span> SMS · push       <span class="c">│</span>  <span class="c">│</span> SMS·MoMo·Push   <span class="c">│</span>
+<span class="c">└────────────────┘   └──────────────────┘  └─────────────────┘</span></pre>
+
+  <h3>2.3 Portails par rôle</h3>
+  <table>
+    <thead><tr><th style="width:18%">Rôle</th><th style="width:22%">Route de base</th><th>Accès principal</th></tr></thead>
+    <tbody>
+      <tr><td><b>Admin</b></td><td><code>/admin/...</code></td><td>Dashboard global, gestion users, factures &amp; paiements, tous modules, modération</td></tr>
+      <tr><td><b>Bailleur</b></td><td><code>/bailleur/...</code></td><td>Dashboard financier, factures par locataire, encaissements, historique, annonces, export</td></tr>
+      <tr><td><b>Locataire</b></td><td><code>/locataire/...</code></td><td>Mes factures &amp; paiements, notifications, profil/portfolio, communauté</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 3. MODELE DE DONNEES ============ -->
+<div class="section">
+  <h2>3. Modèle de données (PostgreSQL / Prisma)</h2>
+  <p class="lead">Conventions : PK <code>UUID</code> (<code>gen_random_uuid()</code>), <code>created_at</code>/<code>updated_at</code> en <code>TIMESTAMPTZ</code>,
+  montants en <b>XAF entiers</b> (<code>BIGINT</code>), suppression = désactivation (soft delete).</p>
+
+  <h3>3.1 users</h3>
+  <table>
+    <thead><tr><th style="width:22%">Colonne</th><th style="width:24%">Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>UUID PK</td><td>Identifiant</td></tr>
+      <tr><td>username</td><td>VARCHAR(50) UNIQUE</td><td>Login</td></tr>
+      <tr><td>password_hash</td><td>VARCHAR(255)</td><td>Hash bcrypt (rounds 12)</td></tr>
+      <tr><td>role</td><td>ENUM</td><td><code>admin | bailleur | locataire</code></td></tr>
+      <tr><td>full_name</td><td>VARCHAR(100)</td><td>Nom complet</td></tr>
+      <tr><td>email / phone</td><td>VARCHAR</td><td>Email (UNIQUE, optionnel) / téléphone (clé SMS)</td></tr>
+      <tr><td>room_id</td><td>UUID FK chambres</td><td>Chambre occupée (nullable) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>language</td><td>VARCHAR(5) = 'fr'</td><td>fr / en / de</td></tr>
+      <tr><td>first_login</td><td>BOOLEAN = true</td><td>Force changement credentials</td></tr>
+      <tr><td>is_active</td><td>BOOLEAN = true</td><td>Compte actif</td></tr>
+      <tr><td>totp_secret</td><td>TEXT NULL</td><td>2FA TOTP (admin) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>distress_disabled</td><td>BOOLEAN = false</td><td>Détresse bloquée par admin (manuel)</td></tr>
+      <tr><td>distress_review</td><td>BOOLEAN = false</td><td>En revue anti-abus (n'empêche pas l'urgence) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>birthday</td><td>DATE NULL</td><td>Anniversaire (opt-in)</td></tr>
+      <tr><td>birthday_public</td><td>BOOLEAN = false</td><td>Consentement diffusion — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>notif_prefs</td><td>JSONB</td><td>Canaux préférés {push, sms, email} par type — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>push_subscription</td><td>JSONB NULL</td><td>Abonnement Web Push (endpoint+clés, &gt; simple token)</td></tr>
+      <tr><td>created_at / updated_at</td><td>TIMESTAMPTZ</td><td>Audit temps</td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.2 chambres &amp; compteurs <span class="badge b-new">NEW</span></h3>
+  <div class="grid2">
+    <div>
+      <table>
+        <caption>chambres</caption>
+        <thead><tr><th>Colonne</th><th>Type / note</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td>UUID PK</td></tr>
+          <tr><td>bloc</td><td>VARCHAR(20) — bâtiment/aile</td></tr>
+          <tr><td>numero</td><td>VARCHAR(20)</td></tr>
+          <tr><td>compteur_elec_id</td><td>UUID FK compteurs NULL</td></tr>
+          <tr><td>capacite</td><td>INT</td></tr>
+          <tr><td>is_active</td><td>BOOLEAN</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <table>
+        <caption>compteurs</caption>
+        <thead><tr><th>Colonne</th><th>Type / note</th></tr></thead>
+        <tbody>
+          <tr><td>id</td><td>UUID PK</td></tr>
+          <tr><td>type</td><td>ENUM eau | electricite</td></tr>
+          <tr><td>libelle</td><td>VARCHAR(60)</td></tr>
+          <tr><td>dernier_index</td><td>BIGINT — relevé courant</td></tr>
+          <tr><td>scope</td><td>ENUM cite | bloc | chambre</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <h3>3.3 factures</h3>
+  <table>
+    <thead><tr><th style="width:22%">Colonne</th><th style="width:24%">Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>UUID PK</td><td>Identifiant</td></tr>
+      <tr><td>type</td><td>VARCHAR(60)</td><td>Eau, Électricité, Nettoyage, Contribution…</td></tr>
+      <tr><td>montant_total</td><td>BIGINT</td><td>Montant brut total (XAF entier) — <span class="badge b-info">FIX-4</span></td></tr>
+      <tr><td>somme_coeff</td><td>DECIMAL(8,2)</td><td>Σ des coefficients des locataires rattachés (dérivé)</td></tr>
+      <tr><td>base_unitaire</td><td>BIGINT</td><td><code>round(montant_total / somme_coeff)</code> — calculé au service — <span class="badge b-info">FIX-1</span></td></tr>
+      <tr><td>compteur_id</td><td>UUID FK compteurs NULL</td><td>Compteur rattaché (eau/élec) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>mois</td><td>VARCHAR(7)</td><td><code>YYYY-MM</code></td></tr>
+      <tr><td>date_limite</td><td>DATE</td><td>Échéance de paiement</td></tr>
+      <tr><td>statut_pub</td><td>ENUM</td><td><code>brouillon | publiee</code> — la reconduction reste brouillon — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>is_reconducted</td><td>BOOLEAN = false</td><td>Reconduit du mois précédent</td></tr>
+      <tr><td>reconduction_streak</td><td>INT = 0</td><td>Nb de mois reconduits d'affilée (garde-fou) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>created_by</td><td>UUID FK users</td><td>Admin créateur</td></tr>
+      <tr><td>created_at</td><td>TIMESTAMPTZ</td><td></td></tr>
+    </tbody>
+  </table>
+  <div class="note fix"><span class="lbl">FIX-1 / FIX-2</span>
+    <p style="margin:.3em 0 0"><code>somme_coeff</code> et <code>base_unitaire</code> sont écrits par <code>FactureService</code> lors du calcul/recalcul, à partir des lignes <code>facture_locataire</code> rattachées — et non par une colonne <code>GENERATED</code> (techniquement impossible ici). <code>nb_personnes</code> de la v1.0 est supprimé : c'est <code>count(facture_locataire)</code>.</p>
+  </div>
+
+  <h3>3.4 facture_locataire (répartition individuelle)</h3>
+  <table>
+    <thead><tr><th style="width:22%">Colonne</th><th style="width:24%">Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>UUID PK</td><td></td></tr>
+      <tr><td>facture_id</td><td>UUID FK factures</td><td>Facture concernée</td></tr>
+      <tr><td>locataire_id</td><td>UUID FK users</td><td>Locataire concerné <i>(UNIQUE avec facture_id)</i></td></tr>
+      <tr><td>coefficient</td><td>DECIMAL(4,2) = 1.0</td><td>Coefficient individuel (n)</td></tr>
+      <tr><td>montant_du</td><td>BIGINT</td><td><code>round(base_unitaire × coefficient)</code></td></tr>
+      <tr><td>montant_paye</td><td>BIGINT = 0</td><td>Cumul payé (paiements partiels) — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>statut</td><td>ENUM</td><td><code>en_attente | partiel | paye | retard</code></td></tr>
+      <tr><td>date_paiement</td><td>DATE NULL</td><td>Date du solde complet</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><span class="lbl">Ajustement d'arrondi</span><p style="margin:.3em 0 0">La somme des <code>round()</code> peut différer de <code>montant_total</code> de quelques XAF. Le service applique l'écart résiduel sur la dernière ligne pour garantir <code>Σ montant_du = montant_total</code> (réconciliation exacte).</p></div>
+
+  <h3>3.5 paiements <span class="badge b-new">NEW</span></h3>
+  <table>
+    <thead><tr><th style="width:22%">Colonne</th><th style="width:26%">Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>UUID PK</td><td></td></tr>
+      <tr><td>facture_locataire_id</td><td>UUID FK</td><td>Ligne réglée</td></tr>
+      <tr><td>montant</td><td>BIGINT</td><td>Montant encaissé (partiel possible)</td></tr>
+      <tr><td>mode</td><td>ENUM</td><td><code>especes | orange_money | mtn_momo | virement</code></td></tr>
+      <tr><td>reference</td><td>VARCHAR(80) NULL</td><td>Réf. transaction MoMo/OM</td></tr>
+      <tr><td>justificatif_url</td><td>TEXT NULL</td><td>Capture/reçu (Cloudinary)</td></tr>
+      <tr><td>recorded_by</td><td>UUID FK users</td><td>Encaisseur (Admin)</td></tr>
+      <tr><td>recu_pdf_url</td><td>TEXT NULL</td><td>Reçu généré (PDF)</td></tr>
+      <tr><td>created_at</td><td>TIMESTAMPTZ</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.6 notifications</h3>
+  <table>
+    <thead><tr><th style="width:20%">Colonne</th><th style="width:22%">Type</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>id</td><td>UUID PK</td><td></td></tr>
+      <tr><td>sender_id</td><td>UUID FK users NULL</td><td>NULL si système</td></tr>
+      <tr><td>target_role</td><td>VARCHAR(20) NULL</td><td><code>all | admin | bailleur | locataire</code></td></tr>
+      <tr><td>target_user</td><td>UUID FK users NULL</td><td>Destinataire individuel</td></tr>
+      <tr><td>type</td><td>VARCHAR(40)</td><td>annonce | alerte_facture | anniversaire | detresse | lecture | evenement | prediction | maintenance | sondage</td></tr>
+      <tr><td>title / body</td><td>VARCHAR(200) / TEXT</td><td>Contenu (clés i18n + variables)</td></tr>
+      <tr><td>channels</td><td>JSONB</td><td>Canaux émis {inapp, push, sms, email} — <span class="badge b-new">NEW</span></td></tr>
+      <tr><td>is_read</td><td>BOOLEAN = false</td><td></td></tr>
+      <tr><td>created_at</td><td>TIMESTAMPTZ</td><td></td></tr>
+    </tbody>
+  </table>
+
+  <h3>3.7 Tables communautaires &amp; système</h3>
+  <table>
+    <thead><tr><th style="width:24%">Table</th><th>Colonnes clés</th></tr></thead>
+    <tbody>
+      <tr><td>suggestions</td><td>author_id, contenu, ordre, is_read_admin, bailleur_visible(def true), read_at, created_at</td></tr>
+      <tr><td>evenements</td><td>creator_id, titre, description, date_event, heure, statut(en_attente|approuve|rejete), created_at</td></tr>
+      <tr><td>portfolios</td><td>user_id, bio, competences(JSONB), diplomes(JSONB), realisations(JSONB), contact, email_pro, dispo_recommandation(bool)</td></tr>
+      <tr><td>distress_signals</td><td>sender_id, sent_at, latitude, longitude, geo_consent(bool), resolved(bool), resolved_by</td></tr>
+      <tr><td>posts_info</td><td>author_id, titre(≤100), description(≤300), image_url, is_hidden, created_at</td></tr>
+      <tr><td>projets_communs</td><td>created_by, titre, description, objectifs(JSONB), vision, besoins_financiers(BIGINT), montant_contribution(BIGINT), image_url, visible_roles(JSONB)</td></tr>
+      <tr><td>projet_contributions <span class="badge b-new">NEW</span></td><td>projet_id, user_id, montant(BIGINT), paiement_id, created_at — suivi de cagnotte</td></tr>
+      <tr><td>predictions_facture</td><td>mois, type, indice_diff, prix_unit, tva, loc_compteur, transport, montant_calcule(BIGINT), montant_reel(BIGINT NULL), created_at</td></tr>
+      <tr><td>maintenance_tickets <span class="badge b-new">NEW</span></td><td>author_id, room_id, categorie(plomberie|electricite|autre), description, image_url, statut(ouvert|en_cours|resolu), priorite, assigned_to, created_at</td></tr>
+      <tr><td>sondages / sondage_votes <span class="badge b-new">NEW</span></td><td>question, options(JSONB), is_open, created_by · (sondage_id, user_id, choix) UNIQUE</td></tr>
+      <tr><td>documents <span class="badge b-new">NEW</span></td><td>titre, fichier_url, categorie(reglement|pv|autre), visible_roles(JSONB), uploaded_by</td></tr>
+      <tr><td>audit_logs <span class="badge b-info">FIX-6</span></td><td>user_id, action, resource, resource_id, ip_address, user_agent, metadata(JSONB), created_at</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 4. ROLES & AUTH ============ -->
+<div class="section">
+  <h2>4. Rôles &amp; authentification</h2>
+  <h3>4.1 Flux d'authentification</h3>
+  <ol>
+    <li>L'Admin se connecte avec les credentials seedés (mot de passe initial à usage unique, changement forcé).</li>
+    <li>L'Admin crée les comptes Bailleur/Locataire ; un mot de passe temporaire est généré et transmis hors-bande (SMS/remise).</li>
+    <li>À la 1<sup>re</sup> connexion → redirection vers « Changer mes identifiants » (nouveau mot de passe ≥ 8 caractères).</li>
+    <li>Hash <code>bcrypt</code> (salt rounds = 12).</li>
+    <li>Login réussi → <b>access token</b> JWT HS256 (15&nbsp;min) + <b>refresh token</b> (7&nbsp;j, cookie HttpOnly/SameSite=Strict).</li>
+    <li>Payload access : <code>{ sub, role, ver, iat, exp }</code> (<code>ver</code> = compteur d'invalidation pour révocation).</li>
+    <li>Middleware centralisé : vérification signature/exp, puis <code>roleGuard</code> par endpoint.</li>
+    <li>2FA TOTP optionnel pour l'Admin (étape supplémentaire post-mot de passe).</li>
+  </ol>
+  <div class="note fix"><span class="lbl">Durcissement vs v1.0</span><p style="margin:.3em 0 0">Access court (15&nbsp;min) + refresh rotatif &gt; le JWT 24h de la v1.0 : limite la fenêtre de compromission. Révocation via <code>users.token_version</code>.</p></div>
+
+  <h3>4.2 Matrice des permissions</h3>
+  <table>
+    <thead><tr><th>Fonctionnalité</th><th style="width:13%">Admin</th><th style="width:13%">Bailleur</th><th style="width:13%">Locataire</th></tr></thead>
+    <tbody>
+      <tr><td>Créer / modifier / désactiver utilisateurs</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Saisir factures &amp; coefficients</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Enregistrer un paiement</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Voir détail factures (tous)</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="no">Non</td></tr>
+      <tr><td>Voir ses propres factures / payer</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="yes">Oui</td></tr>
+      <tr><td>Export comptable</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="no">Non</td></tr>
+      <tr><td>Envoyer notifications / annonces globales</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="no">Non</td></tr>
+      <tr><td>Voir toutes les suggestions</td><td class="yes">Oui</td><td class="cond">Cond.</td><td class="no">Non</td></tr>
+      <tr><td>Envoyer une suggestion</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="yes">Oui</td></tr>
+      <tr><td>Approuver / rejeter événement</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Créer événement / post / sondage-vote</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="yes">Oui</td></tr>
+      <tr><td>Gérer signal de détresse (revue/ban)</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Envoyer signal de détresse</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="yes">Oui</td></tr>
+      <tr><td>Publier / modérer projet commun, documents</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Ouvrir / suivre ticket maintenance</td><td class="yes">Oui</td><td class="yes">Oui</td><td class="yes">Oui</td></tr>
+      <tr><td>Saisir prédiction de charge</td><td class="yes">Oui</td><td class="no">Non</td><td class="no">Non</td></tr>
+      <tr><td>Dashboard</td><td class="yes">Global</td><td class="cond">Financier</td><td class="no">Perso</td></tr>
+    </tbody>
+  </table>
+  <p class="small"><b>Cond.</b> = visible uniquement si l'Admin a activé la visibilité Bailleur pour la suggestion. Cette mécanique n'est jamais exposée aux auteurs.</p>
+</div>
+
+<!-- ============ 5. MODULES ============ -->
+<div class="section">
+  <h2>5. Modules fonctionnels</h2>
+
+  <h3>5.1 Facturation &amp; coefficients</h3>
+  <p>Cœur financier. L'Admin crée des factures mensuelles par type, rattache les locataires concernés, attribue des coefficients et fixe l'échéance.</p>
+  <div class="formula">
+    <b>Répartition&nbsp;:</b><br>
+    <code>base_unitaire = montant_total / Σ(coefficients des locataires rattachés)</code><br>
+    <code>montant_du(i) = round(base_unitaire × coefficient(i))</code> &nbsp; <span class="small">(écart d'arrondi reporté sur la dernière ligne)</span><br><br>
+    <b>Exemple — Eau = 60&nbsp;000 XAF, 4 locataires</b> (coeff 1, 1, 0.5, 1.5) → Σ = 4.0 → base = 15&nbsp;000<br>
+    A(1)=15&nbsp;000 · B(1)=15&nbsp;000 · C(0.5)=7&nbsp;500 · D(1.5)=22&nbsp;500 → <b>Total = 60&nbsp;000 XAF ✓</b>
+  </div>
+  <h4>Règles métier</h4>
+  <ul>
+    <li>Aucun coefficient saisi ce mois → tous à <code>n = 1</code>.</li>
+    <li>Aucune facture saisie pour un type → <b>brouillon reconduit</b> du mois précédent (non publié), notifié à l'Admin pour validation (<span class="badge b-info">cf. §0.2</span>).</li>
+    <li>Alerte (push + SMS + email selon préférences) au locataire en défaut, au Bailleur et à l'Admin <b>J-2</b> avant l'échéance, puis <b>J0</b> si non réglé, puis rappels J+3 / J+7.</li>
+    <li>Bailleur : vue complète (par locataire, total par type, historique, export). Locataire : ses propres factures uniquement.</li>
+    <li>Gestion du départ en cours de mois : un locataire désactivé est exclu du calcul des factures <b>non publiées</b> ; les factures publiées restent figées.</li>
+  </ul>
+  <h4>Workflow backend</h4>
+  <table>
+    <thead><tr><th style="width:38%">Étape</th><th>Action</th></tr></thead>
+    <tbody>
+      <tr><td><code>POST /api/factures</code></td><td>Crée la facture (type, montant_total, mois, date_limite, [compteur], [locataires])</td></tr>
+      <tr><td><code>POST /api/factures/:id/coefficients</code></td><td>Saisit/maj les coefficients par locataire</td></tr>
+      <tr><td><code>SERVICE CalculFacture</code></td><td>Calcule somme_coeff, base_unitaire, montant_du ; réconcilie l'arrondi</td></tr>
+      <tr><td><code>POST /api/factures/:id/publish</code></td><td>Publie (sort du brouillon) et déclenche les notifications</td></tr>
+      <tr><td><code>JOB échéances (quotidien)</code></td><td>Calcule retards, envoie alertes J-2 / J0 / J+n</td></tr>
+      <tr><td><code>POST /api/paiements</code></td><td>Enregistre un paiement (total/partiel), recalcule le statut, génère le reçu PDF</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.2 Paiements &amp; Mobile Money <span class="badge b-new">NEW</span></h3>
+  <ul>
+    <li>Enregistrement Admin du paiement : montant, <b>mode</b> (espèces, Orange Money, MTN MoMo, virement), <b>référence transaction</b>, justificatif (capture).</li>
+    <li><b>Paiements partiels</b> : <code>montant_paye</code> cumulé ; statut <code>partiel</code> tant que <code>montant_paye &lt; montant_du</code>.</li>
+    <li><b>Reçu PDF</b> généré et stocké, téléchargeable par le locataire.</li>
+    <li><b>Phase 2 (option)</b> : intégration API Mobile Money (collecte/confirmation par webhook) pour réduire la saisie manuelle.</li>
+  </ul>
+
+  <h3>5.3 Notifications &amp; annonces</h3>
+  <p>Admin et Bailleur émettent annonces/notifications reçues par tous. Les notifications système sont générées automatiquement. Chaque utilisateur définit ses <b>canaux préférés</b> (<code>notif_prefs</code>) ; les alertes critiques (détresse, échéance) forcent push + SMS.</p>
+  <table>
+    <thead><tr><th>Type</th><th>Émetteur</th><th>Destinataires</th><th>Déclencheur</th></tr></thead>
+    <tbody>
+      <tr><td>ANNONCE</td><td>Admin / Bailleur</td><td>Tous</td><td>Message général</td></tr>
+      <tr><td>ALERTE_FACTURE</td><td>Système (job)</td><td>Locataire + Admin + Bailleur</td><td>Échéance imminente / retard</td></tr>
+      <tr><td>ANNIVERSAIRE</td><td>Système (job)</td><td>Tous (actifs)</td><td>Rappel J-7 (si opt-in)</td></tr>
+      <tr><td>DETRESSE</td><td>Utilisateur</td><td>Tous (actifs)</td><td>Signal d'urgence</td></tr>
+      <tr><td>LECTURE</td><td>Système</td><td>Auteur suggestion</td><td>Admin a ouvert la suggestion</td></tr>
+      <tr><td>EVENEMENT</td><td>Système</td><td>Tous</td><td>Approbation / rejet</td></tr>
+      <tr><td>PREDICTION</td><td>Système</td><td>Tous</td><td>Publication d'une estimation</td></tr>
+      <tr><td>MAINTENANCE</td><td>Système</td><td>Auteur + Admin</td><td>Changement de statut d'un ticket</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.4 Boîte à suggestions</h3>
+  <ul>
+    <li>Tout utilisateur soumet des suggestions numérotées (champ <code>ordre</code>, réordonnables par glisser-déposer).</li>
+    <li>Vues par l'Admin ; l'Admin active/désactive la visibilité Bailleur par suggestion. <b>Non exposé aux auteurs</b> : ils savent seulement que « l'administration » verra leur suggestion.</li>
+    <li>Notification de <b>lecture</b> envoyée à l'auteur dès l'ouverture par l'Admin (<code>read_at</code> horodaté).</li>
+    <li>Si l'Admin coupe la visibilité Bailleur d'une suggestion, celui-ci cesse de la voir immédiatement.</li>
+  </ul>
+
+  <h3>5.5 Programmation d'événements</h3>
+  <p>Tout utilisateur propose un événement (Titre, Jour, Heure, Description). L'Admin <b>approuve</b> ou <b>rejette</b> ; le statut (badge coloré EN_ATTENTE / APPROUVÉ / REJETÉ) est visible par tous. Notification au créateur dès décision.</p>
+
+  <h3>5.6 Anniversaires</h3>
+  <ul>
+    <li>Renseignement opt-in (<code>birthday</code> + consentement <code>birthday_public</code>).</li>
+    <li>Job quotidien : détection à <b>J-7</b> → notification collective (prénom + jour, <b>sans l'année</b>).</li>
+  </ul>
+
+  <h3>5.7 Portfolio professionnel</h3>
+  <p>Page optionnelle visible par tous, pour valoriser compétences/réalisations et encourager les recommandations.</p>
+  <table>
+    <thead><tr><th style="width:24%">Section</th><th>Contenu</th></tr></thead>
+    <tbody>
+      <tr><td>Biographie</td><td>Texte court</td></tr>
+      <tr><td>Diplômes</td><td>Établissement, année, mention (JSONB)</td></tr>
+      <tr><td>Compétences</td><td>Tags libres (JSONB)</td></tr>
+      <tr><td>Réalisations</td><td>Images + titre + description</td></tr>
+      <tr><td>Contact</td><td>Téléphone, email pro, réseaux</td></tr>
+      <tr><td>Disponibilité</td><td>Ouvert aux recommandations : oui/non</td></tr>
+    </tbody>
+  </table>
+
+  <h3>5.8 Signal de détresse <span class="badge b-info">REVU §0.2</span></h3>
+  <ul>
+    <li>Déclenchement : <b>5 clics rapides</b> sur le bouton « Détresse » (anti-accident) + confirmation optionnelle de géoloc (consentement explicite).</li>
+    <li>Diffusion push + SMS à <b>tous les utilisateurs actifs</b> en temps réel ; historisé dans <code>distress_signals</code>.</li>
+    <li><b>Anti-abus (sans couper la sécurité)</b> : au-delà d'un seuil (ex. 3 signaux / 3 jours), le compte passe en <code>distress_review</code> → l'Admin est alerté pour arbitrage ; <b>le signal continue de partir</b>, mais marqué « à vérifier ».</li>
+    <li>L'Admin peut bannir/réactiver manuellement (<code>distress_disabled</code>) — action journalisée (audit).</li>
+    <li>Suivi de résolution : un signal peut être marqué <code>resolved</code> par l'Admin.</li>
+  </ul>
+
+  <h3>5.9 Tableau d'informations (posts images)</h3>
+  <ul>
+    <li>Image obligatoire (JPEG/PNG, ≤ 5&nbsp;Mo, Cloudinary, compression auto). Titre ≤ 100, description ≤ 300 caractères.</li>
+    <li>Fil commun trié par date décroissante ; l'Admin peut masquer tout post inapproprié (<code>is_hidden</code>).</li>
+  </ul>
+
+  <h3>5.10 Projet commun &amp; cotisations <span class="badge b-new">cotisation</span></h3>
+  <p>L'Admin crée/publie un projet visible par les rôles sélectionnés. Champs : Titre, image de profil, Description, Objectifs (liste), Vision, Besoins financiers, Montant de contribution/personne, Rôles destinataires (multi-select).</p>
+  <ul><li><b>Suivi de cagnotte</b> : table <code>projet_contributions</code> + barre de progression (collecté / objectif), liée aux paiements.</li></ul>
+
+  <h3>5.11 Prédiction / estimation de charge <span class="badge b-info">FIX-5</span></h3>
+  <p>L'Admin saisit les paramètres ; le système calcule l'estimation du mois suivant, <b>par type de charge</b>, publiée à tous pour anticipation.</p>
+  <div class="formula">
+    <b>Électricité :</b> &nbsp; <code>Montant = (I × P) + TVA + LC + T</code><br>
+    <span class="small">I = différence d'indices (kWh = index_fin − index_début) · P = prix du kWh · TVA · LC = location compteur · T = transport</span><br><br>
+    <b>Eau :</b> &nbsp; <code>Montant = (I_eau × P_eau) + frais_fixes</code> &nbsp; <span class="small">(formule propre, paramétrable par type)</span>
+  </div>
+  <p>Stocké dans <code>predictions_facture</code> avec <code>montant_reel</code> renseigné a posteriori pour <b>comparer estimé vs réel</b> et affiner.</p>
+
+  <h3>5.12 Maintenance &amp; tickets <span class="badge b-new">NEW</span></h3>
+  <p>Distinct du signal de détresse : signalement non urgent (plomberie, électricité, mobilier…). Catégorie, description, photo, statut (ouvert → en cours → résolu), priorité, assignation. Notifications à chaque changement de statut. Utile au quotidien d'une cité.</p>
+
+  <h3>5.13 Sondages &amp; votes <span class="badge b-new">NEW</span></h3>
+  <p>Décisions communautaires rapides (ex. date d'un événement, choix d'un prestataire). Question + options, un vote par utilisateur, résultats en temps réel, clôture par l'Admin.</p>
+
+  <h3>5.14 Annuaire des résidents <span class="badge b-new">NEW</span></h3>
+  <p>Vue dérivée des portfolios : recherche par compétence/diplôme, filtre « disponible aux recommandations ». Renforce le réseautage (objectif communautaire).</p>
+
+  <h3>5.15 Documents &amp; règlement intérieur <span class="badge b-new">NEW</span></h3>
+  <p>Espace de documents partagés (règlement, PV de réunion, formulaires), visibilité par rôle, versionné, téléchargeable hors-ligne (cache PWA).</p>
+</div>
+
+<!-- ============ 6. DASHBOARDS ============ -->
+<div class="section">
+  <h2>6. Dashboards Admin &amp; Bailleur</h2>
+  <h3>6.1 Dashboard Administrateur</h3>
+  <div class="card">
+    <div class="pill-row">
+      <span class="kpi"><b>Locataires actifs</b></span>
+      <span class="kpi"><b>Factures du mois</b></span>
+      <span class="kpi"><b>Taux de paiement %</b></span>
+      <span class="kpi"><b>Impayés en retard</b></span>
+      <span class="kpi"><b>Tickets maintenance ouverts</b></span>
+    </div>
+    <ul>
+      <li><b>Graphe financier</b> : barres mensuelles facturé vs encaissé (12 mois) + répartition par mode de paiement.</li>
+      <li><b>Tableau impayés</b> : locataire, montant dû, jours de retard, dernier rappel envoyé.</li>
+      <li><b>Activité récente</b> : 5 dernières actions admin (issu de <code>audit_logs</code>).</li>
+      <li><b>Alertes actives</b> : signaux de détresse (dont « à vérifier »), anniversaires à venir, événements en attente, tickets prioritaires.</li>
+      <li><b>Raccourcis</b> : Créer facture · Créer utilisateur · Publier annonce · Saisir prédiction · Enregistrer paiement.</li>
+    </ul>
+  </div>
+  <h3>6.2 Dashboard Bailleur</h3>
+  <div class="card">
+    <div class="pill-row">
+      <span class="kpi"><b>Total facturé (mois)</b></span>
+      <span class="kpi"><b>Total encaissé</b></span>
+      <span class="kpi"><b>Taux de recouvrement</b></span>
+      <span class="kpi"><b>Nombre d'impayés</b></span>
+    </div>
+    <ul>
+      <li><b>Tableau mensuel</b> par locataire : Eau / Électricité / Autres · statut · date paiement · mode.</li>
+      <li><b>Historique</b> : 12 mois paginés, filtres par type/statut/mode + <b>export CSV/Excel/PDF</b>.</li>
+      <li><b>Alertes</b> : locataires en retard (J-2, J0, J+n).</li>
+      <li><b>Tendance</b> : courbe d'évolution facturé/encaissé sur 6 mois.</li>
+    </ul>
+  </div>
+</div>
+
+<!-- ============ 7. PWA & i18n ============ -->
+<div class="section">
+  <h2>7. PWA, offline-first &amp; internationalisation</h2>
+  <h3>7.1 Progressive Web App</h3>
+  <ul>
+    <li><code>next-pwa</code> (Workbox) ; <code>manifest.json</code> : nom, icônes 192/512, thème <code>#1A3C6E</code>, <code>display: standalone</code>.</li>
+    <li><b>Offline-first</b> : précache du shell ; <i>StaleWhileRevalidate</i> pour les listes, <i>NetworkFirst</i> pour les données fraîches, <i>CacheFirst</i> pour images/documents.</li>
+    <li><b>File de synchronisation</b> (Background Sync / IndexedDB) : les actions hors-ligne (paiement saisi, suggestion, ticket) sont mises en file et rejouées au retour réseau.</li>
+    <li><b>Économie de data</b> : images servies en WebP/AVIF responsives, lazy-loading, pagination serveur partout.</li>
+    <li>Prompt d'installation A2HS après 2 visites ; badge de notifications non lues (Badging API).</li>
+    <li>Push via Web Push + VAPID, abonnement en <code>push_subscription</code>.</li>
+  </ul>
+  <div class="note warn"><span class="lbl">Limite iOS</span><p style="margin:.3em 0 0">Le Web Push iOS ne fonctionne <b>que sur iOS 16.4+ et uniquement si la PWA est installée</b> (A2HS). Fallback SMS prévu pour les alertes critiques sur iPhone non installé.</p></div>
+
+  <h3>7.2 Internationalisation (FR / EN / DE)</h3>
+  <ul>
+    <li><code>next-intl</code>, fichiers <code>/messages/{fr,en,de}.json</code> ; détection auto à la 1<sup>re</sup> visite, surchargeable et persistée (<code>users.language</code>).</li>
+    <li>Tout est traduit : UI, erreurs, notifications, SMS, emails (selon langue du destinataire).</li>
+    <li>Formats date/nombre/monnaie (XAF) par locale.</li>
+    <li><b>DE optionnel</b> (cf. §0.3) : structure prête, activation selon le public réel.</li>
+  </ul>
+</div>
+
+<!-- ============ 8. API ============ -->
+<div class="section">
+  <h2>8. API REST — Endpoints</h2>
+  <p class="small">Toutes les entrées validées par Zod. Réponses paginées (<code>?page&amp;limit</code>) sur les listes. Audit sur actions sensibles.</p>
+  <h3>8.1 Auth &amp; utilisateurs</h3>
+  <table>
+    <thead><tr><th style="width:9%">Méth.</th><th style="width:36%">Route</th><th style="width:22%">Rôle</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>POST</td><td><code>/api/auth/login</code></td><td>Public</td><td>Connexion → access + refresh</td></tr>
+      <tr><td>POST</td><td><code>/api/auth/refresh</code></td><td>Cookie</td><td>Rotation du token</td></tr>
+      <tr><td>POST</td><td><code>/api/auth/logout</code></td><td>Authentifié</td><td>Invalide le refresh</td></tr>
+      <tr><td>POST</td><td><code>/api/auth/2fa/setup|verify</code></td><td>Admin</td><td>Activation TOTP</td></tr>
+      <tr><td>POST</td><td><code>/api/auth/change-credentials</code></td><td>Authentifié</td><td>Change username/password</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/users</code></td><td>Admin</td><td>Liste / crée</td></tr>
+      <tr><td>PUT / DELETE</td><td><code>/api/users/:id</code></td><td>Admin</td><td>Modifie / désactive (soft)</td></tr>
+      <tr><td>GET / PUT</td><td><code>/api/users/:id/profile</code></td><td>Auth / Proprio</td><td>Profil &amp; préférences notif</td></tr>
+    </tbody>
+  </table>
+  <h3>8.2 Factures &amp; paiements</h3>
+  <table>
+    <thead><tr><th style="width:9%">Méth.</th><th style="width:38%">Route</th><th style="width:22%">Rôle</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/api/factures</code></td><td>Admin/Bailleur</td><td>Liste (filtres mois/type/statut)</td></tr>
+      <tr><td>POST</td><td><code>/api/factures</code></td><td>Admin</td><td>Crée (brouillon)</td></tr>
+      <tr><td>PUT</td><td><code>/api/factures/:id</code></td><td>Admin</td><td>Modifie</td></tr>
+      <tr><td>POST</td><td><code>/api/factures/:id/coefficients</code></td><td>Admin</td><td>Coefficients par locataire</td></tr>
+      <tr><td>POST</td><td><code>/api/factures/:id/publish</code></td><td>Admin</td><td>Publie + notifie</td></tr>
+      <tr><td>GET</td><td><code>/api/factures/locataire/:id</code></td><td>Admin/Bailleur/Proprio</td><td>Factures d'un locataire</td></tr>
+      <tr><td>GET</td><td><code>/api/factures/historique</code></td><td>Admin/Bailleur</td><td>Historique + export</td></tr>
+      <tr><td>POST</td><td><code>/api/paiements</code></td><td>Admin</td><td>Enregistre (mode, réf, partiel) + reçu PDF</td></tr>
+      <tr><td>GET</td><td><code>/api/paiements/:id/recu</code></td><td>Proprio/Admin</td><td>Télécharge le reçu PDF</td></tr>
+    </tbody>
+  </table>
+  <h3>8.3 Notifications, suggestions &amp; communauté</h3>
+  <table>
+    <thead><tr><th style="width:9%">Méth.</th><th style="width:38%">Route</th><th style="width:20%">Rôle</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>GET</td><td><code>/api/notifications</code> · <code>/stream</code> (SSE)</td><td>Authentifié</td><td>Mes notifs / flux live</td></tr>
+      <tr><td>POST</td><td><code>/api/notifications</code></td><td>Admin/Bailleur</td><td>Annonce</td></tr>
+      <tr><td>PATCH</td><td><code>/api/notifications/:id/read</code></td><td>Authentifié</td><td>Marque lue</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/suggestions</code></td><td>Admin(Bailleur cond.) / Auth</td><td>Liste / crée</td></tr>
+      <tr><td>PATCH</td><td><code>/api/suggestions/:id/visibility</code></td><td>Admin</td><td>Visibilité Bailleur</td></tr>
+      <tr><td>GET/POST · PATCH</td><td><code>/api/evenements</code> · <code>/:id/statut</code></td><td>Auth · Admin</td><td>Événements / décision</td></tr>
+      <tr><td>GET / PUT</td><td><code>/api/portfolios/:id</code> · <code>/api/portfolios</code></td><td>Authentifié</td><td>Voir / éditer</td></tr>
+      <tr><td>GET</td><td><code>/api/annuaire?skill=</code></td><td>Authentifié</td><td>Recherche résidents</td></tr>
+      <tr><td>POST · PATCH</td><td><code>/api/distress</code> · <code>/api/users/:id/distress-ban</code></td><td>Auth · Admin</td><td>Signal / ban</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/posts</code></td><td>Authentifié</td><td>Fil d'infos / publier</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/projets</code> · <code>/:id/contribuer</code></td><td>Selon rôle · Admin</td><td>Projets / cotisation</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/predictions</code></td><td>Auth · Admin</td><td>Estimations</td></tr>
+      <tr><td>GET/POST · PATCH</td><td><code>/api/tickets</code> · <code>/:id/statut</code></td><td>Auth · Admin</td><td>Maintenance</td></tr>
+      <tr><td>GET/POST · POST</td><td><code>/api/sondages</code> · <code>/:id/vote</code></td><td>Auth</td><td>Sondages / vote</td></tr>
+      <tr><td>GET / POST</td><td><code>/api/documents</code></td><td>Selon rôle · Admin</td><td>Documents partagés</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 9. SECURITE ============ -->
+<div class="section">
+  <h2>9. Sécurité &amp; bonnes pratiques</h2>
+  <table>
+    <thead><tr><th style="width:22%">Domaine</th><th>Mesure</th></tr></thead>
+    <tbody>
+      <tr><td>Authentification</td><td>JWT HS256 access 15&nbsp;min + refresh 7&nbsp;j (HttpOnly, SameSite=Strict), rotation &amp; révocation par <code>token_version</code>. 2FA TOTP admin.</td></tr>
+      <tr><td>Mots de passe</td><td><b>≥ 8 caractères</b> + bcrypt(12). Changement forcé à la 1<sup>re</sup> connexion. Verrouillage temporaire après échecs.</td></tr>
+      <tr><td>Rate limiting</td><td><code>/auth/login</code> : 10 essais / 15&nbsp;min / IP + backoff par compte. Throttle global sur l'API.</td></tr>
+      <tr><td>Validation</td><td>Zod sur 100% des entrées (schemas partagés front/back). Aucune donnée non validée persistée.</td></tr>
+      <tr><td>Injection SQL</td><td>Prisma paramétré ; <code>$queryRaw</code> tagué uniquement pour rapports, jamais d'interpolation brute.</td></tr>
+      <tr><td>Autorisation</td><td><code>roleGuard</code> + vérification d'<b>ownership</b> (un locataire n'accède qu'à ses ressources). Tests d'accès systématiques.</td></tr>
+      <tr><td>Upload</td><td>MIME + taille (≤ 5&nbsp;Mo) vérifiés côté serveur, ré-encodage image, pas d'exécutable. URLs signées.</td></tr>
+      <tr><td>Transport</td><td>HTTPS obligatoire (Let's Encrypt), HSTS. CORS en liste blanche explicite.</td></tr>
+      <tr><td>En-têtes</td><td>CSP stricte (anti-XSS), <code>X-Frame-Options</code>, <code>Referrer-Policy</code>, <code>Permissions-Policy</code> (géoloc).</td></tr>
+      <tr><td>Secrets</td><td><code>.env</code> non versionné : <code>JWT_SECRET</code>, <code>DB_URL</code>, VAPID, SMTP, SMS, Cloudinary, MoMo.</td></tr>
+      <tr><td>Données perso</td><td>Géoloc &amp; anniversaire en <b>opt-in</b> ; minimisation ; pas de PII dans les logs.</td></tr>
+      <tr><td>Audit</td><td><code>audit_logs</code> sur actions sensibles (user, action, ressource, IP, UA, timestamp).</td></tr>
+      <tr><td>Observabilité</td><td>Sentry (erreurs), <code>pino</code> structuré + rotation, health checks <code>/api/health</code>.</td></tr>
+      <tr><td>Sauvegardes</td><td><code>pg_dump</code> quotidien chiffré → stockage objet (R2/S3), restauration testée.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- ============ 10. STRUCTURE ============ -->
+<div class="section">
+  <h2>10. Structure du projet (monorepo Turborepo)</h2>
+<pre>campusgest/
+├─ apps/
+│  └─ web/                      <span class="c"># Application Next.js (App Router)</span>
+│     ├─ app/
+│     │  ├─ (auth)/login/page.tsx
+│     │  ├─ admin/{dashboard,factures,paiements,users,...}/page.tsx
+│     │  ├─ bailleur/{dashboard,factures,historique}/page.tsx
+│     │  ├─ locataire/{dashboard,factures,profil}/page.tsx
+│     │  ├─ communaute/{evenements,portfolios,annuaire,projets,posts,
+│     │  │              sondages,tickets,documents}/page.tsx
+│     │  └─ api/{auth,factures,paiements,notifications,distress,...}/route.ts
+│     ├─ components/{ui,layouts,charts,forms}/   <span class="c"># shadcn/ui · recharts</span>
+│     ├─ lib/{prisma.ts,auth.ts,rbac.ts,notifications.ts,calculations.ts,
+│     │       sms.ts,push.ts,pdf.ts,i18n.ts}
+│     ├─ messages/{fr,en,de}.json
+│     └─ public/{manifest.json,icons/,sw.js}
+├─ packages/
+│  ├─ db/         <span class="c"># Prisma: schema.prisma · migrations/ · seed.ts (idempotent)</span>
+│  ├─ shared/     <span class="c"># Types TS + schemas Zod partagés front/back</span>
+│  └─ workers/    <span class="c"># BullMQ: echeances, anniversaires, reconductions, sms, push</span>
+├─ scripts/cron-jobs.ts
+├─ docker-compose.yml          <span class="c"># web · postgres · redis · nginx</span>
+├─ .env.example
+└─ turbo.json / package.json</pre>
+</div>
+
+<!-- ============ 11. DEPLOIEMENT ============ -->
+<div class="section">
+  <h2>11. Plan de déploiement</h2>
+  <h3>11.1 Environnements</h3>
+  <table>
+    <thead><tr><th style="width:16%">Env.</th><th>Description</th><th style="width:30%">Hébergement</th></tr></thead>
+    <tbody>
+      <tr><td>DEV</td><td>Local, Docker Compose (web + postgres + redis)</td><td>localhost</td></tr>
+      <tr><td>STAGING</td><td>Préproduction, tests d'intégration / e2e</td><td>Railway / Render</td></tr>
+      <tr><td>PROD</td><td>Production, backups quotidiens chiffrés</td><td>VPS Ubuntu (Hetzner/OVH) + Docker + Nginx</td></tr>
+    </tbody>
+  </table>
+  <h3>11.2 Étapes (production)</h3>
+  <ol>
+    <li>Provisionner VPS Ubuntu 22.04 LTS : SSH durci, <code>ufw</code>, <code>fail2ban</code>, mises à jour auto.</li>
+    <li>Installer Docker + Compose ; cloner le repo.</li>
+    <li>Configurer <code>.env</code> (DB, JWT, VAPID, SMTP, SMS, Cloudinary, MoMo).</li>
+    <li><code>docker-compose up -d</code> (web + postgres + redis + nginx).</li>
+    <li><code>npx prisma migrate deploy</code> puis <code>npx prisma db seed</code> (admin idempotent — upsert).</li>
+    <li>Nginx + SSL Let's Encrypt (<code>certbot --nginx</code>), HSTS.</li>
+    <li>Workers BullMQ + CRON système (échéances J-2/J0/J+n, anniversaires J-7, reconductions).</li>
+    <li>Test du flux complet : login admin → 2FA → user → facture → publication → paiement (MoMo) → reçu → push/SMS.</li>
+    <li>Sauvegardes <code>pg_dump</code> chiffrées → R2/S3 ; test de restauration.</li>
+    <li>GitHub Actions : lint + typecheck + tests + build + déploiement sur <code>main</code>.</li>
+  </ol>
+  <h3>11.3 Variables d'environnement</h3>
+<pre>DATABASE_URL=postgresql://user:pass@localhost:5432/campusgest
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=        JWT_REFRESH_SECRET=
+NEXT_PUBLIC_APP_URL=https://votre-domaine.cm
+VAPID_PUBLIC_KEY=  VAPID_PRIVATE_KEY=  VAPID_SUBJECT=mailto:admin@votre-domaine.cm
+CLOUDINARY_CLOUD_NAME=  CLOUDINARY_API_KEY=  CLOUDINARY_API_SECRET=
+SMTP_HOST=smtp.gmail.com  SMTP_PORT=587  SMTP_USER=  SMTP_PASS=
+SMS_PROVIDER=nexah  SMS_API_KEY=  SMS_SENDER_ID=CAMPUSGEST
+MOMO_OM_API_KEY=   MOMO_MTN_API_KEY=    <span class="c"># phase 2 (option)</span>
+ADMIN_DEFAULT_USERNAME=admin  ADMIN_DEFAULT_PASSWORD=   <span class="c"># temporaire, changé au 1er login</span></pre>
+  <h3>11.4 Notes pour l'équipe</h3>
+  <ol>
+    <li>TypeScript <code>strict: true</code> partout. Types &amp; schemas Zod partagés via <code>packages/shared</code>.</li>
+    <li>Tests unitaires (Jest/Vitest) <b>obligatoires</b> sur <code>CalculFacture</code> (arrondis, reconduction) et <code>NotificationService</code> ; e2e (Playwright) sur le flux facturation→paiement.</li>
+    <li>Seed admin idempotent (upsert).</li>
+    <li>Pagination serveur systématique.</li>
+    <li>SSE par défaut ; Socket.io seulement si besoin bidirectionnel avéré.</li>
+    <li>Tester la PWA sur Android (Chrome) et iOS (Safari, A2HS) ; valider le fallback SMS.</li>
+  </ol>
+</div>
+
+<!-- ============ 12. ROADMAP ============ -->
+<div class="section">
+  <h2>12. Roadmap par phases &amp; estimations</h2>
+  <table>
+    <thead><tr><th style="width:10%">Phase</th><th style="width:34%">Périmètre</th><th>Livrables clés</th></tr></thead>
+    <tbody>
+      <tr><td><span class="badge b-crit">P0</span> Socle</td><td>Auth/RBAC, users, i18n, PWA shell, CI/CD, Docker</td><td>Login, gestion users, portails, déploiement staging</td></tr>
+      <tr><td><span class="badge b-crit">P1</span> Financier</td><td>Factures, coefficients, calcul, paiements + MoMo (saisie), reçus PDF, alertes J-2/J0, dashboards</td><td>Cœur métier opérationnel (O1, O2, O4)</td></tr>
+      <tr><td><span class="badge b-high">P2</span> Communication</td><td>Notifications multicanal (push/SMS/email), annonces, suggestions, SSE</td><td>O3</td></tr>
+      <tr><td><span class="badge b-high">P3</span> Sécurité &amp; communauté</td><td>Signal de détresse encadré, tickets maintenance, événements, anniversaires</td><td>O5, début O6</td></tr>
+      <tr><td><span class="badge b-med">P4</span> Communauté +</td><td>Portfolio, annuaire, posts, projet commun + cotisation, sondages, documents</td><td>O6</td></tr>
+      <tr><td><span class="badge b-med">P5</span> Estimation &amp; finitions</td><td>Prédiction par type, estimé vs réel, exports comptables, mode sombre, durcissement</td><td>O7, audit sécurité</td></tr>
+      <tr><td><span class="badge b-info">P6</span> Option</td><td>Intégration API Mobile Money (webhooks), graphiques de consommation</td><td>Automatisation paiements</td></tr>
+    </tbody>
+  </table>
+  <div class="note"><span class="lbl">Décisions à confirmer avant P1</span>
+    <ul style="margin:.3em 0 0">
+      <li><b>Allemand (DE)</b> : maintenir les 3 langues ou démarrer FR/EN et activer DE plus tard ?</li>
+      <li><b>Mobile Money</b> : saisie manuelle (P1) suffit-elle au lancement, ou intégration API dès le départ ?</li>
+      <li><b>Plusieurs bailleurs</b> possibles, ou un seul ? Impacte la matrice de permissions.</li>
+      <li><b>Chambres/compteurs</b> : périmètre réel (un seul compteur global vs plusieurs par bloc) ?</li>
+    </ul>
+  </div>
+  <hr class="sep">
+  <p class="small" style="text-align:center">Document généré le 08/06/2026 — CampusGest v2.0 — Révision technique de la conception v1.0 — Confidentiel</p>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,28 @@
+# .claudeignore — exclut du contexte de Claude Code tout ce qui est volumineux
+# et non pertinent (générés, dépendances, binaires). Le code source, le schéma
+# Prisma et le PDF de conception restent accessibles.
+
+# Dépendances (régénérables via npm install)
+node_modules/
+
+# Sorties de build et caches (régénérables)
+.next/
+.turbo/
+dist/
+build/
+out/
+coverage/
+*.tsbuildinfo
+
+# Lockfile (445 Ko, jamais utile à lire — package.json suffit)
+package-lock.json
+
+# Doublon HTML du document de conception (le PDF reste lisible)
+CampusGest_Conception_v2.html
+
+# Binaires / assets générés
+apps/web/public/icons/
+apps/web/app/favicon.ico
+
+# Git interne
+.git/

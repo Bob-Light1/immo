@@ -1,0 +1,31 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Reverse proxy CampusGest — TLS automatique (Let's Encrypt).
+# Le domaine vient de la variable APP_DOMAIN (docker-compose.prod.yml).
+# ─────────────────────────────────────────────────────────────────────────────
+
+{$APP_DOMAIN} {
+	encode gzip
+
+	# Stockage objet (images, documents, justificatifs) → MinIO.
+	# handle_path retire le préfixe /storage : /storage/campusgest/<clé>
+	# devient /campusgest/<clé> côté MinIO. Doit correspondre à S3_PUBLIC_URL.
+	handle_path /storage/* {
+		reverse_proxy minio:9000
+	}
+
+	# Application Next.js (pages, API, flux SSE des notifications).
+	handle {
+		reverse_proxy web:3000 {
+			# Désactive le buffering pour le streaming SSE (GET /api/notifications/stream).
+			flush_interval -1
+		}
+	}
+
+	# Journalisation d'accès (rotation automatique).
+	log {
+		output file /data/access.log {
+			roll_size 10MiB
+			roll_keep 5
+		}
+	}
+}

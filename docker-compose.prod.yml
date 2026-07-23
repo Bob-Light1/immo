@@ -1,0 +1,183 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Stack de PRODUCTION — CampusGest (KingCity).
+# Usage :  docker compose -f docker-compose.prod.yml up -d --build
+# Variables lues depuis le fichier `.env` du répertoire (voir .env.production.example).
+# Seuls Caddy (80/443) est exposé publiquement ; tout le reste reste privé.
+# Détails : docs/DEPLOIEMENT.md
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  # ── Base de données ────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:15-alpine
+    container_name: campusgest-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: campusgest
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
+      POSTGRES_DB: campusgest
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U campusgest"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  # ── File de jobs + relais SSE ──────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: campusgest-redis
+    restart: unless-stopped
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+
+  # ── Stockage objet S3-compatible ───────────────────────────────────────────
+  minio:
+    image: minio/minio:RELEASE.2024-06-13T22-53-53Z
+    container_name: campusgest-minio
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${S3_ACCESS_KEY:?S3_ACCESS_KEY manquant dans .env}
+      MINIO_ROOT_PASSWORD: ${S3_SECRET_KEY:?S3_SECRET_KEY manquant dans .env}
+    volumes:
+      - miniodata:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks: [internal]
+    # NB : la console (9001) et l'API (9000) ne sont PAS publiées ; l'accès public
+    # aux objets passe par Caddy (/storage/*).
+
+  # Crée le bucket et l'ouvre en lecture anonyme (URLs d'images/documents publiques).
+  minio-init:
+    image: minio/mc:RELEASE.2024-06-12T14-34-03Z
+    container_name: campusgest-minio-init
+    depends_on:
+      minio:
+        condition: service_healthy
+    entrypoint: >
+      /bin/sh -c "
+      mc alias set local http://minio:9000 ${S3_ACCESS_KEY} ${S3_SECRET_KEY} &&
+      mc mb --ignore-existing local/${S3_BUCKET:-campusgest} &&
+      mc anonymous set download local/${S3_BUCKET:-campusgest} &&
+      echo 'bucket prêt (lecture publique)';
+      "
+    networks: [internal]
+    restart: "no"
+
+  # ── Migration Prisma (one-shot, idempotent) ────────────────────────────────
+  migrate:
+    build:
+      context: .
+      dockerfile: packages/workers/Dockerfile
+    container_name: campusgest-migrate
+    depends_on:
+      postgres:
+        condition: service_healthy
+    env_file: .env
+    # Appel direct du binaire : lit DATABASE_URL depuis l'environnement injecté.
+    command: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
+    restart: "no"
+    networks: [internal]
+
+  # ── Seed admin (one-shot, idempotent) ──────────────────────────────────────
+  seed:
+    build:
+      context: .
+      dockerfile: packages/workers/Dockerfile
+    container_name: campusgest-seed
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+    env_file: .env
+    # seed.ts lit ADMIN_DEFAULT_* depuis process.env — pas de wrapper dotenv requis.
+    command: npx tsx packages/db/prisma/seed.ts
+    restart: "no"
+    networks: [internal]
+
+  # ── Application web (Next.js) ──────────────────────────────────────────────
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # NEXT_PUBLIC_APP_URL est figé au build (bundle client) → passé en build-arg.
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL manquant dans .env}
+    container_name: campusgest-web
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    expose:
+      - "3000"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks: [internal]
+
+  # ── Jobs planifiés (échéances, reconductions, anniversaires) ───────────────
+  workers:
+    build:
+      context: .
+      dockerfile: packages/workers/Dockerfile
+    container_name: campusgest-workers
+    restart: unless-stopped
+    env_file: .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      migrate:
+        condition: service_completed_successfully
+    networks: [internal]
+
+  # ── Reverse proxy + TLS automatique (Let's Encrypt) ────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: campusgest-caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      # Domaine et cible stockage injectés dans le Caddyfile.
+      APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN manquant dans .env}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddydata:/data
+      - caddyconfig:/config
+    depends_on:
+      - web
+      - minio
+    networks: [internal]
+
+volumes:
+  pgdata:
+  redisdata:
+  miniodata:
+  caddydata:
+  caddyconfig:
+
+networks:
+  internal:
+    driver: bridge

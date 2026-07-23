@@ -1,0 +1,42 @@
+# dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# builds
+.next/
+out/
+dist/
+build/
+.turbo/
+
+# env & secrets
+.env
+.env.local
+.env.*.local
+!.env.example
+
+# prisma
+packages/db/prisma/*.db
+
+# logs
+*.log
+npm-debug.log*
+logs/
+
+# testing
+coverage/
+.nyc_output/
+
+# pwa generated
+apps/web/public/sw.js
+apps/web/public/workbox-*.js
+apps/web/public/worker-*.js
+apps/web/public/sw.js.map
+apps/web/public/fallback-*.js
+
+# misc
+.DS_Store
+*.pem
+.vscode/
+.idea/

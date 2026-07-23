@@ -1,0 +1,15 @@
+import { NextRequest } from "next/server";
+import { pushSubscriptionSchema } from "@campusgest/shared";
+import { handle, json } from "@/lib/api";
+import { requireAuth } from "@/lib/rbac";
+import { saveSubscription } from "@/lib/push";
+
+/** Enregistre l'abonnement Web Push de l'utilisateur courant. */
+export async function POST(req: NextRequest) {
+  return handle(async () => {
+    const user = requireAuth(req);
+    const sub = pushSubscriptionSchema.parse(await req.json());
+    await saveSubscription(user.sub, sub);
+    return json({ ok: true }, { status: 201 });
+  });
+}
