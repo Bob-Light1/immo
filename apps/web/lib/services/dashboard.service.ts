@@ -1,14 +1,14 @@
 import { prisma } from "@/lib/prisma";
 
 /**
- * Données des tableaux de bord Admin & Bailleur (conception §6).
- * Tous les montants XAF sont renvoyés en `number` (sérialisés via lib/api).
+ * Admin & Bailleur dashboard data (design §6).
+ * All XAF amounts are returned as `number` (serialized through lib/api).
  */
 
 const UNPAID = ["en_attente", "partiel", "retard"] as const;
 const DAY_MS = 86_400_000;
 
-/** Liste des `n` derniers mois (YYYY-MM), du plus ancien au mois courant. */
+/** The last `n` months (YYYY-MM), from the oldest to the current one. */
 function moisRange(n: number): string[] {
   const base = new Date();
   const out: string[] = [];
@@ -30,7 +30,7 @@ export interface SeriePoint {
   encaisse: number;
 }
 
-/** Facturé (Σ montantDu) vs encaissé (Σ montantPaye) par mois, factures publiées. */
+/** Billed (Σ montantDu) vs collected (Σ montantPaye) per month, published invoices. */
 async function serieFactureEncaisse(mois: string[]): Promise<SeriePoint[]> {
   const lignes = await prisma.factureLocataire.findMany({
     where: { facture: { statutPub: "publiee", mois: { in: mois } } },
@@ -58,7 +58,7 @@ export interface ImpayeRow {
   statut: string;
 }
 
-/** Tableau des impayés : lignes publiées non soldées, triées par échéance. */
+/** Unpaid table: published, unsettled lines sorted by due date. */
 async function listImpayes(limit = 50): Promise<ImpayeRow[]> {
   const lignes = await prisma.factureLocataire.findMany({
     where: { facture: { statutPub: "publiee" }, statut: { in: [...UNPAID] } },
@@ -83,7 +83,7 @@ async function listImpayes(limit = 50): Promise<ImpayeRow[]> {
     .filter((l) => l.reste > 0);
 }
 
-/** Agrégat facturé / encaissé / taux pour un mois donné (factures publiées). */
+/** Billed / collected / rate aggregate for a given month (published invoices). */
 async function aggMois(mois: string) {
   const agg = await prisma.factureLocataire.aggregate({
     where: { facture: { statutPub: "publiee", mois } },

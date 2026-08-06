@@ -8,6 +8,6 @@ export default createMiddleware({
 });
 
 export const config = {
-  // Tout sauf /api, les internes Next et les fichiers statiques.
+  // Everything except /api, Next internals and static files.
   matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
 };

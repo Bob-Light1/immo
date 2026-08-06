@@ -3,8 +3,8 @@ import type { Prisma } from "@prisma/client";
 import { prisma } from "./prisma";
 
 /**
- * Journal d'audit des actions sensibles (conception FIX-6 / §9).
- * Best-effort : une erreur d'audit ne doit jamais faire échouer l'action.
+ * Audit log of sensitive actions (design FIX-6 / §9).
+ * Best-effort: an audit failure must never fail the action itself.
  */
 export async function audit(
   req: NextRequest,

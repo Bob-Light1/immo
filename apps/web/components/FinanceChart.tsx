@@ -8,8 +8,8 @@ interface Point {
 }
 
 /**
- * Barres mensuelles facturé vs encaissé (SVG, sans dépendance) — conception §6.
- * Hauteur fixe, largeur fluide ; échelle relative au maximum de la série.
+ * Monthly billed vs collected bars (SVG, dependency-free) — design §6.
+ * Fixed height, fluid width; scale relative to the series maximum.
  */
 export function FinanceChart({ serie }: { serie: Point[] }) {
   const t = useTranslations("dashboard");

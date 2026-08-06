@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createPost, listPosts } from "@/lib/services/post.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Fil d'infos — tout utilisateur authentifié lit (posts masqués réservés Admin). */
+/** News feed — any authenticated user reads (hidden posts are Admin-only). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Publie un post (image obligatoire) — Admin ou Bailleur (§5.9). */
+/** Publishes a post (image mandatory) — Admin or Bailleur (§5.9). */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin", "bailleur");

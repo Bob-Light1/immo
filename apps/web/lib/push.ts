@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 import type { PushSubscriptionInput } from "@campusgest/shared";
 
 /**
- * Web Push (VAPID) — conception §5.3 / §7.2. Envoi best-effort : une erreur de
- * push ne doit jamais faire échouer l'action métier. Respecte la préférence
- * `notif_prefs.push` de l'utilisateur ; purge les abonnements expirés (404/410).
+ * Web Push (VAPID) — design §5.3 / §7.2. Best-effort delivery: a push error
+ * must never fail the business action. Honours the user's `notif_prefs.push`
+ * preference; purges dead subscriptions (403/404/410).
  *
- * Un utilisateur peut être abonné depuis plusieurs appareils : l'envoi vise
- * tous ses abonnements, et seul celui qui expire est supprimé.
+ * A user may be subscribed from several devices: delivery targets all their
+ * subscriptions, and only the expired one is deleted.
  */
 
 let configured = false;
@@ -60,9 +60,12 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         );
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
-        // 404/410 : l'appareil s'est désabonné ou le navigateur a révoqué
-        // l'endpoint. On retire cet appareil, pas les autres.
-        if (status === 404 || status === 410) {
+        // 404/410: the device unsubscribed or the browser revoked the endpoint.
+        // 403: the subscription was created under a previous VAPID key pair and
+        // can never be delivered to again (rotation) — dropping it here is what
+        // lets a key rotation heal itself instead of erroring on every send.
+        // Remove that device only, never the others.
+        if (status === 404 || status === 410 || status === 403) {
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
         } else {
           console.error("[push]", status ?? (e as Error).message);
@@ -72,16 +75,16 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   );
 }
 
-/** Envoi parallèle, best-effort, à plusieurs utilisateurs. */
+/** Parallel, best-effort delivery to several users. */
 export async function sendPushToUsers(userIds: string[], payload: PushPayload): Promise<void> {
   await Promise.allSettled(userIds.map((id) => sendPushToUser(id, payload)));
 }
 
 /**
- * Enregistre l'abonnement de l'appareil courant. L'`endpoint` est son identité :
- * un réabonnement depuis le même navigateur met la ligne à jour, et un appareil
- * partagé est réattribué au compte qui vient de s'abonner (l'ancien propriétaire
- * ne reçoit donc plus rien dessus).
+ * Stores the current device's subscription. The `endpoint` is its identity: a
+ * re-subscription from the same browser updates the row, and a shared device is
+ * reassigned to the account that just subscribed (the previous owner therefore
+ * stops receiving anything on it).
  */
 export async function saveSubscription(userId: string, sub: PushSubscriptionInput): Promise<void> {
   await prisma.pushSubscription.upsert({
@@ -102,9 +105,9 @@ export async function saveSubscription(userId: string, sub: PushSubscriptionInpu
 }
 
 /**
- * Désabonne un appareil. Avec `endpoint`, seul celui-ci est retiré — les autres
- * appareils de l'utilisateur continuent de recevoir. Sans (client incapable de
- * relire son abonnement), on retombe sur la purge complète du compte.
+ * Unsubscribes a device. With `endpoint`, only that one is removed — the user's
+ * other devices keep receiving. Without it (client unable to read back its own
+ * subscription), fall back to purging the whole account.
  */
 export async function clearSubscription(userId: string, endpoint?: string): Promise<void> {
   if (endpoint) {

@@ -3,9 +3,9 @@ import { ServiceError } from "@/lib/api";
 import type { UpdateProfileInput } from "@campusgest/shared";
 
 /**
- * Profil & préférences de l'utilisateur (conception §8.3, §5.6). Permet
- * l'opt-in anniversaire (birthday + birthday_public) et les préférences de
- * canaux de notification (notif_prefs).
+ * User profile & preferences (design §8.3, §5.6). Covers the birthday opt-in
+ * (birthday + birthday_public) and the notification channel preferences
+ * (notif_prefs).
  */
 
 const SELECT = {
@@ -26,7 +26,7 @@ const SELECT = {
 export async function getProfile(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: SELECT });
   if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
-  // On expose seulement l'état d'activation, jamais le secret.
+  // Only the enabled flag is exposed, never the secret.
   const { totpSecret, ...rest } = user;
   return { ...rest, twoFactorEnabled: !!totpSecret };
 }

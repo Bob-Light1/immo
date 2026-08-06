@@ -4,9 +4,9 @@ import { useState, type InputHTMLAttributes } from "react";
 import { useTranslations } from "next-intl";
 
 /**
- * Champ mot de passe avec bascule afficher/masquer (œil). Accepte toutes les
- * props d'un <input> standard (value, onChange, required, minLength, …) et
- * réserve la place du bouton à droite via `pr-10`.
+ * Password field with a show/hide toggle (eye). Accepts every standard <input>
+ * prop (value, onChange, required, minLength, …) and reserves room for the
+ * button on the right through `pr-10`.
  */
 export function PasswordInput({ className = "", ...props }: InputHTMLAttributes<HTMLInputElement>) {
   const t = useTranslations("common");

@@ -1,11 +1,11 @@
 import IORedis from "ioredis";
 
 /**
- * Publication des signaux temps réel depuis les jobs. Pendant du publisher de
- * apps/web/lib/realtime.ts, autonome au paquet workers (même logique que
- * push.ts). Les jobs tournent dans un autre process que l'app : sans ce signal,
- * une alerte d'échéance n'apparaîtrait chez le résident connecté qu'au prochain
- * sondage de secours.
+ * Publishes real-time signals from the jobs. Counterpart of the publisher in
+ * apps/web/lib/realtime.ts, self-contained in the workers package (same shape
+ * as push.ts). Jobs run in a different process than the app: without this
+ * signal, a due-date alert would only reach a connected resident on the next
+ * fallback poll.
  */
 
 const NOTIF_CHANNEL = "cg:notif";
@@ -23,8 +23,8 @@ function getPublisher(): IORedis | null {
   if (!url) return null;
   if (!publisher) {
     publisher = new IORedis(url, { maxRetriesPerRequest: 1, enableOfflineQueue: false });
-    // ioredis retente indéfiniment : on étrangle le log pour ne pas noyer la
-    // sortie des jobs pendant une coupure Redis.
+    // ioredis retries forever: throttle the log so a Redis outage does not
+    // drown the job output.
     publisher.on("error", (e) => {
       const now = Date.now();
       if (now - lastErrorLog < 60_000) return;
@@ -35,7 +35,7 @@ function getPublisher(): IORedis | null {
   return publisher;
 }
 
-/** Best-effort : une panne du bus ne fait jamais échouer un job. */
+/** Best-effort: a bus outage must never fail a job. */
 export function publishNotif(bump: NotifBump): void {
   const client = getPublisher();
   if (!client) return;

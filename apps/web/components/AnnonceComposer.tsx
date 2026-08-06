@@ -6,7 +6,7 @@ import { apiFetch } from "@/lib/client/session";
 import { ANNONCE_SCOPES, type AnnonceScope } from "@campusgest/shared";
 import { Card, PageTitle, Field, inputCls, btnPrimary, ErrorText } from "@/components/ui";
 
-/** Composer d'annonce diffusée à tous (ou à un rôle) — Admin & Bailleur (§5.3). */
+/** Composer for an announcement to all (or one role) — Admin & Bailleur (§5.3). */
 export function AnnonceComposer() {
   const t = useTranslations("annonces");
   const [title, setTitle] = useState("");

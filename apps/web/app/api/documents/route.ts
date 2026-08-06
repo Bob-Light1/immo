@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createDocument, listDocuments } from "@/lib/services/document.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Documents visibles pour mon rôle — tout utilisateur authentifié (§5.15). */
+/** Documents visible to my role — any authenticated user (§5.15). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);
@@ -26,7 +26,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Téléverse un document partagé (fichier obligatoire) — Admin (§5.15). */
+/** Uploads a shared document (file mandatory) — Admin (§5.15). */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin");

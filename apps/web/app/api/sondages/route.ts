@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createSondage, listSondages } from "@/lib/services/sondage.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Liste des sondages avec résultats — tout utilisateur authentifié (§5.13). */
+/** Lists the polls with their results — any authenticated user (§5.13). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Crée un sondage — Admin. */
+/** Creates a poll — Admin. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin");

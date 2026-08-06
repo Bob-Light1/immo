@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createProjet, listProjets } from "@/lib/services/projet.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Projets visibles pour mon rôle — tout utilisateur authentifié (§5.10). */
+/** Projects visible to my role — any authenticated user (§5.10). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Publie un projet commun — Admin. */
+/** Publishes a shared project — Admin. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin");

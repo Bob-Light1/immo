@@ -3,7 +3,7 @@ import { handle, json } from "@/lib/api";
 import { requireRole } from "@/lib/rbac";
 import { getFacture } from "@/lib/services/facture.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {

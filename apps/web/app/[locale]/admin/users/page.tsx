@@ -78,7 +78,7 @@ export default function AdminUsersPage() {
     load();
   }, [load]);
 
-  // Anti-rebond de la recherche + retour en page 1 quand un filtre change.
+  // Debounces the search and resets to page 1 whenever a filter changes.
   useEffect(() => {
     const id = setTimeout(() => setQDebounced(q), 300);
     return () => clearTimeout(id);

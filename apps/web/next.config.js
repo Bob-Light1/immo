@@ -6,21 +6,21 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
-  // Page servie quand une navigation échoue faute de réseau.
+  // Page served when a navigation fails for lack of network.
   fallbacks: { document: "/offline.html" },
-  // Nos entrées passent avant celles par défaut ; celles de même `cacheName`
-  // (ici "apis") remplacent la version par défaut.
+  // Our entries come before the defaults; those sharing a `cacheName`
+  // (here "apis") replace the default one.
   extendDefaultRuntimeCaching: true,
   workboxOptions: {
     skipWaiting: true,
-    // Handlers Web Push (push / notificationclick) injectés dans le SW généré.
+    // Web Push handlers (push / notificationclick) injected into the generated SW.
     importScripts: ["/push-sw.js"],
     runtimeCaching: [
       {
-        // Les réponses /api/* sont authentifiées et propres à un utilisateur.
-        // Le cache par défaut de next-pwa (NetworkFirst, 24 h) les servirait au
-        // compte suivant sur un appareil partagé et bufferiserait le flux SSE
-        // de /api/notifications/stream, qui ne se termine jamais.
+        // /api/* responses are authenticated and user-specific.
+        // next-pwa's default cache (NetworkFirst, 24 h) would serve them to the next
+        // account on a shared device, and would buffer the SSE stream of
+        // /api/notifications/stream, which never ends.
         urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/api/"),
         handler: "NetworkOnly",
         options: { cacheName: "apis" },
@@ -31,17 +31,17 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// Origine du stockage objet (MinIO / S3) servant images & documents — dérivée
-// de S3_PUBLIC_URL pour autoriser <img src> et les téléchargements via la CSP.
+// Object storage origin (MinIO / S3) serving images & documents — derived
+// from S3_PUBLIC_URL so the CSP allows <img src> and downloads.
 let storageOrigin = "";
 try {
   if (process.env.S3_PUBLIC_URL) storageOrigin = new URL(process.env.S3_PUBLIC_URL).origin;
 } catch {
-  /* URL invalide : ignorée */
+  /* invalid URL: ignored */
 }
 
-// CSP : 'unsafe-inline' requis par le bootstrap Next ; 'unsafe-eval' seulement
-// en dev (React Refresh). Géoloc autorisée pour le signal de détresse.
+// CSP: 'unsafe-inline' is required by the Next bootstrap; 'unsafe-eval' only
+// in dev (React Refresh). Geolocation allowed for the distress signal.
 const csp = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
@@ -69,12 +69,12 @@ const securityHeaders = [
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Build autonome pour Docker : produit .next/standalone (serveur minimal +
-  // node_modules tracés). Voir docs/DEPLOIEMENT.md §7.
+  // Standalone build for Docker: produces .next/standalone (minimal server +
+  // traced node_modules). See docs/DEPLOIEMENT.md §7.
   output: "standalone",
-  // Racine du monorepo pour le file-tracing (sinon Next infère mal la racine
-  // et n'embarque pas les workspaces packages/*). Sous `experimental` en Next 14
-  // (passé au niveau racine seulement en Next 15).
+  // Monorepo root for file tracing (otherwise Next infers the wrong root and
+  // leaves out the packages/* workspaces). Under `experimental` in Next 14
+  // (moved to the top level only in Next 15).
   experimental: {
     outputFileTracingRoot: path.join(__dirname, "../../"),
   },

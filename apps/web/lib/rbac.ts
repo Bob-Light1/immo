@@ -11,7 +11,7 @@ export class AuthError extends Error {
   }
 }
 
-/** Extrait et vérifie le JWT depuis l'en-tête Authorization: Bearer <token>. */
+/** Extracts and verifies the JWT from the Authorization: Bearer <token> header. */
 export function requireAuth(req: NextRequest): JwtPayload {
   const header = req.headers.get("authorization");
   if (!header?.startsWith("Bearer ")) {
@@ -24,7 +24,7 @@ export function requireAuth(req: NextRequest): JwtPayload {
   }
 }
 
-/** Vérifie que l'utilisateur authentifié a l'un des rôles autorisés. */
+/** Ensures the authenticated user holds one of the allowed roles. */
 export function requireRole(req: NextRequest, ...roles: Role[]): JwtPayload {
   const payload = requireAuth(req);
   if (!roles.includes(payload.role)) {

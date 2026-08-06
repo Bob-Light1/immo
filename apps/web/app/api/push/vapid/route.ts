@@ -3,10 +3,10 @@ import { handle, json } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { vapidPublicKey, pushEnabled } from "@/lib/push";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Clé publique VAPID pour l'abonnement côté navigateur. */
+/** VAPID public key for the browser-side subscription. */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     requireAuth(req);

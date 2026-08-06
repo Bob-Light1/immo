@@ -19,8 +19,8 @@ export async function POST(req: NextRequest) {
 
     await audit(req, auth.sub, "auth.change_credentials", "user", auth.sub);
 
-    // tokenVersion vient d'être incrémenté : on réémet les jetons pour ne
-    // pas invalider la session courante (révocation §4 via `ver`).
+    // tokenVersion was just incremented: reissue the tokens so the current
+    // session is not invalidated (revocation §4 through `ver`).
     const accessToken = signAccessToken({
       sub: auth.sub,
       role: result.role,

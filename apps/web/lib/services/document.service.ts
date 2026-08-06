@@ -4,9 +4,9 @@ import type { DocumentInput, Role } from "@campusgest/shared";
 import { notifyAllActive, notifyUsers } from "./notification.service";
 
 /**
- * Documents partagés (conception §5.15) : règlement, contrats, guides…
- * L'Admin téléverse un fichier (obligatoire) et choisit les rôles qui le
- * voient. Visibilité : `visibleRoles` vide/absent = tout le monde.
+ * Shared documents (design §5.15): rules, contracts, guides…
+ * The Admin uploads a file (mandatory) and picks the roles allowed to see it.
+ * Visibility: an empty or missing `visibleRoles` means everyone.
  */
 
 function isVisible(visibleRoles: unknown, role: Role): boolean {
@@ -48,7 +48,7 @@ export async function createDocument(uploaderId: string, input: DocumentInput) {
     include: { uploadedBy: { select: { fullName: true } } },
   });
 
-  // Notifie les destinataires concernés (tous, ou les rôles ciblés).
+  // Notify the relevant recipients (everyone, or the targeted roles).
   const title = "Nouveau document";
   const body = input.titre;
   const roles = input.visibleRoles;

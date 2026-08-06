@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { setSuggestionVisibility } from "@/lib/services/suggestion.service";
 
-/** Active/désactive la visibilité Bailleur d'une suggestion — Admin (§5.4). */
+/** Toggles a suggestion's Bailleur visibility — Admin (§5.4). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

@@ -19,7 +19,7 @@ interface FactureRow {
   _count: { lignes: number };
 }
 
-/** Vue Bailleur : toutes les factures, consultation seule. */
+/** Bailleur view: every invoice, read-only. */
 export default function BailleurFacturesPage() {
   const t = useTranslations("factures");
   const locale = useLocale();

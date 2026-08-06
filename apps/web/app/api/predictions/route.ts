@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createPrediction, listPredictions } from "@/lib/services/prediction.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Liste des estimations (publiées à tous) — tout utilisateur authentifié (§5.11). */
+/** Lists the estimates (published to all) — any authenticated user (§5.11). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Crée une estimation de charge — Admin. */
+/** Creates a charge estimate — Admin. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin");

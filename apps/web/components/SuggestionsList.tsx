@@ -19,7 +19,7 @@ interface Suggestion {
   author: { fullName: string };
 }
 
-/** Liste des suggestions. `admin` : lecture + visibilité Bailleur ; sinon vue seule (§5.4). */
+/** Suggestion list. `admin`: read + Bailleur visibility; otherwise read-only (§5.4). */
 export function SuggestionsList({ admin }: { admin: boolean }) {
   const t = useTranslations("suggestions");
   const locale = useLocale();

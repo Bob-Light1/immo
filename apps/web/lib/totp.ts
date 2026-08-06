@@ -1,8 +1,8 @@
 import crypto from "crypto";
 
 /**
- * TOTP (RFC 6238) maison, sans dépendance — 2FA admin (conception §9).
- * SHA-1, 6 chiffres, période 30 s, tolérance ±1 fenêtre.
+ * In-house TOTP (RFC 6238), dependency-free — admin 2FA (design §9).
+ * SHA-1, 6 digits, 30 s period, ±1 window tolerance.
  */
 
 const B32 = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";

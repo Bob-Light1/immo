@@ -4,9 +4,9 @@ import { notifyUsers, notifyAllActive } from "@/lib/services/notification.servic
 import type { EvenementInput } from "@campusgest/shared";
 
 /**
- * Programmation d'événements (conception §5.5). Tout utilisateur propose ;
- * l'Admin approuve ou rejette ; le statut (badge) est visible par tous. Le
- * créateur est notifié à chaque décision ; une approbation est annoncée à tous.
+ * Event scheduling (design §5.5). Any user may propose an event; the Admin
+ * approves or rejects it; the status (badge) is visible to everyone. The
+ * creator is notified of each decision; an approval is announced to all.
  */
 
 export async function createEvenement(creatorId: string, input: EvenementInput) {

@@ -26,7 +26,7 @@ interface UiContextValue {
 
 const UiContext = createContext<UiContextValue | null>(null);
 
-/** Toasts : `toast.success(...)`, `toast.error(...)`, `toast.info(...)`. */
+/** Toasts: `toast.success(...)`, `toast.error(...)`, `toast.info(...)`. */
 export function useToast() {
   const ctx = useContext(UiContext);
   if (!ctx) throw new Error("useToast doit être utilisé dans <UiProvider>.");
@@ -37,7 +37,7 @@ export function useToast() {
   };
 }
 
-/** Confirmation modale (remplace window.confirm) : renvoie une promesse booléenne. */
+/** Modal confirmation (replaces window.confirm): returns a boolean promise. */
 export function useConfirm() {
   const ctx = useContext(UiContext);
   if (!ctx) throw new Error("useConfirm doit être utilisé dans <UiProvider>.");
@@ -137,8 +137,8 @@ function ConfirmModal({
 }
 
 /**
- * Fournit les toasts et la confirmation modale à toute l'app. À monter une
- * seule fois (layout), à l'intérieur de NextIntlClientProvider.
+ * Provides toasts and the modal confirmation to the whole app. Mount it once
+ * (in the layout), inside NextIntlClientProvider.
  */
 export function UiProvider({ children }: { children: ReactNode }) {
   const [toasts, setToasts] = useState<ToastItem[]>([]);

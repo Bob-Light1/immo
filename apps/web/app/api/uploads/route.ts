@@ -8,12 +8,12 @@ import { storage, resolveExtension, isUploadKind, assertMagicBytes } from "@/lib
 export const runtime = "nodejs";
 
 /**
- * Téléversement d'un fichier vers le stockage objet (conception §6).
- * Multipart `file` + `kind` (image | document). Renvoie `{ url }` à coller
- * dans le champ correspondant (postSchema.imageUrl, documentSchema.fichierUrl,
- * paiementSchema.justificatifUrl…). Validation : authentifié, taille ≤ 5 Mo,
- * type MIME autorisé. Le contrôle d'accès fin (qui peut attacher quoi) est
- * porté par les routes ressources.
+ * Uploads a file to the object storage (design §6).
+ * Multipart `file` + `kind` (image | document). Returns `{ url }` to paste into
+ * the matching field (postSchema.imageUrl, documentSchema.fichierUrl,
+ * paiementSchema.justificatifUrl…). Validation: authenticated, size ≤ 5 MB,
+ * allowed MIME type. Fine-grained access control (who may attach what) belongs
+ * to the resource routes.
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {
@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
     const ext = resolveExtension(kind, file.type);
     const buffer = Buffer.from(await file.arrayBuffer());
-    // Le Content-Type vient du client : on confronte l'annonce au contenu réel.
+    // The Content-Type comes from the client: check the claim against the bytes.
     assertMagicBytes(file.type, buffer);
     const stored = await storage().upload({
       buffer,

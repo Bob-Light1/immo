@@ -44,7 +44,7 @@ function StatutBadge({ statut }: { statut: TicketStatut }) {
   );
 }
 
-/** Tickets de maintenance : création + liste ; changement de statut si `admin` (§5.12). */
+/** Maintenance tickets: creation + list; status change when `admin` (§5.12). */
 export function TicketsList({ admin }: { admin: boolean }) {
   const t = useTranslations("maintenance");
   const locale = useLocale();

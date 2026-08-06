@@ -11,9 +11,9 @@ import {
 } from "@/lib/auth";
 
 /**
- * Rotation du refresh token (conception §4) : vérifie le cookie HttpOnly,
- * contrôle token_version (révocation) et l'activité du compte, puis émet
- * un nouveau couple access + refresh.
+ * Refresh-token rotation (design §4): verifies the HttpOnly cookie, checks
+ * token_version (revocation) and that the account is active, then issues a new
+ * access + refresh pair.
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {

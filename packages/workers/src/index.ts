@@ -9,17 +9,17 @@ export { runReconductions } from "./jobs/reconductions";
 export { runAnniversaires } from "./jobs/anniversaires";
 
 /**
- * Point d'entrée des jobs récurrents (CampusGest §5.1, §5.6).
- *   - echeances     : quotidien à 07:00 — retards + alertes J-2/J0/J+3/J+7
- *   - anniversaires : quotidien à 08:00 — rappel J-7 (opt-in)
- *   - reconductions : mensuel le 1er à 06:00 — brouillons reconduits + garde-fou
+ * Entry point for the recurring jobs (CampusGest §5.1, §5.6).
+ *   - echeances     : daily at 07:00 — overdue lines + D-2/D0/D+3/D+7 alerts
+ *   - anniversaires : daily at 08:00 — D-7 reminder (opt-in)
+ *   - reconductions : monthly on the 1st at 06:00 — rolled-over drafts + guard
  *
- * La logique métier vit dans src/jobs/* (testable hors Redis). Ici on se
- * contente de planifier et d'exécuter.
+ * Business logic lives in src/jobs/* (testable without Redis). This file only
+ * schedules and runs them.
  */
 
-// bullmq embarque sa propre copie d'ioredis : l'instance partagée est valide à
-// l'exécution mais ses types divergent du paquet racine — d'où le cast.
+// bullmq bundles its own copy of ioredis: the shared instance is valid at
+// runtime but its types diverge from the root package — hence the cast.
 const connection = new IORedis(process.env.REDIS_URL ?? "redis://localhost:6379", {
   maxRetriesPerRequest: null,
 }) as unknown as ConnectionOptions;

@@ -128,7 +128,10 @@
       "dateLimite": "Zahlungsfrist",
       "hint": "Die Rechnung wird als Entwurf erstellt: alle aktiven Mieter werden mit Koeffizient 1 zugeordnet, vor der Veröffentlichung anpassbar.",
       "failed": "Erstellung der Rechnung fehlgeschlagen.",
-      "submit": "Entwurf erstellen"
+      "submit": "Entwurf erstellen",
+      "montantAnnuelLocataire": "Jahresbetrag pro Mieter (XAF)",
+      "moisLoyer": "Startmonat (abgedecktes Jahr)",
+      "hintLoyer": "Miete: keine Aufteilung. Der eingegebene Betrag ist von jedem aktiven Mieter für das Jahr geschuldet. Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag."
     },
     "detail": {
       "montantTotal": "Gesamtbetrag",
@@ -145,7 +148,13 @@
       "publish": "Rechnung veröffentlichen",
       "confirmPublish": "Diese Rechnung veröffentlichen? Koeffizienten sind danach nicht mehr änderbar und die Mieter sehen sie.",
       "coeffFailed": "Speichern der Koeffizienten fehlgeschlagen.",
-      "publishFailed": "Veröffentlichung fehlgeschlagen."
+      "publishFailed": "Veröffentlichung fehlgeschlagen.",
+      "loyerAnnuel": "Jahresmiete / Mieter",
+      "payeCeMois": "Diesen Monat gezahlt",
+      "payeAnnee": "Gezahlt in {annee}",
+      "restantAnnee": "Rest {annee}",
+      "loyerNoCoeff": "Miete: identischer Jahresbetrag pro Mieter, ohne Koeffizient.",
+      "facturePdf": "Rechnung als PDF"
     },
     "exportPdf": "PDF-Export"
   },
@@ -179,7 +188,14 @@
     "empty": "Noch keine veröffentlichten Rechnungen.",
     "montantDu": "Geschuldeter Betrag",
     "montantPaye": "Gezahlter Betrag",
-    "recus": "Belege"
+    "recus": "Belege",
+    "facture": "Rechnung",
+    "facturePdf": "Rechnung als PDF",
+    "loyerTitle": "Meine Miete {annee}",
+    "loyerAnnuel": "Jahresmiete",
+    "payeCeMois": "Diesen Monat gezahlt",
+    "payeAnnee": "Bereits gezahlt in {annee}",
+    "restantAnnee": "Rest für {annee}"
   },
   "dashboard": {
     "titleAdmin": "Dashboard",
@@ -362,7 +378,13 @@
     "failed": "Speichern fehlgeschlagen.",
     "photo": "Profilfoto",
     "photoHint": "JPG, PNG oder WebP. Wird im Verzeichnis rund angezeigt.",
-    "photoRemove": "Entfernen"
+    "photoRemove": "Entfernen",
+    "delete": "Mein Portfolio entfernen",
+    "confirmDelete": "Ihr Portfolio aus dem Verzeichnis entfernen? Ihr Konto bleibt aktiv und Sie können es neu anlegen.",
+    "deleted": "Portfolio aus dem Verzeichnis entfernt.",
+    "deleteFailed": "Entfernen des Portfolios fehlgeschlagen.",
+    "deleteOther": "Aus dem Verzeichnis entfernen",
+    "confirmDeleteOther": "Portfolio von {name} aus dem Verzeichnis entfernen?"
   },
   "annuaire": {
     "title": "Bewohnerverzeichnis",
@@ -412,7 +434,14 @@
     "estime": "Geschätzt",
     "reel": "Tatsächlich",
     "ecart": "Abweichung",
-    "saveReel": "Speichern"
+    "saveReel": "Speichern",
+    "purpose": "Damit Sie die Zahlung des nächsten Monats rechtzeitig vorbereiten können.",
+    "purposeLocataire": "Die Schätzung zeigt die kommende Belastung für die gesamte Anlage und anschließend Ihren persönlichen Anteil: legen Sie den Betrag schon jetzt zurück.",
+    "purposeGestion": "Für alle veröffentlicht: Die Schätzung zeigt die kommende Belastung der gesamten Anlage sowie den Anteil jedes Mieters.",
+    "repartitionHint": "Anteil berechnet durch gleichmäßige Aufteilung auf die {count} aktiven Mieter.",
+    "estimeTotal": "Geschätzte Gesamtsumme (alle)",
+    "maPart": "Mein Anteil",
+    "partLocataire": "Anteil pro Mieter"
   },
   "twofa": {
     "title": "Zwei-Faktor-Authentifizierung (2FA)",

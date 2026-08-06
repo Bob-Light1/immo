@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { decideEvenement } from "@/lib/services/evenement.service";
 
-/** Approbation / rejet d'un événement — Admin (§5.5). */
+/** Approves / rejects an event — Admin (§5.5). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

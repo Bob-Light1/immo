@@ -1,12 +1,12 @@
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
-import { estimerCharge, type PredictionInput } from "@campusgest/shared";
+import { estimerCharge, partEstimee, type PredictionInput } from "@campusgest/shared";
 import { notifyAllActive } from "@/lib/services/notification.service";
 
 /**
- * Prédiction / estimation de charge par type (conception §5.11). L'Admin saisit
- * les paramètres ; le système calcule l'estimation, la publie à tous pour
- * anticipation, et compare a posteriori estimé vs réel (`montant_reel`).
+ * Charge prediction / estimate per type (design §5.11). The Admin enters the
+ * parameters; the system computes the estimate, publishes it to everyone for
+ * planning, and later compares estimated vs actual (`montant_reel`).
  */
 
 const big = (n: number | undefined) => (n != null ? BigInt(n) : null);
@@ -34,25 +34,51 @@ export async function createPrediction(adminId: string, input: PredictionInput) 
     },
   });
 
+  // The individual share is announced in the notification itself: that is what
+  // lets a tenant plan the coming month's payment.
+  const nbLocataires = await prisma.user.count({
+    where: { role: "locataire", isActive: true },
+  });
+  const part = partEstimee(montant, nbLocataires);
+  const detailPart = part != null ? ` Part estimée par locataire : ${part.toLocaleString("fr-FR")} XAF.` : "";
+
   await notifyAllActive(
     "prediction",
     `Estimation ${input.type} — ${input.mois}`,
-    `Estimation publiée : ${montant.toLocaleString("fr-FR")} XAF, pour anticiper la charge du mois.`,
+    `Estimation publiée : ${montant.toLocaleString("fr-FR")} XAF au total.${detailPart} Pour anticiper la charge du mois.`,
   );
 
   return prediction;
 }
 
+/**
+ * Lists the estimates. An estimated amount covers the whole residence, so the
+ * individual share (split evenly across active tenants) is attached to it, so
+ * that everyone knows what they will personally owe and can plan for it in
+ * advance.
+ */
 export async function listPredictions(pagination: { page: number; limit: number }) {
-  const [total, items] = await prisma.$transaction([
+  const [total, items, nbLocataires] = await prisma.$transaction([
     prisma.predictionFacture.count(),
     prisma.predictionFacture.findMany({
       orderBy: [{ mois: "desc" }, { createdAt: "desc" }],
       skip: (pagination.page - 1) * pagination.limit,
       take: pagination.limit,
     }),
+    prisma.user.count({ where: { role: "locataire", isActive: true } }),
   ]);
-  return { items, total, page: pagination.page, limit: pagination.limit };
+
+  return {
+    items: items.map((p) => ({
+      ...p,
+      partEstimee: partEstimee(Number(p.montantCalcule), nbLocataires),
+      partReelle: p.montantReel != null ? partEstimee(Number(p.montantReel), nbLocataires) : null,
+    })),
+    nbLocataires,
+    total,
+    page: pagination.page,
+    limit: pagination.limit,
+  };
 }
 
 export async function setMontantReel(id: string, montantReel: number) {

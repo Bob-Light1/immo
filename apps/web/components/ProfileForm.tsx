@@ -20,7 +20,7 @@ interface Profile {
 
 const pad = (n: number) => String(n).padStart(2, "0");
 
-/** Profil & préférences : opt-in anniversaire + canaux de notification (§5.6, §8.3). */
+/** Profile & preferences: birthday opt-in + notification channels (§5.6, §8.3). */
 export function ProfileForm() {
   const t = useTranslations("profil");
   const locale = useLocale();
@@ -29,13 +29,13 @@ export function ProfileForm() {
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
-  // Anniversaire éclaté : jour + mois (requis ensemble) ; année facultative
-  // (vide = l'utilisateur ne souhaite pas révéler son âge).
+  // Birthday split apart: day + month (required together); year optional
+  // (empty = the user prefers not to reveal their age).
   const [bDay, setBDay] = useState("");
   const [bMonth, setBMonth] = useState("");
   const [bYear, setBYear] = useState("");
 
-  // Noms de mois localisés (sans dépendre de clés de traduction).
+  // Localized month names (without relying on translation keys).
   const months = useMemo(
     () => Array.from({ length: 12 }, (_, m) => new Date(2000, m, 1).toLocaleDateString(locale, { month: "long" })),
     [locale],
@@ -78,10 +78,10 @@ export function ProfileForm() {
         phone: (p.phone ?? "").trim(),
         language: p.language,
         birthdayPublic: p.birthdayPublic,
-        // SMS forcé à false : canal non disponible pour le moment.
+        // SMS forced to false: the channel is not available yet.
         notifPrefs: { push: !!prefs.push, sms: false, email: !!prefs.email },
       };
-      // Anniversaire : on n'enregistre que si jour ET mois sont fournis.
+      // Birthday: only stored when both day AND month are provided.
       if (bDay && bMonth) {
         const yearHidden = bYear.trim() === "";
         const year = yearHidden ? 2000 : Number(bYear);
@@ -197,7 +197,7 @@ export function ProfileForm() {
                 <input type="checkbox" checked={!!prefs.email} onChange={(e) => setPref("email", e.target.checked)} />
                 {t("notif.email")}
               </label>
-              {/* SMS : affiché mais désactivé — canal indisponible pour l'instant. */}
+              {/* SMS: shown but disabled — channel unavailable for now. */}
               <label className="flex cursor-not-allowed items-center gap-2 text-slate-400" title={t("smsUnavailable")}>
                 <input type="checkbox" checked={false} disabled />
                 {t("notif.sms")}

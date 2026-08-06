@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { closeSondage } from "@/lib/services/sondage.service";
 
-/** Clôture un sondage — Admin (§5.13). */
+/** Closes a poll — Admin (§5.13). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

@@ -5,9 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { generateSecret, otpauthUri } from "@/lib/totp";
 
 /**
- * Démarre l'activation 2FA (Admin) : génère un secret TOTP non encore persisté.
- * Le client l'enregistre dans son app d'authentification puis confirme via
- * /api/auth/2fa/verify avec un code valide (§9).
+ * Starts 2FA enrolment (Admin): generates a TOTP secret, not yet persisted.
+ * The client stores it in their authenticator app then confirms through
+ * /api/auth/2fa/verify with a valid code (§9).
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {

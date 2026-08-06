@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch } from "@/lib/client/session";
+import { apiFetch, getSession } from "@/lib/client/session";
 import { formatXAF, formatMois } from "@/lib/format";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 
@@ -14,17 +14,24 @@ interface Prediction {
   type: string;
   montantCalcule: number;
   montantReel: number | null;
+  /** Share owed by one tenant (split evenly across active tenants). */
+  partEstimee: number | null;
+  partReelle: number | null;
 }
 
 const empty = { mois: "", type: "", indiceDiff: "", prixUnit: "", tva: "", locCompteur: "", transport: "" };
 
-/** Estimations de charge par type : création (Admin) + comparaison estimé/réel (§5.11). */
+/** Charge estimates per type: creation (Admin) + estimated/actual comparison (§5.11). */
 export function PredictionsList({ admin }: { admin: boolean }) {
   const t = useTranslations("predictions");
   const locale = useLocale();
   const [items, setItems] = useState<Prediction[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
+  const [nbLocataires, setNbLocataires] = useState(0);
+  // The share label depends on who is looking: "my share" for the tenant who
+  // will pay it, "share per tenant" for the Admin and the Bailleur.
+  const [estLocataire, setEstLocataire] = useState(false);
   const [form, setForm] = useState({ ...empty });
   const [reels, setReels] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
@@ -34,11 +41,19 @@ export function PredictionsList({ admin }: { admin: boolean }) {
     setItems(null);
     const res = await apiFetch(`/api/predictions?page=${page}&limit=${PAGE_SIZE}`);
     if (res.ok) {
-      const data = (await res.json()) as { items: Prediction[]; total: number };
+      const data = (await res.json()) as {
+        items: Prediction[];
+        total: number;
+        nbLocataires: number;
+      };
       setItems(data.items);
       setTotal(data.total);
+      setNbLocataires(data.nbLocataires);
     }
   }
+  useEffect(() => {
+    setEstLocataire(getSession()?.user.role === "locataire");
+  }, []);
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -92,6 +107,16 @@ export function PredictionsList({ admin }: { admin: boolean }) {
     <>
       <PageTitle>{t("title")}</PageTitle>
 
+      <Card className="mb-6 border-l-4 border-l-brand bg-brand/5 p-4">
+        <p className="text-sm font-medium text-navy">{t("purpose")}</p>
+        <p className="mt-1 text-sm text-slate-600">
+          {estLocataire ? t("purposeLocataire") : t("purposeGestion")}
+        </p>
+        {nbLocataires > 0 && (
+          <p className="mt-1 text-xs text-slate-500">{t("repartitionHint", { count: nbLocataires })}</p>
+        )}
+      </Card>
+
       {admin && (
         <Card className="mb-6 max-w-2xl">
           <form onSubmit={create} className="space-y-3">
@@ -130,7 +155,10 @@ export function PredictionsList({ admin }: { admin: boolean }) {
               <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
                 <th className="px-4 py-3">{t("type")}</th>
                 <th className="px-4 py-3">{t("mois")}</th>
-                <th className="px-4 py-3 text-right">{t("estime")}</th>
+                <th className="px-4 py-3 text-right">{t("estimeTotal")}</th>
+                <th className="px-4 py-3 text-right">
+                  {estLocataire ? t("maPart") : t("partLocataire")}
+                </th>
                 <th className="px-4 py-3 text-right">{t("reel")}</th>
                 <th className="px-4 py-3 text-right">{t("ecart")}</th>
                 {admin && <th className="px-4 py-3" />}
@@ -144,8 +172,23 @@ export function PredictionsList({ admin }: { admin: boolean }) {
                     <td className="px-4 py-3 font-medium">{p.type}</td>
                     <td className="px-4 py-3">{formatMois(p.mois, locale)}</td>
                     <td className="px-4 py-3 text-right font-mono">{formatXAF(p.montantCalcule, locale)}</td>
+                    <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
+                      {p.partEstimee != null ? formatXAF(p.partEstimee, locale) : "—"}
+                    </td>
                     <td className="px-4 py-3 text-right font-mono">
-                      {p.montantReel != null ? formatXAF(p.montantReel, locale) : "—"}
+                      {p.montantReel != null ? (
+                        <>
+                          {formatXAF(p.montantReel, locale)}
+                          {p.partReelle != null && (
+                            <span className="block text-xs font-normal text-slate-500">
+                              {estLocataire ? t("maPart") : t("partLocataire")} :{" "}
+                              {formatXAF(p.partReelle, locale)}
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-4 py-3 text-right font-mono">
                       {ecart != null ? (

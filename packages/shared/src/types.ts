@@ -1,5 +1,5 @@
-// Types & constantes partagés front/back.
-// Les valeurs reflètent les enums Prisma (packages/db/prisma/schema.prisma).
+// Shared types & constants (front/back).
+// Values mirror the Prisma enums (packages/db/prisma/schema.prisma).
 
 export const ROLES = ["admin", "bailleur", "locataire"] as const;
 export type Role = (typeof ROLES)[number];
@@ -7,6 +7,39 @@ export type Role = (typeof ROLES)[number];
 export const LOCALES = ["fr", "en", "de"] as const;
 export type Locale = (typeof LOCALES)[number];
 export const DEFAULT_LOCALE: Locale = "fr";
+
+/**
+ * Invoice types suggested to the Admin (free-text field: the list is only a
+ * hint). Two regimes coexist:
+ *  - "Loyer": flat annual amount per tenant, never split;
+ *  - all others (Eau, Électricité, Hébergement…): global amount split by
+ *    coefficient (§5.1).
+ */
+export const FACTURE_TYPES = [
+  "Eau",
+  "Électricité",
+  "Loyer",
+  "Hébergement",
+  "Nettoyage",
+  "Contribution",
+] as const;
+
+export const FACTURE_TYPE_LOYER = "Loyer";
+export const FACTURE_TYPE_HEBERGEMENT = "Hébergement";
+
+/** Normalizes a free-text type (case, accents, spacing) for comparison. */
+export function normalizeFactureType(type: string): string {
+  return type
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+/** True when the invoice follows the "loyer" regime (flat annual, no split). */
+export function isLoyer(type: string): boolean {
+  return normalizeFactureType(type) === "loyer";
+}
 
 export const PAIEMENT_MODES = ["especes", "orange_money", "mtn_momo", "virement"] as const;
 export type PaiementMode = (typeof PAIEMENT_MODES)[number];
@@ -46,23 +79,23 @@ export const NOTIFICATION_TYPES = [
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
-// Canaux de notification (préférences par utilisateur).
+// Notification channels (per-user preferences).
 export interface NotifPrefs {
   push: boolean;
   sms: boolean;
   email: boolean;
 }
 
-// Payload JWT (access token).
+// JWT payload (access token).
 export interface JwtPayload {
   sub: string; // userId
   role: Role;
-  ver: number; // token_version (révocation)
+  ver: number; // token_version (revocation)
   iat?: number;
   exp?: number;
 }
 
-// Réponse paginée standard des listes (?page&limit — conception §8).
+// Standard paginated list response (?page&limit — design doc §8).
 export interface Paginated<T> {
   items: T[];
   total: number;
@@ -70,10 +103,10 @@ export interface Paginated<T> {
   limit: number;
 }
 
-// Règles métier (constantes centralisées).
+// Business rules (centralized constants).
 export const MIN_PASSWORD_LENGTH = 8;
 export const DISTRESS_CLICKS_TO_TRIGGER = 5;
-export const DISTRESS_REVIEW_THRESHOLD = 3; // signaux / 3 jours -> revue admin
+export const DISTRESS_REVIEW_THRESHOLD = 3; // signals / 3 days -> admin review
 export const BIRTHDAY_NOTICE_DAYS = 7;
 export const FACTURE_ALERT_DAYS_BEFORE = 2;
 export const MAX_RECONDUCTION_STREAK = 2;

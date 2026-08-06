@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 # ─────────────────────────────────────────────────────────────────────────────
-# Image de production des jobs planifiés (BullMQ + tsx).
-# Sert aussi de "runner" one-shot pour les tâches DB (migrate / seed) — voir
-# docker-compose.prod.yml. Contexte de build : RACINE du monorepo.
+# Production image of the scheduled jobs (BullMQ + tsx).
+# Also serves as the one-shot "runner" for DB tasks (migrate / seed) — see
+# docker-compose.prod.yml. Build context: the monorepo ROOT.
 # ─────────────────────────────────────────────────────────────────────────────
 
 FROM node:20-alpine AS builder
@@ -17,16 +17,16 @@ COPY packages/workers/package.json packages/workers/package.json
 RUN npm ci
 
 COPY . .
-# Génère le client Prisma (utilisé par les workers, la migration et le seed).
+# Generate the Prisma client (used by the workers, the migration and the seed).
 RUN npm run db:generate
 
 FROM node:20-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache openssl
-# Copie complète (source TS + node_modules incluant prisma/tsx) : les workers
-# tournent via tsx, et les commandes migrate/seed réutilisent cette même image.
+# Full copy (TS sources + node_modules including prisma/tsx): the workers run
+# through tsx, and the migrate/seed commands reuse this very image.
 COPY --from=builder /app ./
 USER node
-# Commande par défaut : boucle des jobs récurrents (surchargée pour migrate/seed).
+# Default command: the recurring job loop (overridden for migrate/seed).
 CMD ["npm", "run", "start", "-w", "@campusgest/workers"]

@@ -1,17 +1,17 @@
 import IORedis from "ioredis";
 
 /**
- * Relais temps réel des notifications (conception §8.3).
+ * Real-time notification relay (design §8.3).
  *
- * Le flux SSE interrogeait la base toutes les 8 s, par client connecté : 200
- * résidents connectés = 50 requêtes/s en permanence, même quand rien ne se
- * passe. Redis sert désormais de bus : une notification créée — par l'app ou
- * par un job worker, dans un autre process — publie un signal, et seules les
- * connexions concernées vont relire la base.
+ * The SSE stream used to poll the database every 8 s per connected client: 200
+ * connected residents meant a steady 50 requests/s, even with nothing happening.
+ * Redis now acts as a bus: a notification created — by the app or by a worker
+ * job in another process — publishes a signal, and only the affected
+ * connections go back to the database.
  *
- * Le signal ne transporte que des destinataires, jamais le contenu : la base
- * reste la source de vérité et un message perdu ne peut pas produire une
- * notification fantôme. Un sondage lent (SAFETY_POLL_MS) reste en filet.
+ * The signal carries recipients only, never content: the database stays the
+ * source of truth and a lost message cannot produce a phantom notification. A
+ * slow poll (SAFETY_POLL_MS) remains as a safety net.
  */
 
 export interface NotifBump {
@@ -21,9 +21,9 @@ export interface NotifBump {
 
 export const NOTIF_CHANNEL = "cg:notif";
 
-/** Intervalle de sondage de secours quand le relais Redis est actif. */
+/** Fallback poll interval while the Redis relay is up. */
 export const SAFETY_POLL_MS = 30_000;
-/** Intervalle quand Redis est indisponible : on retombe sur le sondage seul. */
+/** Interval when Redis is unavailable: polling alone takes over. */
 export const FALLBACK_POLL_MS = 8_000;
 
 function redisUrl(): string | null {
@@ -35,9 +35,9 @@ function redisUrl(): string | null {
 let publisher: IORedis | null = null;
 let lastErrorLog = 0;
 
-// ioredis retente la connexion indéfiniment : sans étranglement, une coupure
-// Redis noierait les logs. On journalise au plus une fois par minute, sans
-// jamais désactiver le publisher (la reconnexion doit rester possible).
+// ioredis retries the connection forever: without throttling, a Redis outage
+// would drown the logs. Log at most once a minute, and never disable the
+// publisher (reconnection must stay possible).
 function logThrottled(prefix: string, message: string): void {
   const now = Date.now();
   if (now - lastErrorLog < 60_000) return;
@@ -51,8 +51,8 @@ function getPublisher(): IORedis | null {
   if (!publisher) {
     publisher = new IORedis(url, {
       maxRetriesPerRequest: 1,
-      // Ne bloque jamais une réponse API en attendant une reconnexion : sans
-      // cela, publish() resterait en file d'attente pendant la coupure.
+      // Never hold an API response waiting for a reconnection: otherwise
+      // publish() would sit queued for the whole outage.
       enableOfflineQueue: false,
     });
     publisher.on("error", (e) => logThrottled("[realtime] publisher", e.message));
@@ -61,9 +61,9 @@ function getPublisher(): IORedis | null {
 }
 
 /**
- * Signale que de nouvelles notifications existent pour ces destinataires.
- * Best-effort : une panne Redis dégrade vers le sondage, elle ne fait jamais
- * échouer l'action métier qui vient d'écrire la notification.
+ * Signals that new notifications exist for these recipients.
+ * Best-effort: a Redis outage degrades to polling, it never fails the business
+ * action that just wrote the notification.
  */
 export function publishNotif(bump: NotifBump): void {
   const client = getPublisher();
@@ -71,12 +71,12 @@ export function publishNotif(bump: NotifBump): void {
   client.publish(NOTIF_CHANNEL, JSON.stringify(bump)).catch(() => {});
 }
 
-// ─────────────────────────────── Abonnement ────────────────────────────────
+// ─────────────────────────────── Subscription ────────────────────────────────
 
 type Listener = (bump: NotifBump) => void;
 
-// Un seul abonné Redis par process, avec diffusion en mémoire vers les
-// connexions SSE locales : N clients ne créent pas N connexions Redis.
+// A single Redis subscriber per process, fanned out in memory to the local SSE
+// connections: N clients do not open N Redis connections.
 let subscriber: IORedis | null = null;
 const listeners = new Set<Listener>();
 
@@ -87,8 +87,8 @@ function ensureSubscriber(): boolean {
 
   subscriber = new IORedis(url, { maxRetriesPerRequest: null });
   subscriber.on("error", (e) => logThrottled("[realtime] subscriber", e.message));
-  // Après une reconnexion, l'abonnement doit être reposé : sinon le bus reste
-  // muet et seul le sondage de secours ferait encore remonter les notifications.
+  // After a reconnection the subscription must be re-established: otherwise the
+  // bus stays silent and only the fallback poll would surface notifications.
   subscriber.on("ready", () => {
     subscriber?.subscribe(NOTIF_CHANNEL).catch(() => {});
   });
@@ -104,19 +104,19 @@ function ensureSubscriber(): boolean {
       try {
         fn(bump);
       } catch {
-        /* un abonné défaillant ne doit pas priver les autres du signal */
+        /* a failing subscriber must not deprive the others of the signal */
       }
     }
   });
-  // L'abonnement initial est posé par le handler `ready` ci-dessus, qui couvre
-  // aussi bien la première connexion que chaque reconnexion.
+  // The initial subscription is set by the `ready` handler above, which covers
+  // both the first connection and every reconnection.
   return true;
 }
 
 /**
- * Abonne une connexion SSE aux signaux concernant `userId` ou `role`.
- * Renvoie la fonction de désabonnement, ou `null` si Redis n'est pas
- * disponible — l'appelant retombe alors sur le sondage rapide.
+ * Subscribes an SSE connection to the signals for `userId` or `role`.
+ * Returns the unsubscribe function, or `null` when Redis is unavailable — the
+ * caller then falls back to fast polling.
  */
 export function onNotifFor(userId: string, role: string, fn: () => void): (() => void) | null {
   if (!ensureSubscriber()) return null;

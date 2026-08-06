@@ -5,10 +5,10 @@ import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createEvenement, listEvenements } from "@/lib/services/evenement.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Liste des événements (statut visible par tous) — §5.5. */
+/** Lists the events (status visible to all) — §5.5. */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Proposition d'un événement — tout utilisateur authentifié. */
+/** Proposes an event — any authenticated user. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

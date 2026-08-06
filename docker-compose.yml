@@ -31,9 +31,9 @@ services:
       timeout: 5s
       retries: 10
 
-  # Stockage objet S3-compatible self-host (images posts/portfolio/projets,
-  # documents, justificatifs de paiement — conception §6). Alternative
-  # self-host à Cloudinary ; même API S3 → migration future possible.
+  # Self-hosted S3-compatible object storage (post/portfolio/project images,
+  # documents, payment receipts — design §6). Self-hosted alternative to
+  # Cloudinary; same S3 API → a future migration stays possible.
   minio:
     image: minio/minio:RELEASE.2024-06-13T22-53-53Z
     container_name: campusgest-minio
@@ -53,8 +53,8 @@ services:
       timeout: 5s
       retries: 10
 
-  # Crée le bucket au démarrage et l'ouvre en lecture anonyme (les URLs
-  # d'images/documents sont servies directement par MinIO).
+  # Creates the bucket at startup and opens it for anonymous read (image and
+  # document URLs are served directly by MinIO).
   minio-init:
     image: minio/mc:RELEASE.2024-06-12T14-34-03Z
     container_name: campusgest-minio-init

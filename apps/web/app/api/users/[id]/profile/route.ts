@@ -4,10 +4,10 @@ import { handle, json } from "@/lib/api";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { getProfile, updateProfile } from "@/lib/services/profile.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-// Le propriétaire (ou un admin) accède à son profil et à ses préférences (§8.3).
+// The owner (or an admin) reads their profile and preferences (§8.3).
 function authorize(req: NextRequest, id: string) {
   const user = requireAuth(req);
   if (user.sub !== id && user.role !== "admin") {

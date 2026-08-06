@@ -1,13 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# Stack de PRODUCTION — CampusGest (KingCity).
-# Usage :  docker compose -f docker-compose.prod.yml up -d --build
-# Variables lues depuis le fichier `.env` du répertoire (voir .env.production.example).
-# Seuls Caddy (80/443) est exposé publiquement ; tout le reste reste privé.
-# Détails : docs/DEPLOIEMENT.md
+# PRODUCTION stack — CampusGest (KingCity).
+# Usage:  docker compose -f docker-compose.prod.yml up -d --build
+# Variables read from the directory's `.env` file (see .env.production.example).
+# Only Caddy (80/443) is exposed publicly; everything else stays private.
+# Details: docs/DEPLOIEMENT.md
 # ─────────────────────────────────────────────────────────────────────────────
 
 services:
-  # ── Base de données ────────────────────────────────────────────────────────
+  # ── Database ───────────────────────────────────────────────────────────────
   postgres:
     image: postgres:15-alpine
     container_name: campusgest-postgres
@@ -25,7 +25,7 @@ services:
       retries: 10
     networks: [internal]
 
-  # ── File de jobs + relais SSE ──────────────────────────────────────────────
+  # ── Job queue + SSE relay ──────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
     container_name: campusgest-redis
@@ -39,7 +39,7 @@ services:
       retries: 10
     networks: [internal]
 
-  # ── Stockage objet S3-compatible ───────────────────────────────────────────
+  # ── S3-compatible object storage ───────────────────────────────────────────
   minio:
     image: minio/minio:RELEASE.2024-06-13T22-53-53Z
     container_name: campusgest-minio
@@ -56,10 +56,10 @@ services:
       timeout: 5s
       retries: 10
     networks: [internal]
-    # NB : la console (9001) et l'API (9000) ne sont PAS publiées ; l'accès public
-    # aux objets passe par Caddy (/storage/*).
+    # NB: the console (9001) and the API (9000) are NOT published; public access
+    # to the objects goes through Caddy (/storage/*).
 
-  # Crée le bucket et l'ouvre en lecture anonyme (URLs d'images/documents publiques).
+  # Creates the bucket and opens it for anonymous read (public image/document URLs).
   minio-init:
     image: minio/mc:RELEASE.2024-06-12T14-34-03Z
     container_name: campusgest-minio-init
@@ -76,7 +76,7 @@ services:
     networks: [internal]
     restart: "no"
 
-  # ── Migration Prisma (one-shot, idempotent) ────────────────────────────────
+  # ── Prisma migration (one-shot, idempotent) ────────────────────────────────
   migrate:
     build:
       context: .
@@ -86,12 +86,12 @@ services:
       postgres:
         condition: service_healthy
     env_file: .env
-    # Appel direct du binaire : lit DATABASE_URL depuis l'environnement injecté.
+    # Direct binary call: reads DATABASE_URL from the injected environment.
     command: npx prisma migrate deploy --schema packages/db/prisma/schema.prisma
     restart: "no"
     networks: [internal]
 
-  # ── Seed admin (one-shot, idempotent) ──────────────────────────────────────
+  # ── Admin seed (one-shot, idempotent) ──────────────────────────────────────
   seed:
     build:
       context: .
@@ -101,19 +101,19 @@ services:
       migrate:
         condition: service_completed_successfully
     env_file: .env
-    # seed.ts lit ADMIN_DEFAULT_* depuis process.env — pas de wrapper dotenv requis.
+    # seed.ts reads ADMIN_DEFAULT_* from process.env — no dotenv wrapper needed.
     command: npx tsx packages/db/prisma/seed.ts
     restart: "no"
     networks: [internal]
 
-  # ── Application web (Next.js) ──────────────────────────────────────────────
+  # ── Web application (Next.js) ──────────────────────────────────────────────
   web:
     build:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        # NEXT_PUBLIC_APP_URL est figé au build (bundle client) et S3_PUBLIC_URL
-        # dans la CSP (Next résout `headers()` au build) → passés en build-args.
+        # NEXT_PUBLIC_APP_URL is frozen at build time (client bundle) and S3_PUBLIC_URL
+        # in the CSP (Next resolves `headers()` at build) → passed as build args.
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL manquant dans .env}
         S3_PUBLIC_URL: ${S3_PUBLIC_URL:?S3_PUBLIC_URL manquant dans .env}
     container_name: campusgest-web
@@ -136,7 +136,7 @@ services:
       start_period: 20s
     networks: [internal]
 
-  # ── Jobs planifiés (échéances, reconductions, anniversaires) ───────────────
+  # ── Scheduled jobs (due dates, roll-overs, birthdays) ──────────────────────
   workers:
     build:
       context: .
@@ -153,7 +153,7 @@ services:
         condition: service_completed_successfully
     networks: [internal]
 
-  # ── Reverse proxy + TLS automatique (Let's Encrypt) ────────────────────────
+  # ── Reverse proxy + automatic TLS (Let's Encrypt) ──────────────────────────
   caddy:
     image: caddy:2-alpine
     container_name: campusgest-caddy
@@ -162,7 +162,7 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      # Domaine et cible stockage injectés dans le Caddyfile.
+      # Domain and storage target injected into the Caddyfile.
       APP_DOMAIN: ${APP_DOMAIN:?APP_DOMAIN manquant dans .env}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro

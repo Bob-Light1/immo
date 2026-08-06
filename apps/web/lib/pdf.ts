@@ -1,6 +1,6 @@
-// Générateur PDF minimal, sans dépendance (économie de bundle/tokens).
-// Une seule page A4, police standard Helvetica en WinAnsiEncoding — couvre les
-// accents français (Latin-1). Suffit pour les reçus de paiement (conception §5.2).
+// Minimal, dependency-free PDF generator (keeps the bundle small).
+// Single A4 page, standard Helvetica font in WinAnsiEncoding — covers French
+// accents (Latin-1). Enough for payment receipts (design §5.2).
 
 type Cell = { text: string; x: number; bold?: boolean };
 
@@ -17,8 +17,8 @@ function pdfEscape(s: string): string {
   return s.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
 }
 
-// Glyphes typographiques de la zone 0x80-0x9F propre à WinAnsiEncoding
-// (différente de Latin-1) : on les ramène à leur octet WinAnsi.
+// Typographic glyphs from the 0x80-0x9F range specific to WinAnsiEncoding
+// (which differs from Latin-1): map them back to their WinAnsi byte.
 const WINANSI: Record<number, number> = {
   0x20ac: 0x80, // €
   0x2026: 0x85, // …
@@ -31,7 +31,7 @@ const WINANSI: Record<number, number> = {
   0x2014: 0x97, // —
 };
 
-/** Encode une chaîne pour la police WinAnsi (octet par caractère). */
+/** Encodes a string for the WinAnsi font (one byte per character). */
 function toLatin1(s: string): string {
   let out = "";
   for (const ch of s) {
@@ -49,11 +49,11 @@ const LEFT = 56;
 const RIGHT = PAGE_W - 56;
 const VALUE_X = 240;
 const TOP_Y = PAGE_H - 64;
-const BOTTOM_Y = 56; // marge basse : on bascule sur une nouvelle page en dessous
+const BOTTOM_Y = 56; // bottom margin: below it a new page starts
 
 /**
- * Compose un document texte (multi-pages automatique) et renvoie le PDF.
- * Quand le curseur descend sous la marge basse, une nouvelle page démarre.
+ * Composes a text document (automatic pagination) and returns the PDF.
+ * When the cursor drops below the bottom margin, a new page starts.
  */
 export function renderTextPdf(lines: Line[]): Buffer {
   const pages: string[] = [];
@@ -65,7 +65,7 @@ export function renderTextPdf(lines: Line[]): Buffer {
     ops = [];
     y = TOP_Y;
   };
-  // Réserve la hauteur `need` ; saute de page si nécessaire.
+  // Reserves `need` height; breaks to a new page when required.
   const ensure = (need: number) => {
     if (y - need < BOTTOM_Y && ops.length > 0) flush();
   };
@@ -118,9 +118,9 @@ export function renderTextPdf(lines: Line[]): Buffer {
 
 function assemble(pages: string[]): Buffer {
   if (pages.length === 0) pages = [""];
-  // Numérotation des objets :
+  // Object numbering:
   //  1 Catalog · 2 Pages · 3 Font F1 · 4 Font F2 ·
-  //  puis, par page i : Page obj + Content obj.
+  //  then, per page i: Page obj + Content obj.
   const fontF1 = 3;
   const fontF2 = 4;
   const firstPageObj = 5;
@@ -156,7 +156,7 @@ function assemble(pages: string[]): Buffer {
   return Buffer.from(pdf, "latin1");
 }
 
-// ─────────────────────────── Reçu de paiement ───────────────────────────
+// ─────────────────────────── Payment receipt ───────────────────────────
 
 export interface RecuData {
   paiementId: string;
@@ -183,7 +183,7 @@ function xaf(n: number): string {
   return `${n.toLocaleString("fr-FR").replace(/ | /g, " ")} XAF`;
 }
 
-// ─────────────────────────── Relevé mensuel récapitulatif ───────────────────────────
+// ─────────────────────────── Monthly summary statement ───────────────────────────
 
 export interface RecapLigne {
   type: string;
@@ -195,7 +195,7 @@ export interface RecapLigne {
 }
 
 export interface RecapData {
-  mois: string | null; // null = toutes périodes
+  mois: string | null; // null = all periods
   genereLe: Date;
   totalFacture: number;
   totalEncaisse: number;
@@ -206,13 +206,13 @@ function num(n: number): string {
   return n.toLocaleString("fr-FR").replace(/ | /g, " ");
 }
 
-/** Relevé récapitulatif des factures (facturé vs encaissé) — Admin / Bailleur (§6). */
+/** Invoice summary statement (billed vs collected) — Admin / Bailleur (§6). */
 export function recapFacturesPdf(d: RecapData): Buffer {
   const reste = Math.max(0, d.totalFacture - d.totalEncaisse);
   const taux = d.totalFacture > 0 ? Math.round((d.totalEncaisse / d.totalFacture) * 100) : 0;
   const periode = d.mois ? d.mois : "toutes périodes";
 
-  // Colonnes du tableau (x en points).
+  // Table columns (x in points).
   const COLS = { type: LEFT, mois: 138, loc: 200, du: 348, paye: 430, reste: 508 };
 
   const lines: Line[] = [
@@ -267,7 +267,113 @@ export function recapFacturesPdf(d: RecapData): Buffer {
   return renderTextPdf(lines);
 }
 
-/** Construit le reçu PDF d'un paiement (document officiel, en français). */
+// ─────────────────────────── Tenant invoice ───────────────────────────
+
+export interface FactureLigneData {
+  ligneId: string;
+  genereLe: Date;
+  locataire: string;
+  type: string;
+  mois: string;
+  dateLimite: Date;
+  coefficient: number;
+  montantTotalFacture: number;
+  montantDu: number;
+  montantPaye: number;
+  /** Rent regime: flat annual amount, no split. */
+  loyer: boolean;
+  suivi: { payeCeMois: number; payeAnnee: number; restantAnnee: number } | null;
+  paiements: { montant: number; mode: string; reference: string | null; date: Date }[];
+}
+
+/**
+ * A tenant's personal invoice (§5.1). The receipt attests to a payment; this
+ * document carries the debt and its status. For rent, it shows the annual
+ * tracking expected after each payment.
+ */
+export function factureLocatairePdf(d: FactureLigneData): Buffer {
+  const reste = Math.max(0, d.montantDu - d.montantPaye);
+  const ref = d.ligneId.slice(0, 8).toUpperCase();
+  const annee = d.mois.slice(0, 4);
+
+  const lines: Line[] = [
+    { kind: "title", text: `KingCity — Facture ${d.loyer ? "de loyer" : d.type}` },
+    { kind: "subtitle", text: `Facture N° ${ref} · éditée le ${d.genereLe.toLocaleString("fr-FR")}` },
+    { kind: "rule" },
+    { kind: "gap", h: 4 },
+    { kind: "row", label: "Locataire", value: d.locataire },
+    { kind: "row", label: "Type", value: d.type },
+    { kind: "row", label: d.loyer ? "Année couverte" : "Mois concerné", value: d.loyer ? annee : d.mois },
+    { kind: "row", label: "Date limite de paiement", value: d.dateLimite.toLocaleDateString("fr-FR") },
+    { kind: "gap", h: 6 },
+    { kind: "rule" },
+  ];
+
+  if (d.loyer && d.suivi) {
+    lines.push(
+      { kind: "row", label: "Loyer annuel dû", value: xaf(d.montantDu) },
+      { kind: "row", label: "Versé ce mois-ci", value: xaf(d.suivi.payeCeMois) },
+      { kind: "row", label: `Déjà versé pour ${annee}`, value: xaf(d.suivi.payeAnnee) },
+      { kind: "row", label: `Restant pour ${annee}`, value: xaf(d.suivi.restantAnnee) },
+    );
+  } else {
+    lines.push(
+      { kind: "row", label: "Montant total de la facture", value: xaf(d.montantTotalFacture) },
+      { kind: "row", label: "Coefficient appliqué", value: String(d.coefficient) },
+      { kind: "row", label: "Montant à ma charge", value: xaf(d.montantDu) },
+      { kind: "row", label: "Déjà payé", value: xaf(d.montantPaye) },
+      { kind: "row", label: "Reste à payer", value: xaf(reste) },
+    );
+  }
+
+  lines.push({ kind: "rule" }, { kind: "gap", h: 8 });
+
+  if (d.paiements.length > 0) {
+    const COLS = { date: LEFT, montant: 200, mode: 320, ref: 440 };
+    lines.push(
+      { kind: "text", text: "Versements enregistrés", bold: true, size: 11 },
+      { kind: "gap", h: 2 },
+      {
+        kind: "cols",
+        bold: true,
+        cells: [
+          { text: "Date", x: COLS.date },
+          { text: "Montant", x: COLS.montant },
+          { text: "Mode", x: COLS.mode },
+          { text: "Référence", x: COLS.ref },
+        ],
+      },
+      { kind: "rule" },
+    );
+    for (const p of d.paiements) {
+      lines.push({
+        kind: "cols",
+        cells: [
+          { text: p.date.toLocaleDateString("fr-FR"), x: COLS.date },
+          { text: num(p.montant), x: COLS.montant },
+          { text: MODE_LABELS[p.mode] ?? p.mode, x: COLS.mode },
+          { text: (p.reference ?? "—").slice(0, 18), x: COLS.ref },
+        ],
+      });
+    }
+    lines.push({ kind: "rule" });
+  } else {
+    lines.push({ kind: "text", text: "Aucun versement enregistré à ce jour.", size: 10 });
+  }
+
+  lines.push(
+    { kind: "gap", h: 20 },
+    {
+      kind: "text",
+      text: "Document généré automatiquement par KingCity. Les versements sont attestés par les reçus correspondants.",
+      size: 8,
+    },
+  );
+
+  return renderTextPdf(lines);
+}
+
+/** Builds a payment's PDF receipt (official document, written in French). */
 export function paiementRecuPdf(d: RecuData): Buffer {
   const reste = Math.max(0, d.montantDu - d.montantPayeCumule);
   const num = d.paiementId.slice(0, 8).toUpperCase();

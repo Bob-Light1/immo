@@ -5,11 +5,11 @@ import { publishNotif } from "@/lib/realtime";
 import type { Role } from "@campusgest/shared";
 
 /**
- * Boîte à suggestions (conception §5.4). Tout utilisateur soumet une suggestion
- * numérotée. L'Admin les consulte toutes ; le Bailleur ne voit que celles dont
- * la visibilité a été activée. À la première ouverture par l'Admin, une
- * notification de lecture est envoyée à l'auteur (read_at horodaté). Les auteurs
- * ne savent jamais qui d'autre voit leur suggestion.
+ * Suggestion box (design §5.4). Any user submits a numbered suggestion. The
+ * Admin sees them all; the Bailleur only sees those explicitly made visible.
+ * On the Admin's first open, a read notification is sent to the author
+ * (read_at timestamped). Authors never learn who else can see their
+ * suggestion.
  */
 
 export async function createSuggestion(authorId: string, contenu: string) {
@@ -19,7 +19,7 @@ export async function createSuggestion(authorId: string, contenu: string) {
   });
 }
 
-/** Liste de gestion : Admin = toutes ; Bailleur = uniquement les visibles. */
+/** Management list: Admin = all; Bailleur = only the visible ones. */
 export async function listSuggestions(
   role: Role,
   pagination: { page: number; limit: number },
@@ -38,7 +38,7 @@ export async function listSuggestions(
   return { items, total, page: pagination.page, limit: pagination.limit };
 }
 
-/** Suggestions de l'utilisateur courant (sans exposer les destinataires). */
+/** The current user's suggestions (without exposing the recipients). */
 export async function listMySuggestions(authorId: string) {
   return prisma.suggestion.findMany({
     where: { authorId },
@@ -47,7 +47,7 @@ export async function listMySuggestions(authorId: string) {
   });
 }
 
-/** Marque une suggestion lue par l'Admin et notifie l'auteur (une seule fois). */
+/** Marks a suggestion read by the Admin and notifies the author (once). */
 export async function markSuggestionRead(id: string) {
   const s = await prisma.suggestion.findUnique({ where: { id } });
   if (!s) throw new ServiceError(404, "Suggestion introuvable.");

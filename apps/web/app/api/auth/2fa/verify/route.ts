@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { verifyTotp } from "@/lib/totp";
 
-/** Confirme et active le 2FA : persiste le secret si le code est valide (§9). */
+/** Confirms and enables 2FA: persists the secret when the code is valid (§9). */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const auth = requireRole(req, "admin");

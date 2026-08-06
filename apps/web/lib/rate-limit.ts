@@ -1,7 +1,7 @@
 /**
- * Rate limiting à fenêtre fixe, en mémoire (conception §9 : /auth/login
- * 10 essais / 15 min / IP). Suffisant pour un déploiement mono-instance
- * (VPS Docker) ; à porter sur Redis si l'app passe en multi-instances.
+ * Fixed-window, in-memory rate limiting (design §9: /auth/login 10 attempts
+ * per 15 min per IP). Enough for a single-instance deployment (Docker VPS);
+ * move it to Redis if the app ever scales to several instances.
  */
 interface Bucket {
   count: number;

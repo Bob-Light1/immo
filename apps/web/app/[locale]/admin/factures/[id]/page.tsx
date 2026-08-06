@@ -3,10 +3,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch, downloadRecu, uploadFile } from "@/lib/client/session";
+import { apiFetch, downloadFactureLigne, downloadRecu, uploadFile } from "@/lib/client/session";
 import { formatXAF, formatDate, formatMois } from "@/lib/format";
 import type { LigneStatut, PaiementMode } from "@campusgest/shared";
-import { PAIEMENT_MODES } from "@campusgest/shared";
+import { PAIEMENT_MODES, isLoyer, suiviLoyer } from "@campusgest/shared";
 import {
   Card,
   StatutBadge,
@@ -63,7 +63,7 @@ export default function AdminFactureDetailPage() {
   const [coeffs, setCoeffs] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  // Ligne en cours d'encaissement (formulaire inline)
+  // Line currently being settled (inline form)
   const [paying, setPaying] = useState<Ligne | null>(null);
   const [payMontant, setPayMontant] = useState("");
   const [payMode, setPayMode] = useState<PaiementMode>("especes");
@@ -85,6 +85,10 @@ export default function AdminFactureDetailPage() {
   if (!facture) return <Spinner />;
 
   const brouillon = facture.statutPub === "brouillon";
+  // Rent: flat annual amount per tenant — no coefficient, no split; what is
+  // tracked instead is how far the year's payments have progressed.
+  const loyer = isLoyer(facture.type);
+  const annee = facture.mois.slice(0, 4);
 
   async function action(fn: () => Promise<Response>, failMsg: string) {
     setBusy(true);
@@ -181,7 +185,10 @@ export default function AdminFactureDetailPage() {
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           { label: t("montantTotal"), value: formatXAF(facture.montantTotal, locale) },
-          { label: t("baseUnitaire"), value: formatXAF(facture.baseUnitaire, locale) },
+          {
+            label: loyer ? t("loyerAnnuel") : t("baseUnitaire"),
+            value: formatXAF(facture.baseUnitaire, locale),
+          },
           { label: t("encaisse"), value: formatXAF(totalPaye, locale) },
           { label: t("dateLimite"), value: formatDate(facture.dateLimite, locale) },
         ].map(({ label, value }) => (
@@ -197,36 +204,58 @@ export default function AdminFactureDetailPage() {
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
               <th className="px-4 py-3">{t("locataire")}</th>
-              <th className="px-4 py-3">{t("coefficient")}</th>
-              <th className="px-4 py-3 text-right">{t("montantDu")}</th>
-              <th className="px-4 py-3 text-right">{t("montantPaye")}</th>
+              {!loyer && <th className="px-4 py-3">{t("coefficient")}</th>}
+              <th className="px-4 py-3 text-right">{loyer ? t("loyerAnnuel") : t("montantDu")}</th>
+              {loyer && <th className="px-4 py-3 text-right">{t("payeCeMois")}</th>}
+              <th className="px-4 py-3 text-right">
+                {loyer ? t("payeAnnee", { annee }) : t("montantPaye")}
+              </th>
+              {loyer && <th className="px-4 py-3 text-right">{t("restantAnnee", { annee })}</th>}
               <th className="px-4 py-3">{t("statut")}</th>
               {!brouillon && <th className="px-4 py-3" />}
             </tr>
           </thead>
           <tbody>
-            {facture.lignes.map((l) => (
+            {facture.lignes.map((l) => {
+              const suivi = suiviLoyer({
+                montantAnnuel: l.montantDu,
+                montantPaye: l.montantPaye,
+                paiements: l.paiements.map((p) => ({ montant: p.montant, date: p.createdAt })),
+              });
+              return (
               <tr key={l.id} className="border-b border-slate-100 last:border-0">
                 <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
-                <td className="px-4 py-3">
-                  {brouillon ? (
-                    <input
-                      type="number"
-                      step={0.1}
-                      min={0.1}
-                      max={99.99}
-                      value={coeffs[l.locataireId] ?? ""}
-                      onChange={(e) =>
-                        setCoeffs((c) => ({ ...c, [l.locataireId]: e.target.value }))
-                      }
-                      className={`${inputCls} w-24`}
-                    />
-                  ) : (
-                    l.coefficient
-                  )}
-                </td>
+                {!loyer && (
+                  <td className="px-4 py-3">
+                    {brouillon ? (
+                      <input
+                        type="number"
+                        step={0.1}
+                        min={0.1}
+                        max={99.99}
+                        value={coeffs[l.locataireId] ?? ""}
+                        onChange={(e) =>
+                          setCoeffs((c) => ({ ...c, [l.locataireId]: e.target.value }))
+                        }
+                        className={`${inputCls} w-24`}
+                      />
+                    ) : (
+                      l.coefficient
+                    )}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
+                {loyer && (
+                  <td className="px-4 py-3 text-right font-mono">
+                    {formatXAF(suivi.payeCeMois, locale)}
+                  </td>
+                )}
                 <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
+                {loyer && (
+                  <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
+                    {formatXAF(suivi.restantAnnee, locale)}
+                  </td>
+                )}
                 <td className="px-4 py-3">
                   <StatutBadge statut={l.statut} />
                 </td>
@@ -242,6 +271,14 @@ export default function AdminFactureDetailPage() {
                           {tPay("encaisser")}
                         </button>
                       )}
+                      <button
+                        className="text-xs text-navy underline-offset-2 hover:underline"
+                        onClick={() =>
+                          downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`)
+                        }
+                      >
+                        {t("facturePdf")}
+                      </button>
                       {l.paiements.map((p) => (
                         <div key={p.id} className="flex items-center gap-2">
                           {p.justificatifUrl && (
@@ -266,7 +303,8 @@ export default function AdminFactureDetailPage() {
                   </td>
                 )}
               </tr>
-            ))}
+              );
+            })}
           </tbody>
         </table>
       </Card>
@@ -339,10 +377,14 @@ export default function AdminFactureDetailPage() {
       <div className="mt-6 space-y-3">
         <ErrorText>{error}</ErrorText>
         {brouillon && (
-          <div className="flex gap-3">
-            <button className={btnSecondary} onClick={saveCoefficients} disabled={busy}>
-              {t("saveCoeffs")}
-            </button>
+          <div className="flex flex-wrap items-center gap-3">
+            {loyer ? (
+              <p className="text-sm text-slate-500">{t("loyerNoCoeff")}</p>
+            ) : (
+              <button className={btnSecondary} onClick={saveCoefficients} disabled={busy}>
+                {t("saveCoeffs")}
+              </button>
+            )}
             <button className={btnPrimary} onClick={publish} disabled={busy}>
               {t("publish")}
             </button>

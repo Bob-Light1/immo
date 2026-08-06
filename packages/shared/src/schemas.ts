@@ -24,9 +24,9 @@ export const changeCredentialsSchema = z.object({
 });
 export type ChangeCredentialsInput = z.infer<typeof changeCredentialsSchema>;
 
-// ─── Utilisateurs ───
-// Téléphone obligatoire (joignabilité en cas de problème à la cité) : 6 à 20
-// caractères, chiffres et séparateurs usuels (+, espaces, parenthèses, tirets).
+// ─── Users ───
+// Phone is mandatory (reachability if trouble occurs on site): 6 to 20
+// characters, digits and the usual separators (+, spaces, parentheses, dashes).
 export const phoneSchema = z
   .string()
   .trim()
@@ -59,18 +59,26 @@ export const updateProfileSchema = z.object({
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
-// ─── Factures ───
+// ─── Invoices ───
 const moisRegex = /^\d{4}-\d{2}$/;
 
-export const createFactureSchema = z.object({
-  type: z.string().min(2).max(60),
-  montantTotal: z.coerce.number().int().positive(),
-  mois: z.string().regex(moisRegex, "Format attendu : YYYY-MM"),
-  dateLimite: z.coerce.date(),
-  compteurId: z.string().uuid().optional(),
-  // locataires concernés ; si vide -> tous les locataires actifs
-  locataireIds: z.array(z.string().uuid()).optional(),
-});
+export const createFactureSchema = z
+  .object({
+    type: z.string().min(2).max(60),
+    // Global amount to split (Eau, Électricité, Hébergement…).
+    montantTotal: z.coerce.number().int().positive().optional(),
+    // "Loyer" regime: flat annual amount owed by each tenant, never split.
+    montantParLocataire: z.coerce.number().int().positive().optional(),
+    mois: z.string().regex(moisRegex, "Format attendu : YYYY-MM"),
+    dateLimite: z.coerce.date(),
+    compteurId: z.string().uuid().optional(),
+    // targeted tenants; empty -> every active tenant
+    locataireIds: z.array(z.string().uuid()).optional(),
+  })
+  .refine((d) => (d.montantTotal != null) !== (d.montantParLocataire != null), {
+    message: "Renseignez soit le montant total, soit le montant par locataire.",
+    path: ["montantTotal"],
+  });
 export type CreateFactureInput = z.infer<typeof createFactureSchema>;
 
 export const coefficientsSchema = z.object({
@@ -94,8 +102,8 @@ export const paiementSchema = z.object({
 });
 export type PaiementInput = z.infer<typeof paiementSchema>;
 
-// ─── Notifications & annonces ───
-// Portée d'une annonce : "all" = tous les actifs, sinon un rôle ciblé.
+// ─── Notifications & announcements ───
+// Announcement scope: "all" = every active user, otherwise a single role.
 export const ANNONCE_SCOPES = ["all", "locataire", "bailleur", "admin"] as const;
 export type AnnonceScope = (typeof ANNONCE_SCOPES)[number];
 
@@ -106,7 +114,7 @@ export const annonceSchema = z.object({
 });
 export type AnnonceInput = z.infer<typeof annonceSchema>;
 
-// Abonnement Web Push (PushSubscription.toJSON()).
+// Web Push subscription (PushSubscription.toJSON()).
 export const pushSubscriptionSchema = z.object({
   endpoint: z.string().url(),
   expirationTime: z.number().nullable().optional(),
@@ -114,7 +122,7 @@ export const pushSubscriptionSchema = z.object({
 });
 export type PushSubscriptionInput = z.infer<typeof pushSubscriptionSchema>;
 
-// ─── Communauté ───
+// ─── Community ───
 export const suggestionSchema = z.object({
   contenu: z.string().min(3).max(2000),
 });
@@ -132,13 +140,13 @@ export const evenementSchema = z.object({
 });
 export type EvenementInput = z.infer<typeof evenementSchema>;
 
-// Décision de l'Admin sur un événement (approbation / rejet).
+// Admin decision on an event (approval / rejection).
 export const evenementDecisionSchema = z.object({
   statut: z.enum(["approuve", "rejete"]),
 });
 export type EvenementDecisionInput = z.infer<typeof evenementDecisionSchema>;
 
-// ─── Fil d'infos / posts (§5.9 — image obligatoire) ───
+// ─── News feed / posts (§5.9 — image required) ───
 export const postSchema = z.object({
   titre: z.string().min(1).max(100),
   description: z.string().min(1).max(300),
@@ -150,7 +158,7 @@ export const postHiddenSchema = z.object({
   isHidden: z.boolean(),
 });
 
-// ─── Documents partagés (§5.15 — fichier obligatoire) ───
+// ─── Shared documents (§5.15 — file required) ───
 export const documentSchema = z.object({
   titre: z.string().min(1).max(200),
   fichierUrl: z.string().url(),
@@ -174,7 +182,7 @@ export const ticketStatutSchema = z.object({
 });
 export type TicketStatutInput = z.infer<typeof ticketStatutSchema>;
 
-// ─── Signal de détresse (§5.8) ───
+// ─── Distress signal (§5.8) ───
 export const distressSchema = z.object({
   geoConsent: z.boolean().default(false),
   latitude: z.number().min(-90).max(90).optional(),
@@ -182,7 +190,7 @@ export const distressSchema = z.object({
 });
 export type DistressInput = z.infer<typeof distressSchema>;
 
-// Position rattachée APRÈS coup : le signal part sans attendre la géoloc.
+// Position attached AFTERWARDS: the signal is sent without waiting for geoloc.
 export const distressPositionSchema = z.object({
   latitude: z.number().min(-90).max(90),
   longitude: z.number().min(-180).max(180),
@@ -193,7 +201,7 @@ export const distressBanSchema = z.object({
   disabled: z.boolean(),
 });
 
-// ─── Sondages (§5.13) ───
+// ─── Polls (§5.13) ───
 export const sondageSchema = z.object({
   question: z.string().min(3).max(300),
   options: z.array(z.string().min(1).max(120)).min(2).max(10),
@@ -204,7 +212,7 @@ export const voteSchema = z.object({
   choix: z.coerce.number().int().min(0).max(9),
 });
 
-// ─── Portfolio & annuaire (§5.7 / §5.14) ───
+// ─── Portfolio & directory (§5.7 / §5.14) ───
 export const portfolioSchema = z.object({
   bio: z.string().max(2000).optional(),
   photoUrl: z.string().url().max(500).optional().or(z.literal("")),
@@ -217,7 +225,7 @@ export const portfolioSchema = z.object({
 });
 export type PortfolioInput = z.infer<typeof portfolioSchema>;
 
-// ─── Projet commun & cotisations (§5.10) ───
+// ─── Shared project & contributions (§5.10) ───
 export const projetSchema = z.object({
   titre: z.string().min(2).max(200),
   description: z.string().min(2),
@@ -244,7 +252,7 @@ export const twoFactorDisableSchema = z.object({
   code: z.string().regex(/^\d{6}$/),
 });
 
-// Renseignement a posteriori du montant réel d'une prédiction (§5.11).
+// After-the-fact entry of a prediction's actual amount (§5.11).
 export const predictionReelSchema = z.object({
   montantReel: z.coerce.number().int().nonnegative(),
 });

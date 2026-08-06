@@ -61,8 +61,8 @@ const NAV: Record<SessionUser["role"], { href: string; key: string }[]> = {
   ],
 };
 
-// Regroupement par section (ordre fixe). Une section n'apparaît que si le
-// rôle possède au moins un de ses liens — la barre reste lisible malgré ~15 entrées.
+// Grouping by section (fixed order). A section only shows when the role owns
+// at least one of its links — the bar stays readable despite ~15 entries.
 const GROUPS: { label: string; keys: string[] }[] = [
   { label: "main", keys: ["dashboard", "mesFactures", "factures", "users"] },
   {
@@ -123,8 +123,8 @@ function SideNav({
 }
 
 /**
- * Coquille commune des trois portails : garde d'authentification par rôle,
- * barre supérieure et navigation latérale (fixe en desktop, tiroir en mobile).
+ * Shared shell of the three portals: role-based authentication guard, top bar
+ * and side navigation (fixed on desktop, drawer on mobile).
  */
 export function PortalShell({
   role,
@@ -143,9 +143,9 @@ export function PortalShell({
   if (!user) return <Spinner />;
 
   async function logout() {
-    // Désabonne l'appareil avant de fermer la session : sinon l'abonnement push
-    // reste rattaché au compte sortant et le compte suivant sur ce téléphone
-    // recevrait ses notifications.
+    // Unsubscribe the device before ending the session: otherwise the push
+    // subscription stays attached to the outgoing account and the next account
+    // on this phone would receive its notifications.
     await disablePush().catch(() => {});
     await logoutSession();
     router.replace(`/${locale}/login`);
@@ -153,7 +153,7 @@ export function PortalShell({
 
   return (
     <div className="min-h-screen">
-      {/* Barre supérieure */}
+      {/* Top bar */}
       <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
           <button
@@ -185,12 +185,12 @@ export function PortalShell({
         </div>
       </header>
 
-      {/* Navigation latérale fixe (desktop) */}
+      {/* Fixed side navigation (desktop) */}
       <aside className="fixed bottom-0 left-0 top-14 hidden w-64 overflow-y-auto border-r border-slate-200 bg-white lg:block">
         <SideNav role={role} locale={locale} pathname={pathname} />
       </aside>
 
-      {/* Tiroir mobile */}
+      {/* Mobile drawer */}
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />

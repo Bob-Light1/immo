@@ -4,7 +4,7 @@ import { handle, json } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { vote } from "@/lib/services/sondage.service";
 
-/** Vote (un par utilisateur, modifiable) — tout utilisateur authentifié (§5.13). */
+/** Vote (one per user, changeable) — any authenticated user (§5.13). */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireAuth(req);

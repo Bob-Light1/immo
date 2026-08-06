@@ -1,5 +1,5 @@
-# Contexte de build Docker — n'envoyer que le nécessaire au démon.
-# Régénérables ou lourds :
+# Docker build context — send only what the daemon needs.
+# Regenerable or heavy:
 node_modules
 **/node_modules
 .next
@@ -12,13 +12,13 @@ out
 coverage
 *.tsbuildinfo
 
-# Secrets — ne JAMAIS copier dans une image (injectés au runtime via env_file).
+# Secrets — NEVER copy them into an image (injected at runtime via env_file).
 .env
 .env.*
 !.env.example
 !.env.production.example
 
-# Git & divers
+# Git & misc
 .git
 .github
 *.log
@@ -26,7 +26,7 @@ coverage
 .vscode
 .idea
 
-# Documents volumineux inutiles au runtime
+# Large documents not needed at runtime
 CampusGest_Conception_v2.pdf
 CampusGest_Conception_v2.html
 docs

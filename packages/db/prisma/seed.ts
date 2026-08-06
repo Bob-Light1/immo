@@ -4,9 +4,9 @@ import bcrypt from "bcryptjs";
 const prisma = new PrismaClient();
 
 /**
- * Seed idempotent : crée (ou laisse en place) l'unique compte Admin.
- * Le mot de passe est temporaire et DOIT être changé à la première connexion
- * (firstLogin = true). Tout autre utilisateur est créé via l'interface Admin.
+ * Idempotent seed: creates (or leaves untouched) the single Admin account.
+ * The password is temporary and MUST be changed on first login
+ * (firstLogin = true). Every other user is created from the Admin UI.
  */
 async function main() {
   const username = process.env.ADMIN_DEFAULT_USERNAME ?? "admin";
@@ -20,7 +20,7 @@ async function main() {
 
   const admin = await prisma.user.upsert({
     where: { username },
-    update: {}, // ne réinitialise pas un admin existant (re-déploiements sûrs)
+    update: {}, // never resets an existing admin (safe re-deployments)
     create: {
       username,
       passwordHash,

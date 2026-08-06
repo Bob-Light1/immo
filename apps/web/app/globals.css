@@ -22,13 +22,12 @@ body {
   color: #0f172a;
 }
 
-/* ───────────────────────── Mode sombre ─────────────────────────
-   L'app utilise des utilitaires Tailwind littéraux (bg-white, text-navy,
-   text-slate-*, …). Plutôt que d'ajouter une variante dark: sur chaque
-   élément, on remappe ces classes sous `.dark` : la spécificité
-   `.dark .bg-white` (0,2,0) l'emporte sur `.bg-white` (0,1,0), donc la
-   bascule est globale et cohérente sur les 3 portails. La transition douce
-   évite le flash au changement de thème. */
+/* ───────────────────────── Dark mode ─────────────────────────
+   The app uses literal Tailwind utilities (bg-white, text-navy, text-slate-*,
+   …). Rather than adding a dark: variant on every element, those classes are
+   remapped under `.dark`: the specificity of `.dark .bg-white` (0,2,0) beats
+   `.bg-white` (0,1,0), so the switch is global and consistent across the three
+   portals. The soft transition avoids a flash when the theme changes. */
 html.dark body {
   background-color: #0b1220;
   color: #cbd5e1;
@@ -83,7 +82,7 @@ html.dark body {
   border-color: #2f405f;
 }
 
-/* Champs de saisie : fond sombre, texte clair. */
+/* Input fields: dark background, light text. */
 .dark input,
 .dark select,
 .dark textarea {
@@ -96,7 +95,7 @@ html.dark body {
   color: #64748b;
 }
 
-/* Transition douce au basculement clair/sombre. */
+/* Soft transition when toggling light/dark. */
 body,
 .bg-white,
 .bg-slate-50,
@@ -108,12 +107,12 @@ body,
     color 0.2s ease;
 }
 
-/* Barre supérieure translucide (bg-white/95) — variante distincte de bg-white. */
+/* Translucent top bar (bg-white/95) — distinct from the bg-white variant. */
 .dark .bg-white\/95 {
   background-color: rgba(17, 28, 48, 0.95);
 }
 
-/* ───────────────── Animations (toasts, modale, tiroir) ───────────────── */
+/* ───────────────── Animations (toasts, modal, drawer) ───────────────── */
 @keyframes cg-toast-in {
   from {
     opacity: 0;

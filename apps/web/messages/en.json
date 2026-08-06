@@ -128,7 +128,10 @@
       "dateLimite": "Payment due date",
       "hint": "The bill is created as a draft: all active tenants are attached with a coefficient of 1, adjustable before publishing.",
       "failed": "Failed to create the bill.",
-      "submit": "Create draft"
+      "submit": "Create draft",
+      "montantAnnuelLocataire": "Annual amount per tenant (XAF)",
+      "moisLoyer": "Starting month (year covered)",
+      "hintLoyer": "Rent: no split. The amount entered is owed by each active tenant for the year. After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance."
     },
     "detail": {
       "montantTotal": "Total amount",
@@ -145,7 +148,13 @@
       "publish": "Publish bill",
       "confirmPublish": "Publish this bill? Coefficients will no longer be editable and tenants will see it.",
       "coeffFailed": "Failed to save coefficients.",
-      "publishFailed": "Failed to publish."
+      "publishFailed": "Failed to publish.",
+      "loyerAnnuel": "Annual rent / tenant",
+      "payeCeMois": "Paid this month",
+      "payeAnnee": "Paid in {annee}",
+      "restantAnnee": "Remaining {annee}",
+      "loyerNoCoeff": "Rent: identical annual amount per tenant, no coefficient.",
+      "facturePdf": "Bill PDF"
     },
     "exportPdf": "Export PDF"
   },
@@ -179,7 +188,14 @@
     "empty": "No published bills yet.",
     "montantDu": "Amount due",
     "montantPaye": "Amount paid",
-    "recus": "Receipts"
+    "recus": "Receipts",
+    "facture": "Bill",
+    "facturePdf": "Bill PDF",
+    "loyerTitle": "My {annee} rent",
+    "loyerAnnuel": "Annual rent",
+    "payeCeMois": "Paid this month",
+    "payeAnnee": "Already paid in {annee}",
+    "restantAnnee": "Remaining for {annee}"
   },
   "dashboard": {
     "titleAdmin": "Dashboard",
@@ -362,7 +378,13 @@
     "failed": "Failed to save.",
     "photo": "Profile photo",
     "photoHint": "JPG, PNG or WebP. Shown as a circle in the directory.",
-    "photoRemove": "Remove"
+    "photoRemove": "Remove",
+    "delete": "Remove my portfolio",
+    "confirmDelete": "Remove your portfolio from the directory? Your account stays active and you can recreate it.",
+    "deleted": "Portfolio removed from the directory.",
+    "deleteFailed": "Failed to remove the portfolio.",
+    "deleteOther": "Remove from directory",
+    "confirmDeleteOther": "Remove {name}'s portfolio from the directory?"
   },
   "annuaire": {
     "title": "Resident directory",
@@ -412,7 +434,14 @@
     "estime": "Estimated",
     "reel": "Actual",
     "ecart": "Variance",
-    "saveReel": "Save"
+    "saveReel": "Save",
+    "purpose": "Helping you prepare next month's payment ahead of time.",
+    "purposeLocataire": "The estimate shows the upcoming charge for the whole residence, then what you personally will have to pay: start setting the amount aside now.",
+    "purposeGestion": "Published to everyone, the estimate shows the upcoming charge for the whole residence and the share owed by each tenant.",
+    "repartitionHint": "Share computed by splitting the total equally between the {count} active tenants.",
+    "estimeTotal": "Estimated total (all)",
+    "maPart": "My share",
+    "partLocataire": "Share per tenant"
   },
   "twofa": {
     "title": "Two-factor authentication (2FA)",

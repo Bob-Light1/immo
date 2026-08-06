@@ -5,7 +5,7 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { listNotifications, createAnnonce } from "@/lib/services/notification.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
 export async function GET(req: NextRequest) {
@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Annonce diffusée à tous (ou à un rôle) — Admin / Bailleur (§5.3). */
+/** Announcement broadcast to all (or to one role) — Admin / Bailleur (§5.3). */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin", "bailleur");

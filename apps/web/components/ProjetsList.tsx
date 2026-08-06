@@ -21,7 +21,7 @@ interface Projet {
   nbContributions: number;
 }
 
-/** Projets communs : publication (Admin) + cagnotte + cotisation (§5.10). */
+/** Shared projects: publication (Admin) + pot + contribution (§5.10). */
 export function ProjetsList({ admin }: { admin: boolean }) {
   const t = useTranslations("projets");
   const locale = useLocale();

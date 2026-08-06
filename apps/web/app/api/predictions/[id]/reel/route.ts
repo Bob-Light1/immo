@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { setMontantReel } from "@/lib/services/prediction.service";
 
-/** Renseigne le montant réel d'une estimation (estimé vs réel) — Admin (§5.11). */
+/** Records a prediction's actual amount (estimated vs actual) — Admin (§5.11). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

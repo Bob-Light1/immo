@@ -18,8 +18,8 @@ interface Post {
 }
 
 /**
- * Fil d'infos (§5.9). L'Admin / le Bailleur publient un post avec image
- * obligatoire (téléversée vers le stockage objet) ; l'Admin peut masquer.
+ * News feed (§5.9). The Admin / the Bailleur publish a post with a mandatory
+ * image (uploaded to the object storage); the Admin can hide a post.
  */
 export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: boolean }) {
   const t = useTranslations("posts");
@@ -88,7 +88,7 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
     if (res.ok) await load();
   }
 
-  // Recherche locale sur la page chargée (titre + description).
+  // Local search over the loaded page (title + description).
   const ql = q.trim().toLowerCase();
   const visibleItems = !items
     ? []

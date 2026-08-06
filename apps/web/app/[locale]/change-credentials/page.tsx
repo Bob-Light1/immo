@@ -15,9 +15,9 @@ import { Card, Field, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
 
 /**
- * Changement d'identifiants. Obligatoire à la première connexion
- * (useAuth y redirige tant que first_login est vrai), accessible ensuite
- * depuis le profil.
+ * Credential change. Mandatory on first login (useAuth redirects here as
+ * long as first_login is true), then reachable from the profile page at
+ * any time.
  */
 export default function ChangeCredentialsPage() {
   const t = useTranslations("credentials");
@@ -76,7 +76,7 @@ export default function ChangeCredentialsPage() {
         setError(data.error ?? t("failed"));
         return;
       }
-      // Le serveur réémet un access token (tokenVersion incrémenté).
+      // The server reissues an access token (tokenVersion incremented).
       const current = getSession();
       if (current && data.accessToken) {
         setSession({

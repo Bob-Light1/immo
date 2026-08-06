@@ -5,7 +5,7 @@ import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { contribuer } from "@/lib/services/projet.service";
 
-/** Cotise à un projet commun — tout utilisateur authentifié (§5.10). */
+/** Contributes to a shared project — any authenticated user (§5.10). */
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireAuth(req);

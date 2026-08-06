@@ -5,10 +5,10 @@ import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createTicket, listTickets } from "@/lib/services/ticket.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Liste des tickets — Admin (tous) / autres (les siens) (§5.12). */
+/** Lists tickets — Admin (all) / others (their own) (§5.12). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Ouvre un ticket de maintenance — tout utilisateur authentifié. */
+/** Opens a maintenance ticket — any authenticated user. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

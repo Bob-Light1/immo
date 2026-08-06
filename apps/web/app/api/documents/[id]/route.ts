@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { deleteDocument } from "@/lib/services/document.service";
 
-/** Supprime un document partagé — Admin (§5.15). */
+/** Deletes a shared document — Admin (§5.15). */
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

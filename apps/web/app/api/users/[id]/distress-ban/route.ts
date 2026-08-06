@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { setDistressBan } from "@/lib/services/distress.service";
 
-/** Ban / réactivation du signal de détresse d'un utilisateur — Admin (journalisé). */
+/** Bans / restores a user's distress signal — Admin (audited). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

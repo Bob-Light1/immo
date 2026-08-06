@@ -4,7 +4,7 @@ import { sendPushToUsers } from "@/lib/push";
 import { publishNotif } from "@/lib/realtime";
 import type { AnnonceInput, NotificationType, Role } from "@campusgest/shared";
 
-/** Notifie une liste d'utilisateurs (in-app + push best-effort). */
+/** Notifies a list of users (in-app + best-effort push). */
 export async function notifyUsers(
   userIds: string[],
   type: NotificationType,
@@ -21,13 +21,13 @@ export async function notifyUsers(
       channels: { inApp: true, push: true },
     })),
   });
-  // Réveille les flux SSE des destinataires connectés (sinon ils attendraient
-  // le prochain sondage de secours).
+  // Wake the SSE streams of connected recipients (otherwise they would wait
+  // for the next fallback poll).
   publishNotif({ userIds });
   void sendPushToUsers(userIds, { title, body, url: "/", tag: type });
 }
 
-/** Notifie tous les utilisateurs actifs. */
+/** Notifies every active user. */
 export async function notifyAllActive(
   type: NotificationType,
   title: string,
@@ -38,10 +38,10 @@ export async function notifyAllActive(
 }
 
 /**
- * Notifications in-app (conception §5.3). Un utilisateur voit les notifications
- * qui le ciblent nommément (`targetUserId`) ou qui ciblent son rôle
- * (`targetRole`). Les annonces sont « éclatées » en une notification par
- * destinataire actif, pour un état lu/non-lu correct par utilisateur.
+ * In-app notifications (design §5.3). A user sees the notifications addressed
+ * to them by name (`targetUserId`) or to their role (`targetRole`).
+ * Announcements are fanned out into one notification per active recipient, so
+ * the read/unread state stays correct per user.
  */
 
 function visibleWhere(userId: string, role: Role) {
@@ -89,7 +89,7 @@ export async function markAllRead(userId: string, role: Role) {
   return { updated: res.count };
 }
 
-/** Crée une annonce et l'éclate vers chaque destinataire actif (§5.3). */
+/** Creates an announcement and fans it out to every active recipient (§5.3). */
 export async function createAnnonce(senderId: string, input: AnnonceInput) {
   const where =
     input.scope === "all"
@@ -112,7 +112,7 @@ export async function createAnnonce(senderId: string, input: AnnonceInput) {
 
   publishNotif({ userIds: recipients.map((r) => r.id) });
 
-  // Push best-effort, sans bloquer la réponse (livraison réseau asynchrone).
+  // Best-effort push, without blocking the response (async network delivery).
   void sendPushToUsers(recipients.map((r) => r.id), {
     title: input.title,
     body: input.body,

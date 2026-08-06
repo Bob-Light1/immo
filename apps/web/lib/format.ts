@@ -1,4 +1,4 @@
-// Formats locaux : montants XAF (entiers) et dates, selon la locale active.
+// Locale-aware formatting: XAF amounts (integers) and dates.
 
 export function formatXAF(montant: number, locale: string): string {
   return new Intl.NumberFormat(locale, {
@@ -14,7 +14,7 @@ export function formatDate(date: string | Date, locale: string): string {
   );
 }
 
-/** "2026-06" -> "juin 2026" selon la locale. */
+/** "2026-06" -> "juin 2026" for the active locale. */
 export function formatMois(mois: string, locale: string): string {
   const [y, m] = mois.split("-").map(Number);
   return new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" }).format(
@@ -22,7 +22,7 @@ export function formatMois(mois: string, locale: string): string {
   );
 }
 
-/** Mois courant au format YYYY-MM. */
+/** Current month as YYYY-MM. */
 export function moisCourant(): string {
   return new Date().toISOString().slice(0, 7);
 }

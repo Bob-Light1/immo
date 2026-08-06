@@ -1,16 +1,16 @@
 import { prisma } from "@campusgest/db";
 import { publishNotif } from "../realtime";
-import { repartirFacture, MAX_RECONDUCTION_STREAK } from "@campusgest/shared";
+import { repartirFacture, isLoyer, MAX_RECONDUCTION_STREAK } from "@campusgest/shared";
 
 /**
- * Job reconductions (mensuel) — conception §5.1 / §0.2.
- * Pour chaque type facturé le mois précédent mais pas encore ce mois-ci, crée
- * un brouillon `is_reconducted = true` (non publié) repris de la dernière
- * facture du type, notifie l'Admin pour validation, et incrémente
- * `reconduction_streak`. Au-delà de MAX_RECONDUCTION_STREAK mois consécutifs,
- * une alerte garde-fou est émise (un montant erroné pourrait se propager).
+ * Roll-over job (monthly) — design §5.1 / §0.2.
+ * For every type invoiced last month but not yet this month, creates an
+ * unpublished `is_reconducted = true` draft copied from the latest invoice of
+ * that type, notifies the Admin for validation, and increments
+ * `reconduction_streak`. Past MAX_RECONDUCTION_STREAK consecutive months a
+ * guard alert is raised (a wrong amount could otherwise propagate silently).
  *
- * Idempotent : un type déjà facturé pour le mois courant est ignoré.
+ * Idempotent: a type already invoiced for the current month is skipped.
  */
 
 function moisStr(d: Date): string {
@@ -37,7 +37,7 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
   });
   if (!admin) return { created: 0, alerts: 0, skipped: 0 };
 
-  // Factures publiées du mois précédent (les plus récentes par type d'abord).
+  // Published invoices from last month (most recent per type first).
   const sources = await prisma.facture.findMany({
     where: { mois: moisPrec, statutPub: "publiee" },
     orderBy: { createdAt: "desc" },
@@ -52,8 +52,15 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
   const traites = new Set<string>();
 
   for (const src of sources) {
-    if (traites.has(src.type)) continue; // une seule reconduction par type
+    if (traites.has(src.type)) continue; // one roll-over per type
     traites.add(src.type);
+
+    // Rent is a flat annual amount: rolling it over monthly would create a
+    // second debt for the same year.
+    if (isLoyer(src.type)) {
+      skipped++;
+      continue;
+    }
 
     const existe = await prisma.facture.count({ where: { mois: moisCur, type: src.type } });
     if (existe > 0) {
@@ -118,7 +125,7 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
       alerts++;
     }
 
-    // Notifications ciblant le rôle admin (pas un utilisateur nommé).
+    // Notifications targeting the admin role (not a named user).
     publishNotif({ roles: ["admin"] });
   }
 

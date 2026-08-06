@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 
 /**
- * Bascule clair / sombre. La préférence est mémorisée dans localStorage
- * (`cg_theme`) ; l'application initiale se fait avant le rendu via un script
- * inline dans le layout (évite le flash). Par défaut : préférence système.
+ * Light / dark toggle. The preference is stored in localStorage (`cg_theme`);
+ * the initial application happens before render through an inline script in the
+ * layout (avoids the flash). Default: the system preference.
  */
 export function ThemeToggle() {
   const t = useTranslations("theme");
@@ -25,11 +25,11 @@ export function ThemeToggle() {
     try {
       localStorage.setItem("cg_theme", next ? "dark" : "light");
     } catch {
-      /* stockage indisponible : la bascule reste effective pour la session */
+      /* storage unavailable: the toggle still applies for this session */
     }
   }
 
-  // Évite une icône incohérente entre serveur et client avant montage.
+  // Avoids an icon mismatch between server and client before mount.
   const label = !mounted ? "" : dark ? t("light") : t("dark");
 
   return (

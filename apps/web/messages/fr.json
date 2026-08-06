@@ -128,7 +128,10 @@
       "dateLimite": "Date limite de paiement",
       "hint": "La facture est créée en brouillon : tous les locataires actifs sont rattachés avec un coefficient 1, ajustable avant publication.",
       "failed": "Échec de la création de la facture.",
-      "submit": "Créer le brouillon"
+      "submit": "Créer le brouillon",
+      "montantAnnuelLocataire": "Montant annuel par locataire (XAF)",
+      "moisLoyer": "Mois de départ (année couverte)",
+      "hintLoyer": "Loyer : aucune division. Le montant saisi est dû par chaque locataire actif pour l'année. À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant."
     },
     "detail": {
       "montantTotal": "Montant total",
@@ -145,7 +148,13 @@
       "publish": "Publier la facture",
       "confirmPublish": "Publier cette facture ? Les coefficients ne seront plus modifiables et les locataires la verront.",
       "coeffFailed": "Échec de l'enregistrement des coefficients.",
-      "publishFailed": "Échec de la publication."
+      "publishFailed": "Échec de la publication.",
+      "loyerAnnuel": "Loyer annuel / locataire",
+      "payeCeMois": "Payé ce mois",
+      "payeAnnee": "Payé en {annee}",
+      "restantAnnee": "Restant {annee}",
+      "loyerNoCoeff": "Loyer : forfait annuel identique par locataire, sans coefficient.",
+      "facturePdf": "Facture PDF"
     },
     "exportPdf": "Export PDF"
   },
@@ -179,7 +188,14 @@
     "empty": "Aucune facture publiée pour le moment.",
     "montantDu": "Montant dû",
     "montantPaye": "Montant payé",
-    "recus": "Reçus"
+    "recus": "Reçus",
+    "facture": "Facture",
+    "facturePdf": "Facture PDF",
+    "loyerTitle": "Mon loyer {annee}",
+    "loyerAnnuel": "Loyer annuel",
+    "payeCeMois": "Payé ce mois",
+    "payeAnnee": "Déjà payé en {annee}",
+    "restantAnnee": "Restant pour {annee}"
   },
   "dashboard": {
     "titleAdmin": "Tableau de bord",
@@ -362,7 +378,13 @@
     "failed": "Échec de l'enregistrement.",
     "photo": "Photo de profil",
     "photoHint": "JPG, PNG ou WebP. Affichée en rond dans l’annuaire.",
-    "photoRemove": "Retirer"
+    "photoRemove": "Retirer",
+    "delete": "Retirer mon portfolio",
+    "confirmDelete": "Retirer votre portfolio de l'annuaire ? Votre compte reste actif et vous pourrez le recréer.",
+    "deleted": "Portfolio retiré de l'annuaire.",
+    "deleteFailed": "Échec du retrait du portfolio.",
+    "deleteOther": "Retirer de l'annuaire",
+    "confirmDeleteOther": "Retirer le portfolio de {name} de l'annuaire ?"
   },
   "annuaire": {
     "title": "Annuaire des résidents",
@@ -412,7 +434,14 @@
     "estime": "Estimé",
     "reel": "Réel",
     "ecart": "Écart",
-    "saveReel": "Enregistrer"
+    "saveReel": "Enregistrer",
+    "purpose": "Vous aider à préparer votre paiement du prochain mois à l'avance.",
+    "purposeLocataire": "L'estimation annonce la charge à venir pour toute la cité, puis ce que vous aurez personnellement à payer : mettez la somme de côté dès maintenant.",
+    "purposeGestion": "Publiée à tous, l'estimation annonce la charge à venir pour toute la cité ainsi que la part revenant à chaque locataire.",
+    "repartitionHint": "Part calculée en répartissant le total à parts égales entre les {count} locataires actifs.",
+    "estimeTotal": "Total estimé (tous)",
+    "maPart": "Ma part",
+    "partLocataire": "Part par locataire"
   },
   "twofa": {
     "title": "Double authentification (2FA)",

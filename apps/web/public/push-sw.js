@@ -1,12 +1,12 @@
-/* Handlers Web Push importés dans le service worker généré (next-pwa).
-   Affiche la notification reçue et ouvre/focus la page au clic. */
+/* Web Push handlers imported into the generated service worker (next-pwa).
+   Displays the incoming notification and opens/focuses the page on click. */
 
 const APP_NAME = "KingCity";
 
-// Purge unique du cache "apis" laissé par les versions précédentes du SW, qui
-// stockaient 24 h les réponses authentifiées (factures, notifications) sur
-// l'appareil. La stratégie actuelle est NetworkOnly : ce cache n'est plus ni lu
-// ni écrit, mais les entrées déjà présentes doivent disparaître du téléphone.
+// One-off purge of the "apis" cache left by earlier SW versions, which kept
+// authenticated responses (invoices, notifications) on the device for 24 h.
+// The current strategy is NetworkOnly: that cache is neither read nor written
+// anymore, but the entries already stored must disappear from the phone.
 self.addEventListener("activate", (event) => {
   event.waitUntil(caches.delete("apis").catch(() => {}));
 });
@@ -39,9 +39,9 @@ self.addEventListener("notificationclick", (event) => {
   event.waitUntil(
     (async () => {
       const list = await clients.matchAll({ type: "window", includeUncontrolled: true });
-      // Comparaison sur le chemin : `client.url.includes(target)` considérait "/"
-      // comme contenu dans toute URL et focalisait donc n'importe quelle fenêtre
-      // sans jamais y naviguer.
+      // Compare on the path: `client.url.includes(target)` treated "/" as
+      // contained in every URL, and therefore focused any window at all
+      // without ever navigating to it.
       const exact = list.find((c) => new URL(c.url).pathname === target.pathname);
       if (exact) return exact.focus();
       const open = list[0];

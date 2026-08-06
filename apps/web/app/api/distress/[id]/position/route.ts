@@ -6,10 +6,10 @@ import { audit } from "@/lib/audit";
 import { attachDistressPosition } from "@/lib/services/distress.service";
 
 /**
- * Rattache la position à un signal déjà diffusé (§5.8). Le POST /api/distress
- * part immédiatement aux 5 clics ; la géolocalisation, qui demande l'accord de
- * l'utilisateur et plusieurs secondes de lecture GPS, n'a jamais le droit de
- * retarder l'alerte. Elle la complète ici.
+ * Attaches the position to an already-broadcast signal (§5.8). POST
+ * /api/distress fires immediately on the 5 clicks; geolocation — which needs
+ * the user's consent and several seconds of GPS reading — is never allowed to
+ * delay the alert. It completes it here.
  */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {

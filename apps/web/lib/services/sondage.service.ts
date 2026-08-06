@@ -3,9 +3,9 @@ import { ServiceError } from "@/lib/api";
 import type { SondageInput } from "@campusgest/shared";
 
 /**
- * Sondages & votes (conception §5.13). Question + options, un vote par
- * utilisateur (modifiable tant que le sondage est ouvert), résultats en temps
- * réel, clôture par l'Admin.
+ * Polls & votes (design §5.13). Question + options, one vote per user
+ * (changeable while the poll is open), real-time results, and closing by the
+ * Admin.
  */
 
 export async function createSondage(adminId: string, input: SondageInput) {

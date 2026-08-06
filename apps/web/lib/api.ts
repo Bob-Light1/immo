@@ -3,7 +3,7 @@ import { ZodError } from "zod";
 import { Prisma } from "@prisma/client";
 import { AuthError } from "./rbac";
 
-/** Erreur métier portant un code HTTP. */
+/** Business error carrying an HTTP status code. */
 export class ServiceError extends Error {
   constructor(
     public status: number,
@@ -14,8 +14,8 @@ export class ServiceError extends Error {
 }
 
 /**
- * Sérialise récursivement une valeur pour JSON :
- *  - BigInt  -> number (montants XAF, dans la plage des entiers sûrs)
+ * Recursively serializes a value for JSON:
+ *  - BigInt  -> number (XAF amounts, within the safe integer range)
  *  - Decimal -> number (coefficients)
  *  - Date    -> ISO string
  */
@@ -23,9 +23,9 @@ export function serialize(value: unknown): unknown {
   if (typeof value === "bigint") return Number(value);
   if (value instanceof Date) return value.toISOString();
   if (value && typeof value === "object") {
-    // Prisma.Decimal (decimal.js). Détection par isDecimal : le nom de
-    // classe est minifié en build de production, `constructor.name` ne
-    // fonctionne pas.
+    // Prisma.Decimal (decimal.js). Detected via isDecimal: the class name is
+    // minified in a production build, so `constructor.name` cannot be
+    // relied on.
     if (Prisma.Decimal.isDecimal(value)) return Number(value.toString());
     if (Array.isArray(value)) return value.map(serialize);
     const out: Record<string, unknown> = {};
@@ -39,7 +39,7 @@ export function json(data: unknown, init?: ResponseInit): NextResponse {
   return NextResponse.json(serialize(data), init);
 }
 
-/** Enveloppe un handler de route : centralise la gestion d'erreurs. */
+/** Wraps a route handler: centralizes error handling. */
 export async function handle(fn: () => Promise<NextResponse>): Promise<NextResponse> {
   try {
     return await fn();

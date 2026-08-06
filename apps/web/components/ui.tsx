@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { useTranslations } from "next-intl";
 import type { LigneStatut } from "@campusgest/shared";
 
-/** Badge coloré pour le statut d'une ligne de facture. */
+/** Colored badge for an invoice line's status. */
 export function StatutBadge({ statut }: { statut: LigneStatut }) {
   const t = useTranslations("statut");
   const styles: Record<LigneStatut, string> = {
@@ -18,7 +18,7 @@ export function StatutBadge({ statut }: { statut: LigneStatut }) {
   );
 }
 
-/** Badge brouillon / publiée pour une facture. */
+/** Draft / published badge for an invoice. */
 export function PubBadge({ statut }: { statut: "brouillon" | "publiee" }) {
   const t = useTranslations("statut");
   return (
@@ -88,7 +88,7 @@ export function EmptyState({ children }: { children: ReactNode }) {
   return <p className="p-8 text-center text-sm text-slate-500">{children}</p>;
 }
 
-/** Contrôles de pagination (listes serveur ?page&limit). Masqué si une seule page. */
+/** Pagination controls (server lists ?page&limit). Hidden on a single page. */
 export function Pager({
   page,
   total,

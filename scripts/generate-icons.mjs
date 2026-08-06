@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 // ─────────────────────────────────────────────────────────────────────────────
-// Génère les icônes PWA KingCity (couronne) depuis la géométrie de Brand.tsx.
-// Deux jeux : "any" (couronne large) et "maskable" (couronne dans la zone sûre
-// de 80 % imposée par Android, qui rogne les bords de l'icône).
+// Generates the KingCity PWA icons (crown) from the geometry in Brand.tsx.
+// Two sets: "any" (wide crown) and "maskable" (crown inside the 80 % safe zone
+// imposed by Android, which crops the icon's edges).
 //
 //   node scripts/generate-icons.mjs
 // ─────────────────────────────────────────────────────────────────────────────
@@ -15,7 +15,7 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "../apps/web/public/ic
 const NAVY = [0x1a, 0x3c, 0x6e];
 const BRAND = [0xe8, 0x82, 0x1e];
 
-// Couronne + socle, en coordonnées du viewBox 24×24 de CrownIcon.
+// Crown + base, in the coordinates of CrownIcon's 24×24 viewBox.
 const SHAPES = [
   [
     [5, 16],
@@ -46,14 +46,14 @@ const inside = (poly, px, py) => {
 };
 
 function render(size, scale) {
-  const SS = 4; // suréchantillonnage → anti-aliasing
+  const SS = 4; // supersampling → anti-aliasing
   const k = (size * scale) / Math.max(BOX.w, BOX.h);
   const ox = (size - BOX.w * k) / 2 - BOX.x * k;
   const oy = (size - BOX.h * k) / 2 - BOX.y * k;
 
   const rows = [];
   for (let y = 0; y < size; y++) {
-    const row = Buffer.alloc(1 + size * 3); // filtre 0 + RGB
+    const row = Buffer.alloc(1 + size * 3); // filter 0 + RGB
     for (let x = 0; x < size; x++) {
       let cover = 0;
       for (let sy = 0; sy < SS; sy++) {
@@ -94,7 +94,7 @@ function png(size, scale) {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(size, 0);
   ihdr.writeUInt32BE(size, 4);
-  ihdr[8] = 8; // 8 bits/canal
+  ihdr[8] = 8; // 8 bits/channel
   ihdr[9] = 2; // truecolor RGB
   return Buffer.concat([
     Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),

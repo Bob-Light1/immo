@@ -3,11 +3,11 @@ import { Client as MinioClient } from "minio";
 import { ServiceError } from "./api";
 
 /**
- * Stockage objet (conception §6 : images posts/portfolio/projets, documents,
- * justificatifs de paiement). Abstraction derrière une interface :
- * l'implémentation active est choisie par `STORAGE_DRIVER`. En dev/self-host
- * on utilise un backend S3-compatible (MinIO) ; une implémentation Cloudinary
- * pourra être branchée plus tard sans toucher aux appelants.
+ * Object storage (design §6: post/portfolio/project images, documents, payment
+ * receipts). Kept behind an interface: the active implementation is selected by
+ * `STORAGE_DRIVER`. Dev and self-hosted setups use an S3-compatible backend
+ * (MinIO); a Cloudinary implementation can be plugged in later without
+ * touching any caller.
  */
 
 export type UploadKind = "image" | "document";
@@ -18,14 +18,14 @@ export interface StoredObject {
 }
 
 export interface StorageProvider {
-  /** Téléverse un objet et renvoie son URL publique. */
+  /** Uploads an object and returns its public URL. */
   upload(input: {
     buffer: Buffer;
     contentType: string;
     ext: string;
     prefix: string;
   }): Promise<StoredObject>;
-  /** Indique si le backend est configuré (sinon les routes renvoient 503). */
+  /** Whether the backend is configured (routes answer 503 otherwise). */
   isConfigured(): boolean;
 }
 
@@ -74,7 +74,7 @@ class S3Storage implements StorageProvider {
   }
 }
 
-// ─────────────────────────── Sélection du backend ───────────────────────────
+// ─────────────────────────── Backend selection ───────────────────────────
 
 let provider: StorageProvider | null = null;
 
@@ -93,9 +93,9 @@ export function storage(): StorageProvider {
   return provider;
 }
 
-// ─────────────────────────── Validation des fichiers ───────────────────────────
+// ─────────────────────────── File validation ───────────────────────────
 
-/** Types acceptés par genre d'upload (conception §5.9 image ≤5Mo, §5.15 docs). */
+/** Accepted types per upload kind (design §5.9 image ≤5 MB, §5.15 docs). */
 const ALLOWED: Record<UploadKind, { mimes: Record<string, string> }> = {
   image: {
     mimes: { "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp" },
@@ -110,8 +110,8 @@ const ALLOWED: Record<UploadKind, { mimes: Record<string, string> }> = {
 };
 
 /**
- * Valide le genre + le type MIME et renvoie l'extension de fichier normalisée.
- * Lève une ServiceError 400 si le type n'est pas autorisé.
+ * Validates the kind + MIME type and returns the normalized file extension.
+ * Throws ServiceError 400 when the type is not allowed.
  */
 export function resolveExtension(kind: UploadKind, contentType: string): string {
   const ext = ALLOWED[kind]?.mimes[contentType];
@@ -123,15 +123,15 @@ export function resolveExtension(kind: UploadKind, contentType: string): string 
 }
 
 /**
- * Signatures (« magic bytes ») attendues au début du fichier, par type déclaré.
- * Le bucket sert les objets en lecture anonyme avec le Content-Type fourni par
- * le client : sans ce contrôle, n'importe quel contenu pouvait être déposé sous
- * une étiquette d'image et servi tel quel depuis l'origine de l'application.
+ * Magic bytes expected at the start of the file, per declared type.
+ * The bucket serves objects anonymously with the Content-Type supplied by the
+ * client: without this check, any content could be uploaded under an image
+ * label and served as-is from the application's own origin.
  */
 const SIGNATURES: Record<string, { offset: number; bytes: number[] }[]> = {
   "image/jpeg": [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
   "image/png": [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
-  // RIFF....WEBP : conteneur RIFF (0-3) puis marqueur de format (8-11).
+  // RIFF....WEBP: RIFF container (0-3) then format marker (8-11).
   "image/webp": [
     { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] },
     { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
@@ -140,8 +140,8 @@ const SIGNATURES: Record<string, { offset: number; bytes: number[] }[]> = {
 };
 
 /**
- * Vérifie que le contenu réel correspond au type MIME annoncé par le client.
- * Lève une ServiceError 400 en cas de discordance.
+ * Checks that the actual content matches the MIME type declared by the client.
+ * Throws ServiceError 400 on mismatch.
  */
 export function assertMagicBytes(contentType: string, buffer: Buffer): void {
   const expected = SIGNATURES[contentType];

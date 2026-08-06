@@ -2,9 +2,9 @@ import webpush from "web-push";
 import { prisma } from "@campusgest/db";
 
 /**
- * Web Push depuis les jobs (alertes d'échéance). Best-effort, respecte
- * `notif_prefs.push`, purge les abonnements expirés. Identique au sender du web
- * (apps/web/lib/push.ts) mais autonome au paquet workers.
+ * Web Push from the jobs (due-date alerts). Best-effort: honours
+ * `notif_prefs.push` and purges dead subscriptions. Mirrors the web sender
+ * (apps/web/lib/push.ts) but stays self-contained in the workers package.
  */
 
 let configured = false;
@@ -48,8 +48,10 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
         );
       } catch (e) {
         const status = (e as { statusCode?: number }).statusCode;
-        // Seul l'appareil dont l'endpoint a expiré est retiré, pas les autres.
-        if (status === 404 || status === 410) {
+        // Only the device whose endpoint expired (404/410) or whose subscription
+        // predates the current VAPID key pair (403, after a rotation) is
+        // removed, never the others.
+        if (status === 404 || status === 410 || status === 403) {
           await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
         } else {
           console.error("[push]", status ?? (e as Error).message);

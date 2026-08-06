@@ -1,6 +1,6 @@
-// CampusGest — Schéma de données (v2.0)
-// Conventions : PK UUID, montants XAF en BigInt (entiers), soft-delete via isActive.
-// Voir le document de conception §3 (Modèle de données).
+// CampusGest — Data schema (v2.0)
+// Conventions: UUID PKs, XAF amounts as BigInt (integers), soft-delete via isActive.
+// See design document §3 (Data model).
 
 generator client {
   provider = "prisma-client-js"
@@ -80,7 +80,7 @@ enum NotificationType {
   systeme
 }
 
-// ─────────────────────────── Utilisateurs ───────────────────────────
+// ─────────────────────────── Users ───────────────────────────
 model User {
   id               String   @id @default(uuid()) @db.Uuid
   username         String   @unique @db.VarChar(50)
@@ -102,8 +102,8 @@ model User {
   birthdayPublic   Boolean  @default(false) @map("birthday_public")
   birthdayYearHidden Boolean @default(false) @map("birthday_year_hidden")
   notifPrefs       Json?    @map("notif_prefs")
-  /// Déprécié : conservé pour la reprise des abonnements existants vers
-  /// `push_subscriptions` (un enregistrement par appareil). Plus jamais écrit.
+  /// Deprecated: kept to migrate existing subscriptions over to
+  /// `push_subscriptions` (one row per device). Never written again.
   pushSubscription Json?    @map("push_subscription")
   createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
   updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
@@ -132,7 +132,7 @@ model User {
   @@map("users")
 }
 
-// ─────────────────────────── Chambres & compteurs ───────────────────────────
+// ─────────────────────────── Rooms & meters ───────────────────────────
 model Chambre {
   id             String    @id @default(uuid()) @db.Uuid
   bloc           String    @db.VarChar(20)
@@ -163,7 +163,7 @@ model Compteur {
   @@map("compteurs")
 }
 
-// ─────────────────────────── Factures & paiements ───────────────────────────
+// ─────────────────────────── Invoices & payments ───────────────────────────
 model Facture {
   id                 String           @id @default(uuid()) @db.Uuid
   type               String           @db.VarChar(60)
@@ -226,10 +226,10 @@ model Paiement {
 }
 
 // ─────────────────────────── Notifications ───────────────────────────
-/// Abonnements Web Push, un par appareil. Un résident consulte l'app depuis son
-/// téléphone et parfois un poste partagé : une colonne unique sur `users`
-/// écrasait l'abonnement précédent et coupait silencieusement le premier
-/// appareil. L'endpoint est l'identité de l'abonnement côté navigateur.
+/// Web Push subscriptions, one per device. A resident opens the app from their
+/// phone and sometimes from a shared workstation: a single column on `users`
+/// used to overwrite the previous subscription and silently cut off the first
+/// device. The endpoint is the browser-side identity of a subscription.
 model PushSubscription {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
@@ -263,7 +263,7 @@ model Notification {
   @@map("notifications")
 }
 
-// ─────────────────────────── Communauté ───────────────────────────
+// ─────────────────────────── Community ───────────────────────────
 model Suggestion {
   id            String    @id @default(uuid()) @db.Uuid
   authorId      String    @map("author_id") @db.Uuid

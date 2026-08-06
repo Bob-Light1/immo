@@ -8,13 +8,13 @@ import {
 } from "@campusgest/shared";
 
 /**
- * Signal de détresse encadré (conception §5.8 / §0.2). Le signal part TOUJOURS
- * (jamais de coupure silencieuse de la sécurité) ; l'anti-abus se contente de
- * mettre le compte « en revue » et d'alerter l'Admin au-delà d'un seuil. Seul un
- * ban manuel Admin (`distress_disabled`, journalisé) bloque l'émission.
+ * Guarded distress signal (design §5.8 / §0.2). The signal is ALWAYS sent
+ * (safety is never cut off silently); past a threshold the anti-abuse logic
+ * only flags the account "under review" and alerts the Admin. Only a manual
+ * Admin ban (`distress_disabled`, audited) blocks emission.
  */
 
-const REVIEW_WINDOW_MS = 3 * 86_400_000; // 3 jours
+const REVIEW_WINDOW_MS = 3 * 86_400_000; // 3 days
 
 export async function sendDistress(userId: string, input: DistressInput) {
   const user = await prisma.user.findUnique({
@@ -26,7 +26,7 @@ export async function sendDistress(userId: string, input: DistressInput) {
     throw new ServiceError(403, "Votre accès au signal de détresse a été suspendu par l'administration.");
   }
 
-  // Anti-abus : nombre de signaux sur la fenêtre glissante.
+  // Anti-abuse: number of signals over the sliding window.
   const since = new Date(Date.now() - REVIEW_WINDOW_MS);
   const recent = await prisma.distressSignal.count({
     where: { senderId: userId, sentAt: { gte: since } },
@@ -47,8 +47,8 @@ export async function sendDistress(userId: string, input: DistressInput) {
     await prisma.user.update({ where: { id: userId }, data: { distressReview: true } });
   }
 
-  // Diffusion temps réel à tous les actifs (push forcé), marquée « à vérifier »
-  // si le compte est en revue — mais le signal part quand même.
+  // Real-time broadcast to every active user (forced push), flagged "to be
+  // checked" when the account is under review — the signal still goes out.
   const flag = enRevue ? " (à vérifier)" : "";
   const loc = signal.latitude != null ? " Position partagée." : "";
   await notifyAllActive(
@@ -74,11 +74,11 @@ export async function sendDistress(userId: string, input: DistressInput) {
 }
 
 /**
- * Rattache une position à un signal déjà émis (§5.8). Le signal part sans
- * attendre la géolocalisation : la position arrive quelques secondes plus tard,
- * une fois le navigateur interrogé. Réservée à l'émetteur, et seulement tant
- * que le signal n'est pas résolu — une position postérieure n'aurait plus de
- * valeur opérationnelle.
+ * Attaches a position to an already-emitted signal (§5.8). The signal is sent
+ * without waiting for geolocation: the position arrives a few seconds later,
+ * once the browser has answered. Restricted to the sender, and only while the
+ * signal is unresolved — a position sent afterwards would have no operational
+ * value.
  */
 export async function attachDistressPosition(
   signalId: string,
@@ -89,7 +89,7 @@ export async function attachDistressPosition(
   if (!signal) throw new ServiceError(404, "Signal introuvable.");
   if (signal.senderId !== userId) throw new ServiceError(403, "Ce signal n'est pas le vôtre.");
   if (signal.resolved) throw new ServiceError(409, "Signal déjà résolu.");
-  // Idempotent : une position déjà rattachée n'est pas réécrite.
+  // Idempotent: an already-attached position is never overwritten.
   if (signal.latitude != null) return { ok: true, alreadySet: true };
 
   await prisma.distressSignal.update({
@@ -97,9 +97,9 @@ export async function attachDistressPosition(
     data: { geoConsent: true, latitude: pos.latitude, longitude: pos.longitude },
   });
 
-  // Relance de la diffusion : la position est l'information la plus utile pour
-  // porter secours. Même `tag` push que l'alerte initiale → la notification est
-  // remplacée sur l'appareil au lieu de s'empiler.
+  // Re-broadcast: the position is the most useful information for a rescue.
+  // Same push `tag` as the initial alert → the notification replaces the
+  // previous one on the device instead of stacking up.
   const sender = await prisma.user.findUnique({
     where: { id: signal.senderId },
     select: { fullName: true },
@@ -140,13 +140,13 @@ export async function resolveDistress(id: string, adminId: string) {
   return { ok: true };
 }
 
-/** Ban / réactivation manuelle (journalisé en amont par la route). */
+/** Manual ban / reactivation (audited upstream by the route). */
 export async function setDistressBan(userId: string, disabled: boolean) {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
   if (!u) throw new ServiceError(404, "Utilisateur introuvable.");
   await prisma.user.update({
     where: { id: userId },
-    // Une réactivation lève aussi la mise en revue.
+    // A reactivation also clears the under-review flag.
     data: { distressDisabled: disabled, ...(disabled ? {} : { distressReview: false }) },
   });
   return { ok: true, disabled };

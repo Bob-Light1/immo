@@ -4,7 +4,7 @@ import { requireRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";
@@ -13,7 +13,7 @@ function csvCell(v: string): string {
   return /[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v;
 }
 
-/** Export CSV des lignes de factures publiées (filtre mois) — Admin / Bailleur (§6). */
+/** CSV export of published invoice lines (month filter) — Admin / Bailleur (§6). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin", "bailleur");
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
       l.statut,
       new Date(l.facture.dateLimite).toISOString().slice(0, 10),
     ]);
-    // BOM pour qu'Excel reconnaisse l'UTF-8.
+    // BOM so Excel recognizes UTF-8.
     const csv = "﻿" + [header, ...rows].map((r) => r.map(csvCell).join(",")).join("\n");
 
     await audit(req, user.sub, "export.factures", "facture", undefined, { mois, count: rows.length });

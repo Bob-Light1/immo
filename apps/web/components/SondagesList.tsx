@@ -17,7 +17,7 @@ interface Sondage {
   myVote: number | null;
 }
 
-/** Sondages : création (Admin) + vote + résultats temps réel + clôture (§5.13). */
+/** Polls: creation (Admin) + vote + real-time results + closing (§5.13). */
 export function SondagesList({ admin }: { admin: boolean }) {
   const t = useTranslations("sondages");
   const [items, setItems] = useState<Sondage[] | null>(null);

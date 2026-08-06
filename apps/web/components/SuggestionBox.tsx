@@ -13,7 +13,7 @@ interface MySuggestion {
   isReadAdmin: boolean;
 }
 
-/** Boîte à suggestions de l'utilisateur : soumission + suivi (§5.4). */
+/** The user's suggestion box: submission + tracking (§5.4). */
 export function SuggestionBox() {
   const t = useTranslations("suggestions");
   const locale = useLocale();

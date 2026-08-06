@@ -3,20 +3,20 @@ import { publishNotif } from "../realtime";
 import { sendPushToUser } from "../push";
 
 /**
- * Job échéances (quotidien) — conception §5.1.
- *  1. Passe en `retard` les lignes publiées non soldées dont la date limite
- *     est dépassée.
- *  2. Émet une alerte in-app au locataire aux jalons J-2 / J0 / J+3 / J+7.
+ * Due-date job (daily) — design §5.1.
+ *  1. Moves published, unpaid lines past their deadline to `retard`.
+ *  2. Emits an in-app alert to the tenant at the D-2 / D0 / D+3 / D+7
+ *     milestones.
  *
- * Idempotent : relançable plusieurs fois le même jour sans doublon d'alerte
- * (déduplication par titre + jour). La livraison multicanal (push/SMS/email)
- * relève du P2 ; ici on matérialise la notification interne.
+ * Idempotent: can run several times a day without duplicating an alert
+ * (deduplicated by title + day). Multichannel delivery (push/SMS/email) is P2;
+ * this job only materializes the in-app notification.
  */
 
 const DAY_MS = 86_400_000;
 const UNPAID = ["en_attente", "partiel", "retard"] as const;
 
-// Jalons d'alerte en jours relatifs à l'échéance (négatif = avant).
+// Alert milestones in days relative to the deadline (negative = before).
 const JALONS: Record<number, string> = {
   [-2]: "J-2",
   [0]: "J0",
@@ -24,10 +24,10 @@ const JALONS: Record<number, string> = {
   [7]: "J+7",
 };
 
-// Jour calendaire en repère UTC. `now` est interprété sur ses composantes
-// locales (le « aujourd'hui » de l'exploitant) ; les dates @db.Date sont
-// stockées/lues en minuit UTC, donc lues sur leurs composantes UTC. Comparer
-// les deux en UTC évite tout décalage d'un jour selon le fuseau.
+// Calendar day in the UTC frame. `now` is read from its local components (the
+// operator's "today"), whereas @db.Date values are stored and read at UTC
+// midnight, hence read from their UTC components. Comparing both in UTC avoids
+// any off-by-one-day drift across time zones.
 function calLocal(d: Date): number {
   return Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -59,7 +59,7 @@ export async function runEcheances(now: Date = new Date()): Promise<EcheancesRes
 
     const days = Math.round((today - calUTC(new Date(l.facture.dateLimite))) / DAY_MS);
 
-    // 1. Marquage retard (échéance dépassée).
+    // 1. Flag as overdue (deadline passed).
     if (days > 0 && l.statut !== "retard") {
       await prisma.factureLocataire.update({
         where: { id: l.id },
@@ -68,7 +68,7 @@ export async function runEcheances(now: Date = new Date()): Promise<EcheancesRes
       retardMarked++;
     }
 
-    // 2. Alerte au jalon courant.
+    // 2. Alert at the current milestone.
     const jalon = JALONS[days];
     if (!jalon) continue;
 

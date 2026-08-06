@@ -1,6 +1,6 @@
-// Session côté client. Le token d'accès (15 min) est conservé en
-// sessionStorage ; le refresh token reste en cookie HttpOnly et est
-// consommé par /api/auth/refresh (rotation, conception §4).
+// Client-side session. The access token (15 min) is kept in sessionStorage;
+// the refresh token stays in an HttpOnly cookie and is consumed by
+// /api/auth/refresh (rotation, design §4).
 
 export interface SessionUser {
   id: string;
@@ -43,10 +43,10 @@ export function clearSession(): void {
 }
 
 /**
- * Décode l'`exp` du JWT (sans vérifier la signature, simple lecture client)
- * et indique s'il est expiré ou sur le point de l'être (marge de 10 s).
- * En cas de doute (jeton illisible) on renvoie false : la voie réactive 401
- * reste le filet de sécurité.
+ * Decodes the JWT `exp` (client-side read only, signature not verified) and
+ * reports whether it is expired or about to be (10 s margin).
+ * When in doubt (unreadable token) it returns false: the reactive 401 path
+ * stays the safety net.
  */
 function tokenExpired(token: string): boolean {
   try {
@@ -59,12 +59,12 @@ function tokenExpired(token: string): boolean {
   }
 }
 
-// Déduplique les rafraîchissements concurrents : plusieurs requêtes qui
-// expirent en même temps partagent une seule rotation du refresh token
-// (sinon les rotations se télescopent et invalident le cookie le plus récent).
+// Deduplicates concurrent refreshes: several requests expiring at the same
+// time share a single refresh-token rotation (otherwise rotations collide and
+// invalidate the most recent cookie).
 let refreshing: Promise<boolean> | null = null;
 
-/** Échange le cookie refresh contre un nouveau couple de jetons. */
+/** Exchanges the refresh cookie for a new token pair. */
 function tryRefresh(): Promise<boolean> {
   if (!refreshing) {
     refreshing = (async () => {
@@ -85,11 +85,11 @@ function tryRefresh(): Promise<boolean> {
 }
 
 /**
- * Récupère la session, en la reconstruisant depuis le cookie refresh si
- * sessionStorage est vide. Indispensable en PWA installée : le jeton d'accès
- * ne survit pas à la fermeture de l'app alors que le cookie reste valide 7
- * jours — sans cette reprise, chaque lancement repassait par l'écran de
- * connexion.
+ * Returns the session, rebuilding it from the refresh cookie when
+ * sessionStorage is empty. Essential in an installed PWA: the access token
+ * does not survive closing the app whereas the cookie stays valid for 7
+ * days — without this recovery, every launch went back through the login
+ * screen.
  */
 export async function restoreSession(): Promise<Session | null> {
   const existing = getSession();
@@ -97,7 +97,7 @@ export async function restoreSession(): Promise<Session | null> {
   return (await tryRefresh()) ? getSession() : null;
 }
 
-/** Déconnexion : invalide le refresh côté serveur puis purge la session locale. */
+/** Logout: invalidates the refresh server-side then clears the local session. */
 export async function logoutSession(): Promise<void> {
   try {
     const s = getSession();
@@ -106,12 +106,12 @@ export async function logoutSession(): Promise<void> {
       headers: s ? { Authorization: `Bearer ${s.token}` } : undefined,
     });
   } catch {
-    /* la purge locale suffit si le serveur est injoignable */
+    /* clearing locally is enough when the server is unreachable */
   }
   clearSession();
 }
 
-/** Télécharge un fichier servi par une route authentifiée (Bearer → blob). */
+/** Downloads a file served by an authenticated route (Bearer → blob). */
 export async function downloadAuthed(path: string, filename: string): Promise<boolean> {
   const res = await apiFetch(path);
   if (!res.ok) return false;
@@ -127,15 +127,21 @@ export async function downloadAuthed(path: string, filename: string): Promise<bo
   return true;
 }
 
-/** Télécharge le reçu PDF d'un paiement (requête authentifiée → blob). */
+/** Downloads a payment's PDF receipt (authenticated request → blob). */
 export function downloadRecu(paiementId: string): Promise<boolean> {
   return downloadAuthed(`/api/paiements/${paiementId}/recu`, `recu-${paiementId.slice(0, 8)}.pdf`);
 }
 
+/** Downloads a line's personal PDF invoice (rent, water, housing…). */
+export function downloadFactureLigne(ligneId: string, libelle: string): Promise<boolean> {
+  const slug = libelle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  return downloadAuthed(`/api/factures/lignes/${ligneId}/pdf`, `facture-${slug}.pdf`);
+}
+
 /**
- * Téléverse un fichier vers /api/uploads (multipart). Ne fixe pas
- * Content-Type : le navigateur ajoute la boundary. Rejoue une fois sur 401
- * après rotation du refresh. Renvoie l'URL publique ou lève une erreur.
+ * Uploads a file to /api/uploads (multipart). Does not set Content-Type: the
+ * browser adds the boundary. Replays once on 401 after a refresh rotation.
+ * Returns the public URL, or throws.
  */
 export async function uploadFile(file: File, kind: "image" | "document"): Promise<string> {
   async function send(): Promise<Response> {
@@ -149,7 +155,7 @@ export async function uploadFile(file: File, kind: "image" | "document"): Promis
       body: fd,
     });
   }
-  // Rafraîchit en amont si le jeton est déjà expiré (évite un 401 inutile).
+  // Refresh up front when the token is already expired (avoids a useless 401).
   const cur = getSession();
   if (cur && tokenExpired(cur.token)) await tryRefresh();
   let res = await send();
@@ -162,12 +168,12 @@ export async function uploadFile(file: File, kind: "image" | "document"): Promis
   return data.url;
 }
 
-// Pas de rafraîchissement automatique sur les routes d'auth elles-mêmes.
+// No automatic refresh on the auth routes themselves.
 const NO_REFRESH = ["/api/auth/login", "/api/auth/refresh", "/api/auth/logout"];
 
 /**
- * fetch authentifié : attache le Bearer token et le Content-Type JSON.
- * Sur 401, tente une rotation du refresh token puis rejoue la requête (1 fois).
+ * Authenticated fetch: attaches the Bearer token and the JSON Content-Type.
+ * On 401, attempts a refresh-token rotation then replays the request (once).
  */
 export async function apiFetch(
   path: string,
@@ -175,8 +181,8 @@ export async function apiFetch(
   retry = true,
 ): Promise<Response> {
   let s = getSession();
-  // Rafraîchit en amont si le jeton est déjà expiré : la requête part avec un
-  // jeton valide, ce qui évite le 401 transitoire (et son log console).
+  // Refresh up front when the token is already expired: the request leaves with
+  // a valid token, avoiding the transient 401 (and its console log).
   if (s && retry && !NO_REFRESH.includes(path) && tokenExpired(s.token)) {
     if (await tryRefresh()) s = getSession();
   }

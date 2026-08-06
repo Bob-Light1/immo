@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { moisCourant } from "@/lib/format";
+import { FACTURE_TYPES, isLoyer } from "@campusgest/shared";
 import { Card, PageTitle, Field, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 
-const TYPES_SUGGERES = ["Eau", "Électricité", "Nettoyage", "Contribution"];
-
 /**
- * Création d'une facture (brouillon). Tous les locataires actifs sont
- * rattachés avec un coefficient 1 ; les coefficients s'ajustent ensuite
- * sur la page de détail, avant publication.
+ * Invoice creation (draft). Every active tenant is attached with a coefficient
+ * of 1; the coefficients are then adjusted on the detail page, before
+ * publication.
+ *
+ * "Loyer" exception: no split. The Admin enters the annual amount owed by each
+ * tenant, carried as-is onto every line.
  */
 export default function NewFacturePage() {
   const t = useTranslations("factures.new");
@@ -25,14 +27,22 @@ export default function NewFacturePage() {
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
+  const loyer = isLoyer(type);
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
     setSaving(true);
     setError(null);
     try {
+      const montant = Number(montantTotal);
       const res = await apiFetch("/api/factures", {
         method: "POST",
-        body: JSON.stringify({ type, montantTotal: Number(montantTotal), mois, dateLimite }),
+        body: JSON.stringify({
+          type,
+          ...(loyer ? { montantParLocataire: montant } : { montantTotal: montant }),
+          mois,
+          dateLimite,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -63,12 +73,12 @@ export default function NewFacturePage() {
               maxLength={60}
             />
             <datalist id="types-factures">
-              {TYPES_SUGGERES.map((v) => (
+              {FACTURE_TYPES.map((v) => (
                 <option key={v} value={v} />
               ))}
             </datalist>
           </Field>
-          <Field label={t("montantTotal")}>
+          <Field label={loyer ? t("montantAnnuelLocataire") : t("montantTotal")}>
             <input
               className={inputCls}
               type="number"
@@ -77,10 +87,10 @@ export default function NewFacturePage() {
               value={montantTotal}
               onChange={(e) => setMontantTotal(e.target.value)}
               required
-              placeholder="60000"
+              placeholder={loyer ? "240000" : "60000"}
             />
           </Field>
-          <Field label={t("mois")}>
+          <Field label={loyer ? t("moisLoyer") : t("mois")}>
             <input
               className={inputCls}
               type="month"
@@ -99,7 +109,7 @@ export default function NewFacturePage() {
             />
           </Field>
           <ErrorText>{error}</ErrorText>
-          <p className="text-xs text-slate-500">{t("hint")}</p>
+          <p className="text-xs text-slate-500">{loyer ? t("hintLoyer") : t("hint")}</p>
           <button type="submit" disabled={saving} className={btnPrimary}>
             {saving ? "…" : t("submit")}
           </button>

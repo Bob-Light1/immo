@@ -9,14 +9,14 @@ export const metadata: Metadata = {
   title: "KingCity",
   description: "Gestion de cité universitaire — Cameroun",
   manifest: "/manifest.json",
-  // iOS ignore les icônes du manifeste : l'écran d'accueil utilise apple-touch-icon.
+  // iOS ignores the manifest icons: the home screen uses apple-touch-icon.
   icons: { apple: "/icons/icon-192.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "KingCity" },
 };
 
 export const viewport: Viewport = {
   themeColor: "#1A3C6E",
-  // Occupe la zone sous l'encoche en mode standalone.
+  // Fills the area under the notch in standalone mode.
   viewportFit: "cover",
 };
 
@@ -32,7 +32,7 @@ export default async function LocaleLayout({
   return (
     <html lang={locale} suppressHydrationWarning>
       <head>
-        {/* Applique le thème avant le rendu pour éviter le flash (FOUC). */}
+        {/* Applies the theme before rendering to avoid the flash (FOUC). */}
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var t=localStorage.getItem('cg_theme');var d=t==='dark'||(t===null&&window.matchMedia('(prefers-color-scheme: dark)').matches);if(d)document.documentElement.classList.add('dark');}catch(e){}})();`,

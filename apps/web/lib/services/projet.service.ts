@@ -3,9 +3,9 @@ import { ServiceError } from "@/lib/api";
 import type { ProjetInput, Role } from "@campusgest/shared";
 
 /**
- * Projet commun & cotisations (conception §5.10). L'Admin publie un projet
- * visible par les rôles choisis ; les utilisateurs cotisent et la cagnotte
- * (collecté / objectif) progresse.
+ * Shared project & contributions (design §5.10). The Admin publishes a project
+ * visible to the chosen roles; users contribute and the pot (collected /
+ * target) grows.
  */
 
 function isVisible(visibleRoles: unknown, role: Role): boolean {

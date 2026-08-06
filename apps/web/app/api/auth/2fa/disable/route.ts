@@ -6,7 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { verifyTotp } from "@/lib/totp";
 
-/** Désactive le 2FA après validation d'un dernier code (§9). */
+/** Disables 2FA after validating one last code (§9). */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const auth = requireRole(req, "admin");

@@ -5,10 +5,10 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createSuggestion, listSuggestions } from "@/lib/services/suggestion.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Liste de gestion — Admin (toutes) / Bailleur (visibles uniquement). */
+/** Management list — Admin (all) / Bailleur (visible ones only). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin", "bailleur");
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
   });
 }
 
-/** Soumission d'une suggestion — tout utilisateur authentifié. */
+/** Submits a suggestion — any authenticated user. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

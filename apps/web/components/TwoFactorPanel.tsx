@@ -5,7 +5,7 @@ import { useTranslations } from "next-intl";
 import { apiFetch, getSession } from "@/lib/client/session";
 import { Card, Field, ErrorText, inputCls, btnPrimary, btnSecondary } from "@/components/ui";
 
-/** Activation / désactivation du 2FA TOTP (Admin) — conception §9. */
+/** Enables / disables TOTP 2FA (Admin) — design §9. */
 export function TwoFactorPanel() {
   const t = useTranslations("twofa");
   const [enabled, setEnabled] = useState<boolean | null>(null);

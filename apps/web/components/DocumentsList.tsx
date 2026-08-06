@@ -20,8 +20,8 @@ interface Doc {
 }
 
 /**
- * Documents partagés (§5.15). L'Admin téléverse un fichier (obligatoire) et
- * choisit les rôles destinataires ; les autres consultent / téléchargent.
+ * Shared documents (§5.15). The Admin uploads a file (mandatory) and picks the
+ * recipient roles; everyone else views / downloads.
  */
 export function DocumentsList({ admin }: { admin: boolean }) {
   const t = useTranslations("documents");

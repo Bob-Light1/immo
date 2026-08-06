@@ -9,9 +9,9 @@ import { DISTRESS_CLICKS_TO_TRIGGER } from "@campusgest/shared";
 const WINDOW_MS = 3000;
 
 /**
- * Bouton de détresse (§5.8). Anti-accident : il faut DISTRESS_CLICKS_TO_TRIGGER
- * clics rapides (fenêtre de 3 s) pour déclencher. Propose le partage de position
- * (consentement explicite) avant l'envoi.
+ * Distress button (§5.8). Accident guard: DISTRESS_CLICKS_TO_TRIGGER rapid
+ * clicks (3 s window) are required to fire. Offers position sharing (explicit
+ * consent) before sending.
  */
 export function DistressButton() {
   const t = useTranslations("distress");
@@ -32,9 +32,9 @@ export function DistressButton() {
   }
 
   /**
-   * Récupère la position et la rattache au signal déjà parti. Détaché du
-   * chemin d'alerte : ni la demande d'autorisation du navigateur, ni la lecture
-   * GPS (plusieurs secondes) ne peuvent retarder ou empêcher l'envoi.
+   * Reads the position and attaches it to the signal already sent. Kept off the
+   * alert path: neither the browser's permission prompt nor the GPS read
+   * (several seconds) can delay or prevent the emission.
    */
   async function attachPosition(signalId: string) {
     const pos = await getPosition();
@@ -48,7 +48,7 @@ export function DistressButton() {
   async function fire() {
     setStatus("sending");
     try {
-      // Le signal part d'abord, toujours, sans condition.
+      // The signal goes out first, always, unconditionally.
       const res = await apiFetch("/api/distress", {
         method: "POST",
         body: JSON.stringify({ geoConsent: false }),
@@ -57,7 +57,7 @@ export function DistressButton() {
 
       if (res.ok) {
         const { id } = (await res.json()) as { id: string };
-        // Le consentement géoloc est demandé après coup, alerte déjà diffusée.
+        // Geolocation consent is requested afterwards, alert already broadcast.
         void confirm({ message: t("geoPrompt"), confirmLabel: t("label") }).then((ok) => {
           if (ok) void attachPosition(id);
         });

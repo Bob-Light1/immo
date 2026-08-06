@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { apiFetch, uploadFile } from "@/lib/client/session";
 import { Card, Field, Spinner, ErrorText, inputCls, btnPrimary } from "@/components/ui";
+import { useConfirm } from "@/components/Toast";
 
 interface Portfolio {
   bio: string | null;
@@ -19,10 +20,14 @@ interface Portfolio {
 const fromLines = (s: string) => s.split("\n").map((x) => x.trim()).filter(Boolean);
 const fromTags = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean);
 
-/** Édition de mon portfolio professionnel (§5.7). */
+/** Editing my professional portfolio (§5.7). */
 export function PortfolioForm() {
   const t = useTranslations("portfolio");
+  const confirm = useConfirm();
   const [loaded, setLoaded] = useState(false);
+  // A portfolio only exists after a first save: removal is therefore offered
+  // only in that case.
+  const [exists, setExists] = useState(false);
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -36,6 +41,7 @@ export function PortfolioForm() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
+  const [deleted, setDeleted] = useState(false);
 
   useEffect(() => {
     apiFetch("/api/portfolios").then(async (res) => {
@@ -43,6 +49,7 @@ export function PortfolioForm() {
         const data = (await res.json()) as { portfolio: Portfolio | null };
         const p = data.portfolio;
         if (p) {
+          setExists(true);
           setPhotoUrl(p.photoUrl ?? "");
           setBio(p.bio ?? "");
           setCompetences((p.competences ?? []).join(", "));
@@ -98,6 +105,36 @@ export function PortfolioForm() {
         return;
       }
       setSaved(true);
+      setExists(true);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  /** Removes my profile from the directory (the account stays intact). */
+  async function remove() {
+    const ok = await confirm({ message: t("confirmDelete"), confirmLabel: t("delete") });
+    if (!ok) return;
+    setBusy(true);
+    setError(null);
+    setSaved(false);
+    try {
+      const res = await apiFetch("/api/portfolios", { method: "DELETE" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => null);
+        setError(d?.error ?? t("deleteFailed"));
+        return;
+      }
+      setExists(false);
+      setPhotoUrl("");
+      setBio("");
+      setCompetences("");
+      setDiplomes("");
+      setRealisations("");
+      setContact("");
+      setEmailPro("");
+      setDispo(false);
+      setDeleted(true);
     } finally {
       setBusy(false);
     }
@@ -168,9 +205,22 @@ export function PortfolioForm() {
         </label>
         <ErrorText>{error}</ErrorText>
         {saved && <p className="text-sm font-medium text-emerald-600">{t("saved")}</p>}
-        <button type="submit" disabled={busy} className={btnPrimary}>
-          {busy ? "…" : t("save")}
-        </button>
+        {deleted && <p className="text-sm font-medium text-slate-600">{t("deleted")}</p>}
+        <div className="flex flex-wrap items-center gap-3">
+          <button type="submit" disabled={busy} className={btnPrimary}>
+            {busy ? "…" : t("save")}
+          </button>
+          {exists && (
+            <button
+              type="button"
+              onClick={remove}
+              disabled={busy}
+              className="text-sm font-medium text-red-600 underline-offset-2 hover:underline disabled:opacity-60"
+            >
+              {t("delete")}
+            </button>
+          )}
+        </div>
       </form>
     </Card>
   );

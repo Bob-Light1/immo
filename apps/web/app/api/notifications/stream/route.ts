@@ -10,14 +10,14 @@ export const dynamic = "force-dynamic";
 const HEARTBEAT_MS = 25_000;
 
 /**
- * Flux temps réel des notifications (SSE, conception §8.3). EventSource ne peut
- * pas porter d'en-tête Authorization : on s'authentifie via le cookie refresh
- * (HttpOnly, envoyé automatiquement en same-origin).
+ * Real-time notification stream (SSE, design §8.3). EventSource cannot carry an
+ * Authorization header: authentication goes through the refresh cookie
+ * (HttpOnly, sent automatically on same-origin requests).
  *
- * La relecture de la base est déclenchée par un signal Redis publié à chaque
- * écriture de notification — y compris depuis les jobs workers, dans un autre
- * process. Le sondage ne subsiste qu'en filet de sécurité (30 s), contre 8 s
- * par client auparavant. Sans Redis configuré, on retombe sur le sondage seul.
+ * Re-reading the database is triggered by a Redis signal published on every
+ * notification write — including from the worker jobs, in another process.
+ * Polling survives only as a safety net (30 s), against 8 s per client before.
+ * Without Redis configured, polling alone takes over.
  */
 export async function GET(req: NextRequest) {
   const cookie = req.cookies.get(REFRESH_COOKIE)?.value;
@@ -62,7 +62,7 @@ export async function GET(req: NextRequest) {
           const unread = await prisma.notification.count({ where: { ...where, isRead: false } });
           send("unread", { unread });
         } catch {
-          /* erreur transitoire : on réessaiera au prochain tick */
+          /* transient error: retried on the next tick */
         }
       };
 
@@ -74,20 +74,20 @@ export async function GET(req: NextRequest) {
         try {
           controller.close();
         } catch {
-          /* déjà fermé */
+          /* already closed */
         }
       };
 
       send("ready", { ok: true });
       void tick();
 
-      // Relais Redis : la relecture est déclenchée à l'écriture, pas au rythme
-      // d'une horloge. Le sondage passe alors en simple filet de sécurité.
+      // Redis relay: re-reading is triggered by writes, not by a clock. Polling
+      // then falls back to being a mere safety net.
       unsubscribe = onNotifFor(userId, role, () => void tick());
       timer = setInterval(() => void tick(), unsubscribe ? SAFETY_POLL_MS : FALLBACK_POLL_MS);
-      // Un client parti brutalement (écran verrouillé, PWA fermée) ne déclenche
-      // pas toujours `abort`/`cancel` : l'enqueue lèverait alors en boucle dans
-      // le setInterval, hors de toute portée try/catch. On ferme proprement.
+      // A client that vanished abruptly (locked screen, PWA closed) does not
+      // always fire `abort`/`cancel`: enqueue would then throw repeatedly inside
+      // the setInterval, outside any try/catch. Close cleanly instead.
       beat = setInterval(() => {
         try {
           controller.enqueue(enc.encode(": hb\n\n"));

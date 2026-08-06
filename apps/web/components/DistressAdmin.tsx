@@ -17,7 +17,7 @@ interface Signal {
   sender: { id: string; fullName: string; distressReview: boolean; distressDisabled: boolean };
 }
 
-/** Suivi & arbitrage des signaux de détresse — Admin (§5.8). */
+/** Distress signal tracking & arbitration — Admin (§5.8). */
 export function DistressAdmin() {
   const t = useTranslations("distress");
   const locale = useLocale();

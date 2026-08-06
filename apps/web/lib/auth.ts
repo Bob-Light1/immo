@@ -3,7 +3,7 @@ import type { JwtPayload, Role } from "@campusgest/shared";
 
 const ACCESS_SECRET = process.env.JWT_SECRET ?? "dev-access-secret-change-me";
 const REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? "dev-refresh-secret-change-me";
-// Les TTL viennent de l'env (string). @types/jsonwebtoken attend `number | StringValue`.
+// TTLs come from the env (string). @types/jsonwebtoken expects `number | StringValue`.
 const ACCESS_TTL = (process.env.ACCESS_TOKEN_TTL ?? "15m") as SignOptions["expiresIn"];
 const REFRESH_TTL = (process.env.REFRESH_TOKEN_TTL ?? "7d") as SignOptions["expiresIn"];
 
@@ -16,7 +16,7 @@ export function signAccessToken(payload: {
 }
 
 export function signRefreshToken(payload: { sub: string; ver: number }): string {
-  // jti : chaque refresh token émis est unique (rotation traçable).
+  // jti: every issued refresh token is unique (traceable rotation).
   return jwt.sign(payload, REFRESH_SECRET, {
     expiresIn: REFRESH_TTL,
     jwtid: crypto.randomUUID(),
@@ -33,7 +33,7 @@ export function verifyRefreshToken(token: string): { sub: string; ver: number } 
 
 export const REFRESH_COOKIE = "refresh_token";
 
-/** Options communes du cookie refresh (login, rotation, change-credentials). */
+/** Shared refresh-cookie options (login, rotation, change-credentials). */
 export const refreshCookieOptions = {
   httpOnly: true,
   secure: process.env.NODE_ENV === "production",

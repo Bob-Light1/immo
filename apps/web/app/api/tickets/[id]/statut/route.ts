@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { updateTicketStatut } from "@/lib/services/ticket.service";
 
-/** Change le statut / la priorité / l'assignation d'un ticket — Admin (§5.12). */
+/** Changes a ticket's status / priority / assignment — Admin (§5.12). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

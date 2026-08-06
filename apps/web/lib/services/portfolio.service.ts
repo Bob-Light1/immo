@@ -3,9 +3,9 @@ import { ServiceError } from "@/lib/api";
 import type { PortfolioInput } from "@campusgest/shared";
 
 /**
- * Portfolio professionnel (§5.7) & annuaire des résidents (§5.14). Le portfolio
- * est visible par tous (réseautage) ; l'annuaire est une vue dérivée filtrable
- * par compétence/diplôme et disponibilité aux recommandations.
+ * Professional portfolio (§5.7) & resident directory (§5.14). A portfolio is
+ * visible to everyone (networking); the directory is a derived view filterable
+ * by skill/degree and availability for recommendations.
  */
 
 export async function getPortfolio(userId: string) {
@@ -30,6 +30,17 @@ export async function upsertPortfolio(userId: string, input: PortfolioInput) {
   };
   await prisma.portfolio.upsert({ where: { userId }, create: { userId, ...data }, update: data });
   return getPortfolio(userId);
+}
+
+/**
+ * Removes a portfolio from the directory (§5.7). The account stays intact: only
+ * the professional profile disappears, and its owner can recreate it.
+ */
+export async function deletePortfolio(userId: string) {
+  const existe = await prisma.portfolio.findUnique({ where: { userId }, select: { id: true } });
+  if (!existe) throw new ServiceError(404, "Aucun portfolio à retirer.");
+  await prisma.portfolio.delete({ where: { userId } });
+  return { ok: true };
 }
 
 export async function searchAnnuaire(skill: string | undefined, dispoOnly: boolean) {

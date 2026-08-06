@@ -26,7 +26,7 @@ interface BailleurDashboard {
   }[];
 }
 
-/** Tableau de bord Bailleur : KPI financiers, tendance, impayés (§6.2). */
+/** Bailleur dashboard: financial KPIs, trend, unpaid (§6.2). */
 export default function BailleurHomePage() {
   const t = useTranslations("dashboard");
   const locale = useLocale();

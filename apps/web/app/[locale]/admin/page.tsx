@@ -30,7 +30,7 @@ interface AdminDashboard {
   }[];
 }
 
-/** Tableau de bord Admin : KPI, facturé vs encaissé, impayés, activité (§6.1). */
+/** Admin dashboard: KPIs, billed vs collected, unpaid, activity (§6.1). */
 export default function AdminHomePage() {
   const t = useTranslations("dashboard");
   const tPay = useTranslations("paiement.modes");

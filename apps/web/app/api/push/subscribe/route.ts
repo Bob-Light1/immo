@@ -4,7 +4,7 @@ import { handle, json } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { saveSubscription } from "@/lib/push";
 
-/** Enregistre l'abonnement Web Push de l'utilisateur courant. */
+/** Stores the current user's Web Push subscription. */
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

@@ -1,6 +1,6 @@
 import { apiFetch } from "./session";
 
-/** Abonnement Web Push côté navigateur (conception §5.3 / §7.2). */
+/** Browser-side Web Push subscription (design §5.3 / §7.2). */
 
 function urlBase64ToUint8Array(base64: string): Uint8Array {
   const padding = "=".repeat((4 - (base64.length % 4)) % 4);
@@ -25,10 +25,10 @@ export function pushPermission(): NotificationPermission | "unsupported" {
 }
 
 /**
- * Cet appareil est-il réellement abonné ? `Notification.permission` ne suffit
- * pas : elle reste "granted" après un désabonnement (et l'est déjà sur un
- * appareil ayant accepté pour un autre compte), ce qui décrivait un état
- * d'abonnement inexistant.
+ * Is this device actually subscribed? `Notification.permission` is not enough:
+ * it stays "granted" after unsubscribing (and is already granted on a device
+ * that accepted for another account), which reported a subscription state that
+ * did not exist.
  */
 export async function pushSubscribed(): Promise<boolean> {
   if (!pushSupported()) return false;
@@ -36,7 +36,7 @@ export async function pushSubscribed(): Promise<boolean> {
   return !!(await reg?.pushManager.getSubscription());
 }
 
-// En dev le service worker est désactivé : `ready` ne résout jamais, d'où le timeout.
+// The service worker is disabled in dev: `ready` never resolves, hence the timeout.
 function swReady(timeoutMs = 3000): Promise<ServiceWorkerRegistration | null> {
   return Promise.race([
     navigator.serviceWorker.ready,
@@ -44,7 +44,7 @@ function swReady(timeoutMs = 3000): Promise<ServiceWorkerRegistration | null> {
   ]);
 }
 
-/** Demande la permission puis abonne l'appareil. */
+/** Requests permission then subscribes the device. */
 export async function enablePush(): Promise<{ ok: boolean; reason?: string }> {
   if (!pushSupported()) return { ok: false, reason: "unsupported" };
   const perm = await Notification.requestPermission();
@@ -73,9 +73,9 @@ export async function enablePush(): Promise<{ ok: boolean; reason?: string }> {
 }
 
 /**
- * Désabonne cet appareil. L'`endpoint` est envoyé au serveur avant l'appel à
- * `unsubscribe()` : c'est lui qui identifie l'appareil, et sans lui le serveur
- * supprimerait aussi les abonnements des autres appareils de l'utilisateur.
+ * Unsubscribes this device. The `endpoint` is sent to the server before calling
+ * `unsubscribe()`: it identifies the device, and without it the server would
+ * also delete the subscriptions of the user's other devices.
  */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return;

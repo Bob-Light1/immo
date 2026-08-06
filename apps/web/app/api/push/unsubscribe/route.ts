@@ -4,9 +4,9 @@ import { requireAuth } from "@/lib/rbac";
 import { clearSubscription } from "@/lib/push";
 
 /**
- * Désabonne l'appareil courant. Le client transmet son `endpoint` : sans lui on
- * purgerait tous les appareils de l'utilisateur, y compris ceux qui n'ont rien
- * demandé.
+ * Unsubscribes the current device. The client sends its `endpoint`: without it
+ * every device of the user would be purged, including those that asked for
+ * nothing.
  */
 export async function POST(req: NextRequest) {
   return handle(async () => {

@@ -7,7 +7,7 @@ import {
   type ChangeCredentialsInput,
 } from "@campusgest/shared";
 
-/** Mot de passe temporaire lisible (sans caractères ambigus). */
+/** Readable temporary password (no ambiguous characters). */
 function genTempPassword(len = 8): string {
   const alphabet = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
   let out = "";
@@ -18,9 +18,9 @@ function genTempPassword(len = 8): string {
 }
 
 /**
- * Crée un utilisateur (Admin). Génère un mot de passe temporaire renvoyé
- * en clair UNE fois à l'admin, qui le communique hors-bande (SMS/remise).
- * L'utilisateur devra le changer à sa première connexion (first_login = true).
+ * Creates a user (Admin). Generates a temporary password returned in clear
+ * text ONCE to the admin, who passes it on out of band (SMS/in person).
+ * The user must change it on first login (first_login = true).
  */
 export async function createUser(input: CreateUserInput) {
   const existing = await prisma.user.findUnique({ where: { username: input.username } });
@@ -89,9 +89,9 @@ export async function listUsers(
 }
 
 /**
- * Désactivation (soft delete) : on conserve l'historique via les FK.
- * §5.1 : le locataire désactivé est retiré des factures non publiées
- * (recalcul de la répartition) ; les factures publiées restent figées.
+ * Deactivation (soft delete): history is preserved through the FKs.
+ * §5.1: a deactivated tenant is pulled out of unpublished invoices (the split
+ * is recomputed); published invoices stay frozen.
  */
 export async function deactivateUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
@@ -118,8 +118,8 @@ export async function deactivateUser(id: string) {
 
     const restantes = facture.lignes.filter((l) => l.id !== ligne.id);
     if (restantes.length === 0) {
-      // Brouillon sans plus aucun destinataire : il n'est ni publiable
-      // ni éditable, on le supprime (cascade sur la ligne).
+      // A draft left with no recipient can neither be published nor
+      // edited, so it is deleted (cascading to the line).
       await prisma.facture.delete({ where: { id: facture.id } });
       continue;
     }
@@ -148,7 +148,7 @@ export async function deactivateUser(id: string) {
   return updated;
 }
 
-/** Changement d'identifiants par l'utilisateur lui-même. */
+/** Credential change performed by the user themselves. */
 export async function changeCredentials(userId: string, input: ChangeCredentialsInput) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
   if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
@@ -169,6 +169,6 @@ export async function changeCredentials(userId: string, input: ChangeCredentials
   }
 
   const updated = await prisma.user.update({ where: { id: userId }, data });
-  // tokenVersion a changé : l'appelant doit réémettre les jetons.
+  // tokenVersion changed: the caller must reissue the tokens.
   return { username: updated.username, role: updated.role, tokenVersion: updated.tokenVersion };
 }

@@ -4,9 +4,9 @@ import type { PostInput } from "@campusgest/shared";
 import { notifyAllActive } from "./notification.service";
 
 /**
- * Fil d'infos / posts (conception §5.9). L'Admin et le Bailleur publient une
- * info accompagnée d'une image obligatoire ; tous les utilisateurs la
- * consultent. L'Admin peut masquer un post (modération).
+ * News feed / posts (design §5.9). The Admin and the Bailleur publish an item
+ * together with a mandatory image; every user can read it. The Admin can hide
+ * a post (moderation).
  */
 
 interface PostRow {
@@ -41,7 +41,7 @@ export async function createPost(authorId: string, input: PostInput) {
     },
     include: { author: { select: { fullName: true } } },
   });
-  // Diffuse l'info au reste de la communauté (in-app + push).
+  // Broadcast the item to the rest of the community (in-app + push).
   await notifyAllActive("annonce", input.titre, input.description);
   return toDto(post);
 }

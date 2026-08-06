@@ -3,10 +3,10 @@ import { handle, json } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { listMySuggestions } from "@/lib/services/suggestion.service";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
-/** Mes suggestions (sans exposer qui les consulte). */
+/** My suggestions (without exposing who reads them). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

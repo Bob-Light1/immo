@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
-import { apiFetch } from "@/lib/client/session";
+import { apiFetch, getSession } from "@/lib/client/session";
 import { Card, PageTitle, Spinner, EmptyState, inputCls, btnSecondary } from "@/components/ui";
+import { useConfirm } from "@/components/Toast";
 
 interface Resident {
   userId: string;
@@ -17,12 +18,29 @@ interface Resident {
   emailPro: string | null;
 }
 
-/** Annuaire des résidents : recherche par compétence/diplôme (§5.14). */
+/** Resident directory: search by skill/degree (§5.14). */
 export function AnnuaireSearch() {
   const t = useTranslations("annuaire");
+  const tP = useTranslations("portfolio");
+  const confirm = useConfirm();
   const [skill, setSkill] = useState("");
   const [dispo, setDispo] = useState(false);
   const [items, setItems] = useState<Resident[] | null>(null);
+  // Moderation: the Admin can remove a resident's profile from the directory.
+  const [admin, setAdmin] = useState(false);
+  useEffect(() => {
+    setAdmin(getSession()?.user.role === "admin");
+  }, []);
+
+  async function removePortfolio(r: Resident) {
+    const ok = await confirm({
+      message: tP("confirmDeleteOther", { name: r.fullName }),
+      confirmLabel: tP("delete"),
+    });
+    if (!ok) return;
+    const res = await apiFetch(`/api/portfolios/${r.userId}`, { method: "DELETE" });
+    if (res.ok) setItems((list) => (list ?? []).filter((x) => x.userId !== r.userId));
+  }
 
   async function search() {
     setItems(null);
@@ -97,6 +115,14 @@ export function AnnuaireSearch() {
               )}
               {(r.contact || r.emailPro) && (
                 <div className="mt-2 text-xs text-slate-400">{r.emailPro || r.contact}</div>
+              )}
+              {admin && (
+                <button
+                  onClick={() => removePortfolio(r)}
+                  className="mt-3 text-xs font-medium text-red-600 underline-offset-2 hover:underline"
+                >
+                  {tP("deleteOther")}
+                </button>
               )}
             </Card>
           ))}

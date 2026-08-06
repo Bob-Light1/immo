@@ -13,7 +13,7 @@ import { audit, clientIp } from "@/lib/audit";
 import { verifyTotp } from "@/lib/totp";
 
 const LOGIN_MAX_ATTEMPTS = 10;
-const LOGIN_WINDOW_MS = 15 * 60 * 1000; // §9 : 10 essais / 15 min / IP
+const LOGIN_WINDOW_MS = 15 * 60 * 1000; // §9: 10 attempts / 15 min / IP
 
 export async function POST(req: NextRequest) {
   const ip = clientIp(req) ?? "local";
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
 
   const { username, password, totp } = parsed.data;
 
-  // Verrouillage par compte en plus de l'IP (backoff simple, §9).
+  // Per-account lockout on top of the per-IP one (simple backoff, §9).
   const perAccount = rateLimit(`login:user:${username}`, LOGIN_MAX_ATTEMPTS, LOGIN_WINDOW_MS);
   if (!perAccount.ok) {
     return NextResponse.json(
@@ -47,7 +47,7 @@ export async function POST(req: NextRequest) {
 
   const user = await prisma.user.findUnique({ where: { username } });
 
-  // Réponse uniforme pour ne pas révéler l'existence du compte.
+  // Uniform response so the account's existence is not revealed.
   const invalid = NextResponse.json({ error: "Identifiants invalides." }, { status: 401 });
   if (!user || !user.isActive) {
     await audit(req, null, "auth.login_failed", "user", undefined, { username });
@@ -60,7 +60,7 @@ export async function POST(req: NextRequest) {
     return invalid;
   }
 
-  // 2FA TOTP (Admin) : étape supplémentaire post-mot de passe (§9).
+  // TOTP 2FA (Admin): extra step after the password (§9).
   if (user.totpSecret) {
     if (!totp) {
       return NextResponse.json({ twoFactorRequired: true }, { status: 401 });

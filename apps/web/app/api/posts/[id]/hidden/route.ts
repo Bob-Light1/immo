@@ -5,7 +5,7 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { setPostHidden } from "@/lib/services/post.service";
 
-/** Masque / réaffiche un post (modération) — Admin (§5.9). */
+/** Hides / restores a post (moderation) — Admin (§5.9). */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   return handle(async () => {
     const user = requireRole(req, "admin");

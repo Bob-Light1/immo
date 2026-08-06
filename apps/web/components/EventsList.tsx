@@ -44,7 +44,7 @@ function EventBadge({ statut }: { statut: EvenementStatut }) {
   );
 }
 
-/** Liste & proposition d'événements ; décision (approuver/rejeter) si `admin` (§5.5). */
+/** Event list & proposals; decision (approve/reject) when `admin` (§5.5). */
 export function EventsList({ admin }: { admin: boolean }) {
   const t = useTranslations("evenements");
   const locale = useLocale();

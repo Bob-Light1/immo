@@ -16,8 +16,8 @@ interface Notif {
 }
 
 /**
- * Cloche de notifications : chargement initial + flux temps réel (SSE).
- * Le badge affiche le nombre de non-lues ; un clic ouvre le volet et marque lu.
+ * Notification bell: initial load + real-time stream (SSE).
+ * The badge shows the unread count; a click opens the panel and marks as read.
  */
 export function NotificationBell() {
   const t = useTranslations("notifications");
@@ -60,7 +60,7 @@ export function NotificationBell() {
       setUnread(data.unread);
     });
 
-    // Flux live : l'EventSource transporte le cookie refresh (same-origin).
+    // Live stream: the EventSource carries the refresh cookie (same-origin).
     const es = new EventSource("/api/notifications/stream");
     es.addEventListener("notification", (e) => {
       const n = JSON.parse((e as MessageEvent).data) as Notif;

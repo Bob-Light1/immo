@@ -5,12 +5,12 @@ import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 import { recapFacturesPdf } from "@/lib/pdf";
 
-// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+// Authenticated response: never statically rendered (one variant served to all).
 export const dynamic = "force-dynamic";
 
 export const runtime = "nodejs";
 
-/** Relevé PDF récapitulatif des factures publiées (filtre mois) — Admin / Bailleur (§6). */
+/** PDF summary statement of published invoices (month filter) — Admin / Bailleur (§6). */
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireRole(req, "admin", "bailleur");

@@ -4,10 +4,10 @@ import { BIRTHDAY_NOTICE_DAYS } from "@campusgest/shared";
 import { sendPushToUser } from "../push";
 
 /**
- * Job anniversaires (quotidien) — conception §5.6. Rappel J-7 (opt-in) : pour
- * chaque utilisateur actif ayant renseigné sa date et autorisé son partage
- * (`birthday_public`), si l'anniversaire tombe dans BIRTHDAY_NOTICE_DAYS jours,
- * notifie tous les utilisateurs actifs. Idempotent (dédup par titre + jour).
+ * Birthday job (daily) — design §5.6. D-7 reminder (opt-in): for every active
+ * user who filled in their date and allowed it to be shared
+ * (`birthday_public`), if the birthday falls in BIRTHDAY_NOTICE_DAYS days,
+ * notifies every active user. Idempotent (deduplicated by title + day).
  */
 
 function startOfDayLocal(d: Date): number {
@@ -20,7 +20,7 @@ export interface AnniversairesResult {
 }
 
 export async function runAnniversaires(now: Date = new Date()): Promise<AnniversairesResult> {
-  // Date cible = aujourd'hui + J-7 (composantes locales de l'exploitant).
+  // Target date = today + D-7 (operator's local components).
   const target = new Date(now.getFullYear(), now.getMonth(), now.getDate() + BIRTHDAY_NOTICE_DAYS);
   const tMonth = target.getMonth();
   const tDay = target.getDate();
@@ -38,7 +38,7 @@ export async function runAnniversaires(now: Date = new Date()): Promise<Annivers
 
   for (const u of users) {
     const bd = new Date(u.birthday!);
-    // Date @db.Date lue en minuit UTC → on lit ses composantes UTC.
+    // A @db.Date value is read at UTC midnight → read its UTC components.
     if (bd.getUTCMonth() !== tMonth || bd.getUTCDate() !== tDay) continue;
     birthdays++;
 

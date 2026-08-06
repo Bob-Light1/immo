@@ -1,6 +1,6 @@
 import type { SVGProps } from "react";
 
-/** Marque visuelle : couronne (King) + base (City). Hérite de `currentColor`. */
+/** Visual mark: crown (King) + base (City). Inherits `currentColor`. */
 export function CrownIcon(props: SVGProps<SVGSVGElement>) {
   return (
     <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" {...props}>
@@ -11,8 +11,8 @@ export function CrownIcon(props: SVGProps<SVGSVGElement>) {
 }
 
 /**
- * Logo KingCity. `size` règle la hauteur de l'icône et du texte ;
- * `iconOnly` n'affiche que la couronne (favicon, écrans étroits).
+ * KingCity logo. `size` drives the height of both the icon and the text;
+ * `iconOnly` renders the crown alone (favicon, narrow screens).
  */
 export function Logo({
   size = "md",

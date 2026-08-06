@@ -4,9 +4,9 @@ import { paiementRecuPdf, type RecuData } from "@/lib/pdf";
 import type { PaiementInput } from "@campusgest/shared";
 
 /**
- * Enregistre un paiement (total ou partiel) sur une ligne de facture.
- * Recalcule `montantPaye` et le statut (partiel / paye), et fixe la date
- * de paiement lorsque le solde est entièrement réglé.
+ * Records a payment (full or partial) against an invoice line.
+ * Recomputes `montantPaye` and the status (partiel / paye), and sets the
+ * payment date once the balance is fully settled.
  */
 export async function recordPaiement(adminId: string, input: PaiementInput) {
   const ligne = await prisma.factureLocataire.findUnique({
@@ -52,9 +52,9 @@ export async function recordPaiement(adminId: string, input: PaiementInput) {
 }
 
 /**
- * Génère le reçu PDF d'un paiement (conception §5.2).
- * Renvoie aussi `locataireId` pour la vérification d'accès côté route
- * (Admin, Bailleur ou le locataire propriétaire de la ligne).
+ * Generates a payment's PDF receipt (design §5.2).
+ * Also returns `locataireId` for the route-level access check
+ * (Admin, Bailleur, or the tenant who owns the line).
  */
 export async function getRecuPdf(
   paiementId: string,

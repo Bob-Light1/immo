@@ -4,9 +4,9 @@ import { notifyUsers } from "@/lib/services/notification.service";
 import type { Role, TicketInput, TicketStatutInput } from "@campusgest/shared";
 
 /**
- * Tickets de maintenance (conception §5.12) — signalement non urgent, distinct
- * du signal de détresse. Statut ouvert → en_cours → résolu, priorité,
- * assignation. Notification à l'auteur à chaque changement de statut.
+ * Maintenance tickets (design §5.12) — non-urgent reports, distinct from the
+ * distress signal. Status ouvert → en_cours → résolu, priority, assignment.
+ * The author is notified on every status change.
  */
 
 const STATUT_LABEL: Record<string, string> = {
@@ -40,7 +40,7 @@ export async function createTicket(authorId: string, input: TicketInput) {
   return ticket;
 }
 
-/** Admin : tous les tickets ; sinon uniquement les siens. */
+/** Admin: every ticket; anyone else: only their own. */
 export async function listTickets(
   user: { sub: string; role: Role },
   pagination: { page: number; limit: number },

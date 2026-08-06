@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch } from "@/lib/client/session";
+import { apiFetch, downloadFactureLigne } from "@/lib/client/session";
 import { formatXAF, formatDate, formatMois } from "@/lib/format";
 import type { LigneStatut } from "@campusgest/shared";
+import { isLoyer, suiviLoyer } from "@campusgest/shared";
 import { Card, StatutBadge, PubBadge, Spinner } from "@/components/ui";
 
 interface Ligne {
@@ -16,6 +17,7 @@ interface Ligne {
   statut: LigneStatut;
   datePaiement: string | null;
   locataire: { id: string; fullName: string };
+  paiements: { id: string; montant: number; createdAt: string }[];
 }
 
 interface FactureDetail {
@@ -29,7 +31,7 @@ interface FactureDetail {
   lignes: Ligne[];
 }
 
-/** Détail d'une facture pour le Bailleur : répartition complète, lecture seule. */
+/** Invoice detail for the Bailleur: full split, read-only. */
 export default function BailleurFactureDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("factures.detail");
@@ -45,6 +47,10 @@ export default function BailleurFactureDetailPage() {
   if (!facture) return <Spinner />;
 
   const totalPaye = facture.lignes.reduce((s, l) => s + l.montantPaye, 0);
+  // Rent: flat annual amount per tenant; the Bailleur tracks how the year's
+  // payments progress rather than a coefficient-based split.
+  const loyer = isLoyer(facture.type);
+  const annee = facture.mois.slice(0, 4);
 
   return (
     <>
@@ -58,7 +64,10 @@ export default function BailleurFactureDetailPage() {
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
           { label: t("montantTotal"), value: formatXAF(facture.montantTotal, locale) },
-          { label: t("baseUnitaire"), value: formatXAF(facture.baseUnitaire, locale) },
+          {
+            label: loyer ? t("loyerAnnuel") : t("baseUnitaire"),
+            value: formatXAF(facture.baseUnitaire, locale),
+          },
           { label: t("encaisse"), value: formatXAF(totalPaye, locale) },
           { label: t("dateLimite"), value: formatDate(facture.dateLimite, locale) },
         ].map(({ label, value }) => (
@@ -74,28 +83,62 @@ export default function BailleurFactureDetailPage() {
           <thead>
             <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
               <th className="px-4 py-3">{t("locataire")}</th>
-              <th className="px-4 py-3">{t("coefficient")}</th>
-              <th className="px-4 py-3 text-right">{t("montantDu")}</th>
-              <th className="px-4 py-3 text-right">{t("montantPaye")}</th>
+              {!loyer && <th className="px-4 py-3">{t("coefficient")}</th>}
+              <th className="px-4 py-3 text-right">{loyer ? t("loyerAnnuel") : t("montantDu")}</th>
+              {loyer && <th className="px-4 py-3 text-right">{t("payeCeMois")}</th>}
+              <th className="px-4 py-3 text-right">
+                {loyer ? t("payeAnnee", { annee }) : t("montantPaye")}
+              </th>
+              {loyer && <th className="px-4 py-3 text-right">{t("restantAnnee", { annee })}</th>}
               <th className="px-4 py-3">{t("datePaiement")}</th>
               <th className="px-4 py-3">{t("statut")}</th>
+              <th className="px-4 py-3" />
             </tr>
           </thead>
           <tbody>
-            {facture.lignes.map((l) => (
-              <tr key={l.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
-                <td className="px-4 py-3">{l.coefficient}</td>
-                <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
-                <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
-                <td className="px-4 py-3">
-                  {l.datePaiement ? formatDate(l.datePaiement, locale) : "—"}
-                </td>
-                <td className="px-4 py-3">
-                  <StatutBadge statut={l.statut} />
-                </td>
-              </tr>
-            ))}
+            {facture.lignes.map((l) => {
+              const suivi = suiviLoyer({
+                montantAnnuel: l.montantDu,
+                montantPaye: l.montantPaye,
+                paiements: (l.paiements ?? []).map((p) => ({ montant: p.montant, date: p.createdAt })),
+              });
+              return (
+                <tr key={l.id} className="border-b border-slate-100 last:border-0">
+                  <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
+                  {!loyer && <td className="px-4 py-3">{l.coefficient}</td>}
+                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
+                  {loyer && (
+                    <td className="px-4 py-3 text-right font-mono">
+                      {formatXAF(suivi.payeCeMois, locale)}
+                    </td>
+                  )}
+                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
+                  {loyer && (
+                    <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
+                      {formatXAF(suivi.restantAnnee, locale)}
+                    </td>
+                  )}
+                  <td className="px-4 py-3">
+                    {l.datePaiement ? formatDate(l.datePaiement, locale) : "—"}
+                  </td>
+                  <td className="px-4 py-3">
+                    <StatutBadge statut={l.statut} />
+                  </td>
+                  <td className="px-4 py-3">
+                    {facture!.statutPub === "publiee" && (
+                      <button
+                        className="text-xs text-navy underline-offset-2 hover:underline"
+                        onClick={() =>
+                          downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`)
+                        }
+                      >
+                        {t("facturePdf")}
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </Card>

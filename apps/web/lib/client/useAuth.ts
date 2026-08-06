@@ -6,11 +6,11 @@ import { useLocale } from "next-intl";
 import { restoreSession, type SessionUser } from "./session";
 
 /**
- * Garde d'authentification côté client.
- * - Pas de session (ni jeton local, ni cookie refresh valide) -> /login.
- * - Mauvais rôle -> redirige vers le portail du rôle réel.
- * - first_login encore vrai -> force le passage par /change-credentials.
- * Retourne l'utilisateur une fois validé (null pendant la redirection).
+ * Client-side authentication guard.
+ * - No session (neither local token nor valid refresh cookie) -> /login.
+ * - Wrong role -> redirect to the portal of the actual role.
+ * - first_login still true -> force a pass through /change-credentials.
+ * Returns the user once validated (null while redirecting).
  */
 export function useAuth(requiredRole?: SessionUser["role"]): SessionUser | null {
   const router = useRouter();

@@ -9,10 +9,10 @@ import { Spinner } from "@/components/ui";
 import { restoreSession } from "@/lib/client/session";
 
 /**
- * Point d'entrée de l'application. C'est aussi le `start_url` du manifeste PWA
- * et la cible des notifications push : un utilisateur déjà connecté doit y
- * retrouver son portail, pas la page vitrine. On tente donc une reprise de
- * session (cookie refresh) avant d'afficher l'accueil public.
+ * Application entry point. It is also the PWA manifest's `start_url` and the
+ * target of push notifications: an already signed-in user must land on their
+ * portal, not on the marketing page. A session recovery (refresh cookie) is
+ * therefore attempted before rendering the public home page.
  */
 export default function HomePage() {
   const t = useTranslations("home");
