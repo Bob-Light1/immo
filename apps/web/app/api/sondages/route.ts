@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createSondage, listSondages } from "@/lib/services/sondage.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Liste des sondages avec résultats — tout utilisateur authentifié (§5.13). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

@@ -4,6 +4,9 @@ import { handle, json } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { getPortfolio, upsertPortfolio } from "@/lib/services/portfolio.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Mon portfolio. */
 export async function GET(req: NextRequest) {
   return handle(async () => {

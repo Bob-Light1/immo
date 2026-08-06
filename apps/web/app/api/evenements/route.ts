@@ -5,6 +5,9 @@ import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createEvenement, listEvenements } from "@/lib/services/evenement.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Liste des événements (statut visible par tous) — §5.5. */
 export async function GET(req: NextRequest) {
   return handle(async () => {

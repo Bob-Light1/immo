@@ -26,21 +26,42 @@ export function DistressButton() {
       navigator.geolocation.getCurrentPosition(
         (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude }),
         () => resolve(null),
-        { timeout: 5000, enableHighAccuracy: true },
+        { timeout: 15000, enableHighAccuracy: true },
       );
     });
   }
 
+  /**
+   * Récupère la position et la rattache au signal déjà parti. Détaché du
+   * chemin d'alerte : ni la demande d'autorisation du navigateur, ni la lecture
+   * GPS (plusieurs secondes) ne peuvent retarder ou empêcher l'envoi.
+   */
+  async function attachPosition(signalId: string) {
+    const pos = await getPosition();
+    if (!pos) return;
+    await apiFetch(`/api/distress/${signalId}/position`, {
+      method: "PATCH",
+      body: JSON.stringify(pos),
+    }).catch(() => {});
+  }
+
   async function fire() {
     setStatus("sending");
-    let body: Record<string, unknown> = { geoConsent: false };
-    if (await confirm({ message: t("geoPrompt"), confirmLabel: t("label") })) {
-      const pos = await getPosition();
-      if (pos) body = { geoConsent: true, ...pos };
-    }
     try {
-      const res = await apiFetch("/api/distress", { method: "POST", body: JSON.stringify(body) });
+      // Le signal part d'abord, toujours, sans condition.
+      const res = await apiFetch("/api/distress", {
+        method: "POST",
+        body: JSON.stringify({ geoConsent: false }),
+      });
       setStatus(res.ok ? "sent" : "error");
+
+      if (res.ok) {
+        const { id } = (await res.json()) as { id: string };
+        // Le consentement géoloc est demandé après coup, alerte déjà diffusée.
+        void confirm({ message: t("geoPrompt"), confirmLabel: t("label") }).then((ok) => {
+          if (ok) void attachPosition(id);
+        });
+      }
     } catch {
       setStatus("error");
     }

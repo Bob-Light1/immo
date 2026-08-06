@@ -1,4 +1,5 @@
 import { prisma } from "@campusgest/db";
+import { publishNotif } from "../realtime";
 import { repartirFacture, MAX_RECONDUCTION_STREAK } from "@campusgest/shared";
 
 /**
@@ -116,6 +117,9 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
       });
       alerts++;
     }
+
+    // Notifications ciblant le rôle admin (pas un utilisateur nommé).
+    publishNotif({ roles: ["admin"] });
   }
 
   return { created, alerts, skipped };

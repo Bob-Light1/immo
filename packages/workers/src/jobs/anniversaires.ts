@@ -1,4 +1,5 @@
 import { prisma } from "@campusgest/db";
+import { publishNotif } from "../realtime";
 import { BIRTHDAY_NOTICE_DAYS } from "@campusgest/shared";
 import { sendPushToUser } from "../push";
 
@@ -60,6 +61,7 @@ export async function runAnniversaires(now: Date = new Date()): Promise<Annivers
       })),
     });
     notifications += actifs.length;
+    publishNotif({ userIds: actifs.map((a) => a.id) });
     for (const a of actifs) void sendPushToUser(a.id, { title, body, url: "/", tag: "anniversaire" });
   }
 

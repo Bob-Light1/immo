@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
 import { sendPushToUsers } from "@/lib/push";
+import { publishNotif } from "@/lib/realtime";
 import type { AnnonceInput, NotificationType, Role } from "@campusgest/shared";
 
 /** Notifie une liste d'utilisateurs (in-app + push best-effort). */
@@ -20,6 +21,9 @@ export async function notifyUsers(
       channels: { inApp: true, push: true },
     })),
   });
+  // Réveille les flux SSE des destinataires connectés (sinon ils attendraient
+  // le prochain sondage de secours).
+  publishNotif({ userIds });
   void sendPushToUsers(userIds, { title, body, url: "/", tag: type });
 }
 
@@ -105,6 +109,8 @@ export async function createAnnonce(senderId: string, input: AnnonceInput) {
       channels: { inApp: true, push: true },
     })),
   });
+
+  publishNotif({ userIds: recipients.map((r) => r.id) });
 
   // Push best-effort, sans bloquer la réponse (livraison réseau asynchrone).
   void sendPushToUsers(recipients.map((r) => r.id), {

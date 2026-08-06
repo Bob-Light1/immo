@@ -182,6 +182,13 @@ export const distressSchema = z.object({
 });
 export type DistressInput = z.infer<typeof distressSchema>;
 
+// Position rattachée APRÈS coup : le signal part sans attendre la géoloc.
+export const distressPositionSchema = z.object({
+  latitude: z.number().min(-90).max(90),
+  longitude: z.number().min(-180).max(180),
+});
+export type DistressPositionInput = z.infer<typeof distressPositionSchema>;
+
 export const distressBanSchema = z.object({
   disabled: z.boolean(),
 });

@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
-import { pushSupported, pushPermission, enablePush, disablePush } from "@/lib/client/push";
+import { pushSupported, pushPermission, pushSubscribed, enablePush, disablePush } from "@/lib/client/push";
 import { formatDate } from "@/lib/format";
 
 interface Notif {
@@ -26,23 +26,26 @@ export function NotificationBell() {
   const [unread, setUnread] = useState(0);
   const [open, setOpen] = useState(false);
   const [perm, setPerm] = useState<NotificationPermission | "unsupported">("unsupported");
+  const [subscribed, setSubscribed] = useState(false);
   const [pushBusy, setPushBusy] = useState(false);
   const boxRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     setPerm(pushPermission());
+    void pushSubscribed().then(setSubscribed);
   }, []);
 
   async function togglePush() {
     setPushBusy(true);
     try {
-      if (perm === "granted") {
+      if (subscribed) {
         await disablePush();
-        setPerm(pushPermission());
+        setSubscribed(false);
       } else {
         const r = await enablePush();
-        setPerm(r.ok ? "granted" : pushPermission());
+        setSubscribed(r.ok);
       }
+      setPerm(pushPermission());
     } finally {
       setPushBusy(false);
     }
@@ -154,7 +157,7 @@ export function NotificationBell() {
                 disabled={pushBusy}
                 className="text-xs text-brand hover:underline disabled:opacity-60"
               >
-                {pushBusy ? "…" : perm === "granted" ? t("pushOff") : t("pushOn")}
+                {pushBusy ? "…" : subscribed ? t("pushOff") : t("pushOn")}
               </button>
             </div>
           )}

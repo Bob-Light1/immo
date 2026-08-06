@@ -297,7 +297,7 @@
   "distress": {
     "label": "Signal de détresse",
     "hint": "{n} clics rapides pour déclencher",
-    "geoPrompt": "Partager votre position avec le signal de détresse ?",
+    "geoPrompt": "Signal envoyé. Partager aussi votre position pour faciliter les secours ?",
     "sent": "Envoyé",
     "error": "Échec de l'envoi.",
     "adminTitle": "Signaux de détresse",

@@ -1,7 +1,11 @@
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
 import { notifyAllActive, notifyUsers } from "@/lib/services/notification.service";
-import { DISTRESS_REVIEW_THRESHOLD, type DistressInput } from "@campusgest/shared";
+import {
+  DISTRESS_REVIEW_THRESHOLD,
+  type DistressInput,
+  type DistressPositionInput,
+} from "@campusgest/shared";
 
 /**
  * Signal de détresse encadré (conception §5.8 / §0.2). Le signal part TOUJOURS
@@ -67,6 +71,46 @@ export async function sendDistress(userId: string, input: DistressInput) {
   }
 
   return { id: signal.id, review: enRevue };
+}
+
+/**
+ * Rattache une position à un signal déjà émis (§5.8). Le signal part sans
+ * attendre la géolocalisation : la position arrive quelques secondes plus tard,
+ * une fois le navigateur interrogé. Réservée à l'émetteur, et seulement tant
+ * que le signal n'est pas résolu — une position postérieure n'aurait plus de
+ * valeur opérationnelle.
+ */
+export async function attachDistressPosition(
+  signalId: string,
+  userId: string,
+  pos: DistressPositionInput,
+) {
+  const signal = await prisma.distressSignal.findUnique({ where: { id: signalId } });
+  if (!signal) throw new ServiceError(404, "Signal introuvable.");
+  if (signal.senderId !== userId) throw new ServiceError(403, "Ce signal n'est pas le vôtre.");
+  if (signal.resolved) throw new ServiceError(409, "Signal déjà résolu.");
+  // Idempotent : une position déjà rattachée n'est pas réécrite.
+  if (signal.latitude != null) return { ok: true, alreadySet: true };
+
+  await prisma.distressSignal.update({
+    where: { id: signalId },
+    data: { geoConsent: true, latitude: pos.latitude, longitude: pos.longitude },
+  });
+
+  // Relance de la diffusion : la position est l'information la plus utile pour
+  // porter secours. Même `tag` push que l'alerte initiale → la notification est
+  // remplacée sur l'appareil au lieu de s'empiler.
+  const sender = await prisma.user.findUnique({
+    where: { id: signal.senderId },
+    select: { fullName: true },
+  });
+  await notifyAllActive(
+    "detresse",
+    "📍 Position reçue — signal de détresse",
+    `${sender?.fullName ?? "Un résident"} : ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`,
+  );
+
+  return { ok: true, alreadySet: false };
 }
 
 export async function listDistress(pagination: { page: number; limit: number }) {

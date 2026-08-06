@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createProjet, listProjets } from "@/lib/services/projet.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Projets visibles pour mon rôle — tout utilisateur authentifié (§5.10). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

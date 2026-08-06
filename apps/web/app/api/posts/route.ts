@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createPost, listPosts } from "@/lib/services/post.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Fil d'infos — tout utilisateur authentifié lit (posts masqués réservés Admin). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

@@ -112,8 +112,10 @@ services:
       context: .
       dockerfile: apps/web/Dockerfile
       args:
-        # NEXT_PUBLIC_APP_URL est figé au build (bundle client) → passé en build-arg.
+        # NEXT_PUBLIC_APP_URL est figé au build (bundle client) et S3_PUBLIC_URL
+        # dans la CSP (Next résout `headers()` au build) → passés en build-args.
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL manquant dans .env}
+        S3_PUBLIC_URL: ${S3_PUBLIC_URL:?S3_PUBLIC_URL manquant dans .env}
     container_name: campusgest-web
     restart: unless-stopped
     env_file: .env

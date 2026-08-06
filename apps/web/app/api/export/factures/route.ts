@@ -4,6 +4,9 @@ import { requireRole } from "@/lib/rbac";
 import { prisma } from "@/lib/prisma";
 import { audit } from "@/lib/audit";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 export const runtime = "nodejs";
 
 function csvCell(v: string): string {

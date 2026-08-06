@@ -41,3 +41,6 @@ apps/web/public/fallback-*.js
 *.pem
 .vscode/
 .idea/
+
+# typescript incremental build
+*.tsbuildinfo

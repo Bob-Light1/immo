@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createSuggestion, listSuggestions } from "@/lib/services/suggestion.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Liste de gestion — Admin (toutes) / Bailleur (visibles uniquement). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

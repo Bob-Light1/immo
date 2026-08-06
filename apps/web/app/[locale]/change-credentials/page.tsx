@@ -3,7 +3,13 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch, getSession, setSession, updateSessionUser } from "@/lib/client/session";
+import {
+  apiFetch,
+  getSession,
+  restoreSession,
+  setSession,
+  updateSessionUser,
+} from "@/lib/client/session";
 import { MIN_PASSWORD_LENGTH } from "@campusgest/shared";
 import { Card, Field, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 import { PasswordInput } from "@/components/PasswordInput";
@@ -25,12 +31,18 @@ export default function ChangeCredentialsPage() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const s = getSession();
-    if (!s) {
-      router.replace(`/${locale}/login`);
-      return;
-    }
-    setNewUsername(s.user.username);
+    let cancelled = false;
+    void restoreSession().then((s) => {
+      if (cancelled) return;
+      if (!s) {
+        router.replace(`/${locale}/login`);
+        return;
+      }
+      setNewUsername(s.user.username);
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [locale, router]);
 
   const tooShort = newPassword.length > 0 && newPassword.length < MIN_PASSWORD_LENGTH;

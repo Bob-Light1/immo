@@ -3,6 +3,9 @@ import { handle } from "@/lib/api";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { getRecuPdf } from "@/lib/services/paiement.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 export const runtime = "nodejs";
 
 /** Télécharge le reçu PDF d'un paiement — Admin, Bailleur ou le locataire concerné (§8.2). */

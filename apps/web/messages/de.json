@@ -297,7 +297,7 @@
   "distress": {
     "label": "Notruf-Signal",
     "hint": "{n} schnelle Klicks zum Auslösen",
-    "geoPrompt": "Ihren Standort mit dem Notruf teilen?",
+    "geoPrompt": "Notruf gesendet. Auch Ihren Standort teilen, damit Hilfe Sie findet?",
     "sent": "Gesendet",
     "error": "Senden fehlgeschlagen.",
     "adminTitle": "Notruf-Signale",

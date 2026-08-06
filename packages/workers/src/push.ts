@@ -1,5 +1,5 @@
 import webpush from "web-push";
-import { prisma, Prisma } from "@campusgest/db";
+import { prisma } from "@campusgest/db";
 
 /**
  * Web Push depuis les jobs (alertes d'échéance). Best-effort, respecte
@@ -32,25 +32,29 @@ export async function sendPushToUser(userId: string, payload: PushPayload): Prom
   if (!ensure()) return;
   const user = await prisma.user.findUnique({
     where: { id: userId },
-    select: { pushSubscription: true, notifPrefs: true },
+    select: { notifPrefs: true, pushSubscriptions: true },
   });
-  if (!user?.pushSubscription) return;
+  if (!user || user.pushSubscriptions.length === 0) return;
   const prefs = user.notifPrefs as { push?: boolean } | null;
   if (prefs?.push === false) return;
 
-  try {
-    await webpush.sendNotification(
-      user.pushSubscription as unknown as webpush.PushSubscription,
-      JSON.stringify(payload),
-    );
-  } catch (e) {
-    const status = (e as { statusCode?: number }).statusCode;
-    if (status === 404 || status === 410) {
-      await prisma.user
-        .update({ where: { id: userId }, data: { pushSubscription: Prisma.JsonNull } })
-        .catch(() => {});
-    } else {
-      console.error("[push]", status ?? (e as Error).message);
-    }
-  }
+  const body = JSON.stringify(payload);
+  await Promise.allSettled(
+    user.pushSubscriptions.map(async (sub) => {
+      try {
+        await webpush.sendNotification(
+          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+          body,
+        );
+      } catch (e) {
+        const status = (e as { statusCode?: number }).statusCode;
+        // Seul l'appareil dont l'endpoint a expiré est retiré, pas les autres.
+        if (status === 404 || status === 410) {
+          await prisma.pushSubscription.delete({ where: { id: sub.id } }).catch(() => {});
+        } else {
+          console.error("[push]", status ?? (e as Error).message);
+        }
+      }
+    }),
+  );
 }

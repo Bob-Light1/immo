@@ -5,6 +5,9 @@ import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createTicket, listTickets } from "@/lib/services/ticket.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Liste des tickets — Admin (tous) / autres (les siens) (§5.12). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { sendDistress, listDistress } from "@/lib/services/distress.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Émet un signal de détresse — tout utilisateur (sauf banni) (§5.8). */
 export async function POST(req: NextRequest) {
   return handle(async () => {

@@ -297,7 +297,7 @@
   "distress": {
     "label": "Distress signal",
     "hint": "{n} quick taps to trigger",
-    "geoPrompt": "Share your location with the distress signal?",
+    "geoPrompt": "Signal sent. Also share your location to help responders find you?",
     "sent": "Sent",
     "error": "Failed to send.",
     "adminTitle": "Distress signals",

@@ -4,6 +4,9 @@ import { handle, json } from "@/lib/api";
 import { requireAuth, AuthError } from "@/lib/rbac";
 import { getProfile, updateProfile } from "@/lib/services/profile.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 // Le propriétaire (ou un admin) accède à son profil et à ses préférences (§8.3).
 function authorize(req: NextRequest, id: string) {
   const user = requireAuth(req);

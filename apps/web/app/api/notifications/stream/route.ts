@@ -2,20 +2,22 @@ import { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/api";
 import { verifyRefreshToken, REFRESH_COOKIE } from "@/lib/auth";
+import { onNotifFor, SAFETY_POLL_MS, FALLBACK_POLL_MS } from "@/lib/realtime";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const POLL_MS = 8_000;
 const HEARTBEAT_MS = 25_000;
 
 /**
  * Flux temps réel des notifications (SSE, conception §8.3). EventSource ne peut
  * pas porter d'en-tête Authorization : on s'authentifie via le cookie refresh
- * (HttpOnly, envoyé automatiquement en same-origin). On interroge la base par
- * intervalles courts et on pousse les nouvelles notifications + le compteur non
- * lus. Ce choix fonctionne même si la notification provient d'un autre process
- * (jobs workers), contrairement à un bus mémoire local.
+ * (HttpOnly, envoyé automatiquement en same-origin).
+ *
+ * La relecture de la base est déclenchée par un signal Redis publié à chaque
+ * écriture de notification — y compris depuis les jobs workers, dans un autre
+ * process. Le sondage ne subsiste qu'en filet de sécurité (30 s), contre 8 s
+ * par client auparavant. Sans Redis configuré, on retombe sur le sondage seul.
  */
 export async function GET(req: NextRequest) {
   const cookie = req.cookies.get(REFRESH_COOKIE)?.value;
@@ -40,6 +42,7 @@ export async function GET(req: NextRequest) {
   let lastTs = new Date();
   let timer: ReturnType<typeof setInterval> | undefined;
   let beat: ReturnType<typeof setInterval> | undefined;
+  let unsubscribe: (() => void) | null = null;
 
   const stream = new ReadableStream({
     start(controller) {
@@ -66,6 +69,8 @@ export async function GET(req: NextRequest) {
       const close = () => {
         if (timer) clearInterval(timer);
         if (beat) clearInterval(beat);
+        unsubscribe?.();
+        unsubscribe = null;
         try {
           controller.close();
         } catch {
@@ -75,13 +80,28 @@ export async function GET(req: NextRequest) {
 
       send("ready", { ok: true });
       void tick();
-      timer = setInterval(() => void tick(), POLL_MS);
-      beat = setInterval(() => controller.enqueue(enc.encode(": hb\n\n")), HEARTBEAT_MS);
+
+      // Relais Redis : la relecture est déclenchée à l'écriture, pas au rythme
+      // d'une horloge. Le sondage passe alors en simple filet de sécurité.
+      unsubscribe = onNotifFor(userId, role, () => void tick());
+      timer = setInterval(() => void tick(), unsubscribe ? SAFETY_POLL_MS : FALLBACK_POLL_MS);
+      // Un client parti brutalement (écran verrouillé, PWA fermée) ne déclenche
+      // pas toujours `abort`/`cancel` : l'enqueue lèverait alors en boucle dans
+      // le setInterval, hors de toute portée try/catch. On ferme proprement.
+      beat = setInterval(() => {
+        try {
+          controller.enqueue(enc.encode(": hb\n\n"));
+        } catch {
+          close();
+        }
+      }, HEARTBEAT_MS);
       req.signal.addEventListener("abort", close);
     },
     cancel() {
       if (timer) clearInterval(timer);
       if (beat) clearInterval(beat);
+      unsubscribe?.();
+      unsubscribe = null;
     },
   });
 

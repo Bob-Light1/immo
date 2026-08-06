@@ -6,10 +6,26 @@ const withPWA = require("@ducanh2912/next-pwa").default({
   dest: "public",
   disable: process.env.NODE_ENV === "development",
   register: true,
+  // Page servie quand une navigation échoue faute de réseau.
+  fallbacks: { document: "/offline.html" },
+  // Nos entrées passent avant celles par défaut ; celles de même `cacheName`
+  // (ici "apis") remplacent la version par défaut.
+  extendDefaultRuntimeCaching: true,
   workboxOptions: {
     skipWaiting: true,
     // Handlers Web Push (push / notificationclick) injectés dans le SW généré.
     importScripts: ["/push-sw.js"],
+    runtimeCaching: [
+      {
+        // Les réponses /api/* sont authentifiées et propres à un utilisateur.
+        // Le cache par défaut de next-pwa (NetworkFirst, 24 h) les servirait au
+        // compte suivant sur un appareil partagé et bufferiserait le flux SSE
+        // de /api/notifications/stream, qui ne se termine jamais.
+        urlPattern: ({ url, sameOrigin }) => sameOrigin && url.pathname.startsWith("/api/"),
+        handler: "NetworkOnly",
+        options: { cacheName: "apis" },
+      },
+    ],
   },
 });
 

@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createDocument, listDocuments } from "@/lib/services/document.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 /** Documents visibles pour mon rôle — tout utilisateur authentifié (§5.15). */
 export async function GET(req: NextRequest) {
   return handle(async () => {

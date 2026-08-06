@@ -5,6 +5,9 @@ import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { listNotifications, createAnnonce } from "@/lib/services/notification.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return handle(async () => {
     const user = requireAuth(req);

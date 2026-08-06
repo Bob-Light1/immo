@@ -23,12 +23,16 @@ RUN npm ci
 COPY . .
 
 # NEXT_PUBLIC_* est figé dans le bundle client AU BUILD → doit être connu ici.
+# S3_PUBLIC_URL aussi : Next résout `headers()` au build et grave la CSP dans
+# routes-manifest.json ; absente ici, l'origine du stockage ne serait jamais
+# autorisée et les images/documents seraient bloqués en production.
 # On matérialise un .env que le wrapper `dotenv -e ../../.env` du script de build
 # saura lire (DATABASE_URL factice : non requise au build, sécurité si un module
 # instancie le client Prisma pendant le "collecting page data").
 ARG NEXT_PUBLIC_APP_URL=http://localhost:3000
-RUN printf 'NEXT_PUBLIC_APP_URL=%s\nDATABASE_URL=postgresql://build:build@localhost:5432/build\n' \
-      "$NEXT_PUBLIC_APP_URL" > .env
+ARG S3_PUBLIC_URL=
+RUN printf 'NEXT_PUBLIC_APP_URL=%s\nS3_PUBLIC_URL=%s\nDATABASE_URL=postgresql://build:build@localhost:5432/build\n' \
+      "$NEXT_PUBLIC_APP_URL" "$S3_PUBLIC_URL" > .env
 
 # Génère le client Prisma puis construit Next (turbo enchaîne generate → build).
 RUN npm run db:generate && npm run build

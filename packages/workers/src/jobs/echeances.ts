@@ -1,4 +1,5 @@
 import { prisma } from "@campusgest/db";
+import { publishNotif } from "../realtime";
 import { sendPushToUser } from "../push";
 
 /**
@@ -99,6 +100,7 @@ export async function runEcheances(now: Date = new Date()): Promise<EcheancesRes
         channels: { push: true, sms: days >= 0, email: false },
       },
     });
+    publishNotif({ userIds: [l.locataireId] });
     void sendPushToUser(l.locataireId, { title, body, url: "/", tag: "echeance" });
     alertsCreated++;
   }

@@ -24,6 +24,18 @@ export function pushPermission(): NotificationPermission | "unsupported" {
   return pushSupported() ? Notification.permission : "unsupported";
 }
 
+/**
+ * Cet appareil est-il réellement abonné ? `Notification.permission` ne suffit
+ * pas : elle reste "granted" après un désabonnement (et l'est déjà sur un
+ * appareil ayant accepté pour un autre compte), ce qui décrivait un état
+ * d'abonnement inexistant.
+ */
+export async function pushSubscribed(): Promise<boolean> {
+  if (!pushSupported()) return false;
+  const reg = await swReady();
+  return !!(await reg?.pushManager.getSubscription());
+}
+
 // En dev le service worker est désactivé : `ready` ne résout jamais, d'où le timeout.
 function swReady(timeoutMs = 3000): Promise<ServiceWorkerRegistration | null> {
   return Promise.race([
@@ -60,10 +72,19 @@ export async function enablePush(): Promise<{ ok: boolean; reason?: string }> {
   return { ok: save.ok, reason: save.ok ? undefined : "save" };
 }
 
+/**
+ * Désabonne cet appareil. L'`endpoint` est envoyé au serveur avant l'appel à
+ * `unsubscribe()` : c'est lui qui identifie l'appareil, et sans lui le serveur
+ * supprimerait aussi les abonnements des autres appareils de l'utilisateur.
+ */
 export async function disablePush(): Promise<void> {
   if (!pushSupported()) return;
   const reg = await swReady();
   const sub = await reg?.pushManager.getSubscription();
+  const endpoint = sub?.endpoint;
   if (sub) await sub.unsubscribe();
-  await apiFetch("/api/push/unsubscribe", { method: "POST" });
+  await apiFetch("/api/push/unsubscribe", {
+    method: "POST",
+    body: JSON.stringify({ endpoint }),
+  });
 }

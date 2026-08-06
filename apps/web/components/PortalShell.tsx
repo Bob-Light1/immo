@@ -6,6 +6,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/lib/client/useAuth";
 import { logoutSession, type SessionUser } from "@/lib/client/session";
+import { disablePush } from "@/lib/client/push";
 import { Spinner } from "./ui";
 import { Logo } from "./Brand";
 import { NotificationBell } from "./NotificationBell";
@@ -142,6 +143,10 @@ export function PortalShell({
   if (!user) return <Spinner />;
 
   async function logout() {
+    // Désabonne l'appareil avant de fermer la session : sinon l'abonnement push
+    // reste rattaché au compte sortant et le compte suivant sur ce téléphone
+    // recevrait ses notifications.
+    await disablePush().catch(() => {});
     await logoutSession();
     router.replace(`/${locale}/login`);
   }

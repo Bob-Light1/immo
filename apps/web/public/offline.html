@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#1A3C6E" />
+    <title>KingCity — hors ligne</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #f8fafc;
+        --card: #ffffff;
+        --border: #e2e8f0;
+        --text: #0f172a;
+        --muted: #64748b;
+        --navy: #1a3c6e;
+        --brand: #e8821e;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #0b1220;
+          --card: #111c30;
+          --border: #243352;
+          --text: #e2e8f0;
+          --muted: #94a3b8;
+          --navy: #e2e8f0;
+        }
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: var(--bg);
+        color: var(--text);
+        font-family:
+          -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      .card {
+        max-width: 24rem;
+        width: 100%;
+        text-align: center;
+        background: var(--card);
+        border: 1px solid var(--border);
+        border-radius: 1rem;
+        padding: 2rem;
+      }
+      .logo {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.5rem;
+        font-size: 1.75rem;
+        font-weight: 800;
+        letter-spacing: -0.02em;
+        color: var(--navy);
+      }
+      .logo svg {
+        width: 2rem;
+        height: 2rem;
+        fill: var(--brand);
+      }
+      .logo em {
+        font-style: normal;
+        color: var(--brand);
+      }
+      h1 {
+        margin: 1.5rem 0 0.5rem;
+        font-size: 1.125rem;
+      }
+      p {
+        margin: 0;
+        font-size: 0.875rem;
+        color: var(--muted);
+      }
+      a {
+        display: inline-block;
+        margin-top: 1.5rem;
+        padding: 0.625rem 1.5rem;
+        border-radius: 0.5rem;
+        background: #1a3c6e;
+        color: #fff;
+        font-weight: 600;
+        font-size: 0.875rem;
+        text-decoration: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <span class="logo">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5 16 3 6l5 3.2L12 4l4 5.2L21 6l-2 10H5Z" />
+          <path d="M5 17.6h14V20H5z" />
+        </svg>
+        King<em>City</em>
+      </span>
+      <h1>Vous êtes hors ligne</h1>
+      <p>
+        Cette application a besoin d'une connexion pour afficher vos factures, notifications et
+        messages. Reconnectez-vous au réseau puis réessayez.
+      </p>
+      <a href="/">Réessayer</a>
+    </div>
+  </body>
+</html>

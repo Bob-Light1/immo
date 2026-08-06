@@ -122,6 +122,39 @@ export function resolveExtension(kind: UploadKind, contentType: string): string 
   return ext;
 }
 
+/**
+ * Signatures (« magic bytes ») attendues au début du fichier, par type déclaré.
+ * Le bucket sert les objets en lecture anonyme avec le Content-Type fourni par
+ * le client : sans ce contrôle, n'importe quel contenu pouvait être déposé sous
+ * une étiquette d'image et servi tel quel depuis l'origine de l'application.
+ */
+const SIGNATURES: Record<string, { offset: number; bytes: number[] }[]> = {
+  "image/jpeg": [{ offset: 0, bytes: [0xff, 0xd8, 0xff] }],
+  "image/png": [{ offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] }],
+  // RIFF....WEBP : conteneur RIFF (0-3) puis marqueur de format (8-11).
+  "image/webp": [
+    { offset: 0, bytes: [0x52, 0x49, 0x46, 0x46] },
+    { offset: 8, bytes: [0x57, 0x45, 0x42, 0x50] },
+  ],
+  "application/pdf": [{ offset: 0, bytes: [0x25, 0x50, 0x44, 0x46, 0x2d] }],
+};
+
+/**
+ * Vérifie que le contenu réel correspond au type MIME annoncé par le client.
+ * Lève une ServiceError 400 en cas de discordance.
+ */
+export function assertMagicBytes(contentType: string, buffer: Buffer): void {
+  const expected = SIGNATURES[contentType];
+  if (!expected) throw new ServiceError(400, "Type de fichier non autorisé.");
+
+  const matches = expected.every(({ offset, bytes }) =>
+    bytes.every((b, i) => buffer[offset + i] === b),
+  );
+  if (!matches) {
+    throw new ServiceError(400, "Le contenu du fichier ne correspond pas à son type déclaré.");
+  }
+}
+
 export function isUploadKind(value: string): value is UploadKind {
   return value === "image" || value === "document";
 }

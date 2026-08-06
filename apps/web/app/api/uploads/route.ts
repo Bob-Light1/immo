@@ -3,7 +3,7 @@ import { MAX_UPLOAD_BYTES } from "@campusgest/shared";
 import { handle, json, ServiceError } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
-import { storage, resolveExtension, isUploadKind } from "@/lib/storage";
+import { storage, resolveExtension, isUploadKind, assertMagicBytes } from "@/lib/storage";
 
 export const runtime = "nodejs";
 
@@ -42,6 +42,8 @@ export async function POST(req: NextRequest) {
 
     const ext = resolveExtension(kind, file.type);
     const buffer = Buffer.from(await file.arrayBuffer());
+    // Le Content-Type vient du client : on confronte l'annonce au contenu réel.
+    assertMagicBytes(file.type, buffer);
     const stored = await storage().upload({
       buffer,
       contentType: file.type,

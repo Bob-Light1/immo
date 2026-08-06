@@ -1,6 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
+import { publishNotif } from "@/lib/realtime";
 import type { Role } from "@campusgest/shared";
 
 /**
@@ -67,6 +68,8 @@ export async function markSuggestionRead(id: string) {
       },
     }),
   ]);
+
+  publishNotif({ userIds: [s.authorId] });
 
   void sendPushToUser(s.authorId, {
     title: "Suggestion consultée",

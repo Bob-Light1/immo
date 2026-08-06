@@ -9,11 +9,15 @@ export const metadata: Metadata = {
   title: "KingCity",
   description: "Gestion de cité universitaire — Cameroun",
   manifest: "/manifest.json",
+  // iOS ignore les icônes du manifeste : l'écran d'accueil utilise apple-touch-icon.
+  icons: { apple: "/icons/icon-192.png" },
   appleWebApp: { capable: true, statusBarStyle: "default", title: "KingCity" },
 };
 
 export const viewport: Viewport = {
   themeColor: "#1A3C6E",
+  // Occupe la zone sous l'encoche en mode standalone.
+  viewportFit: "cover",
 };
 
 export default async function LocaleLayout({

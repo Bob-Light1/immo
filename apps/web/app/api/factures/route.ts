@@ -5,6 +5,9 @@ import { requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { createFacture, listFactures } from "@/lib/services/facture.service";
 
+// Réponse authentifiée : jamais de rendu statique (une seule variante servie à tous).
+export const dynamic = "force-dynamic";
+
 export async function GET(req: NextRequest) {
   return handle(async () => {
     requireRole(req, "admin", "bailleur");

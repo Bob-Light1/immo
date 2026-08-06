@@ -84,6 +84,19 @@ function tryRefresh(): Promise<boolean> {
   return refreshing;
 }
 
+/**
+ * Récupère la session, en la reconstruisant depuis le cookie refresh si
+ * sessionStorage est vide. Indispensable en PWA installée : le jeton d'accès
+ * ne survit pas à la fermeture de l'app alors que le cookie reste valide 7
+ * jours — sans cette reprise, chaque lancement repassait par l'écran de
+ * connexion.
+ */
+export async function restoreSession(): Promise<Session | null> {
+  const existing = getSession();
+  if (existing) return existing;
+  return (await tryRefresh()) ? getSession() : null;
+}
+
 /** Déconnexion : invalide le refresh côté serveur puis purge la session locale. */
 export async function logoutSession(): Promise<void> {
   try {
