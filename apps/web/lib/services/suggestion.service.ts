@@ -2,6 +2,7 @@ import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
 import { sendPushToUser } from "@/lib/push";
 import { publishNotif } from "@/lib/realtime";
+import { notifRow, renderForUser } from "@/lib/services/notification.service";
 import type { Role } from "@campusgest/shared";
 
 /**
@@ -50,7 +51,7 @@ export async function listMySuggestions(authorId: string) {
 /** Marks a suggestion read by the Admin and notifies the author (once). */
 export async function markSuggestionRead(id: string) {
   const s = await prisma.suggestion.findUnique({ where: { id } });
-  if (!s) throw new ServiceError(404, "Suggestion introuvable.");
+  if (!s) throw new ServiceError(404, "Suggestion introuvable.", "introuvable.suggestion");
   if (s.isReadAdmin) return { ok: true, alreadyRead: true };
 
   await prisma.$transaction([
@@ -62,8 +63,7 @@ export async function markSuggestionRead(id: string) {
       data: {
         targetUserId: s.authorId,
         type: "lecture",
-        title: "Suggestion consultée",
-        body: "L'administration a consulté votre suggestion. Merci pour votre contribution.",
+        ...notifRow("suggestion.lue"),
         channels: { inApp: true },
       },
     }),
@@ -71,11 +71,17 @@ export async function markSuggestionRead(id: string) {
 
   publishNotif({ userIds: [s.authorId] });
 
-  void sendPushToUser(s.authorId, {
-    title: "Suggestion consultée",
-    body: "L'administration a consulté votre suggestion.",
-    url: "/",
-    tag: "lecture",
+  // Push is rendered here, in the author's account language: unlike the inbox,
+  // it never passes through a screen that knows the interface locale.
+  void renderForUser(s.authorId, { key: "suggestion.lue" }).then((rendu) => {
+    if (rendu) {
+      void sendPushToUser(s.authorId, {
+        title: rendu.title,
+        body: rendu.body,
+        url: "/",
+        tag: "lecture",
+      });
+    }
   });
 
   return { ok: true, alreadyRead: false };
@@ -83,7 +89,7 @@ export async function markSuggestionRead(id: string) {
 
 export async function setSuggestionVisibility(id: string, bailleurVisible: boolean) {
   const s = await prisma.suggestion.findUnique({ where: { id } });
-  if (!s) throw new ServiceError(404, "Suggestion introuvable.");
+  if (!s) throw new ServiceError(404, "Suggestion introuvable.", "introuvable.suggestion");
   await prisma.suggestion.update({ where: { id }, data: { bailleurVisible } });
   return { ok: true, bailleurVisible };
 }

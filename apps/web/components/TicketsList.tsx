@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { formatDate } from "@/lib/format";
 import { TICKET_CATEGORIES, TICKET_STATUTS, type TicketCategorie, type TicketStatut } from "@campusgest/shared";
+import { useConfirmAction } from "@/components/Toast";
 import {
   Card,
   PageTitle,
@@ -47,6 +49,8 @@ function StatutBadge({ statut }: { statut: TicketStatut }) {
 /** Maintenance tickets: creation + list; status change when `admin` (§5.12). */
 export function TicketsList({ admin }: { admin: boolean }) {
   const t = useTranslations("maintenance");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const locale = useLocale();
   const [items, setItems] = useState<Ticket[] | null>(null);
   const [page, setPage] = useState(1);
@@ -81,7 +85,7 @@ export function TicketsList({ admin }: { admin: boolean }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setDescription("");
@@ -94,9 +98,18 @@ export function TicketsList({ admin }: { admin: boolean }) {
     }
   }
 
-  async function changeStatut(id: string, statut: TicketStatut) {
-    setItems((prev) => prev?.map((x) => (x.id === id ? { ...x, statut } : x)) ?? prev);
-    await apiFetch(`/api/tickets/${id}/statut`, { method: "PATCH", body: JSON.stringify({ statut }) });
+  /**
+   * The select stays controlled by `items`, so a cancelled or refused change
+   * simply snaps back to the status the server still holds.
+   */
+  function changeStatut(id: string, statut: TicketStatut) {
+    return confirmAction({
+      message: t("confirmStatut", { statut: t(`status.${statut}`) }),
+      success: t("statutSaved"),
+      failure: t("statutFailed"),
+      run: () => apiFetch(`/api/tickets/${id}/statut`, { method: "PATCH", body: JSON.stringify({ statut }) }),
+      onDone: () => setItems((prev) => prev?.map((x) => (x.id === id ? { ...x, statut } : x)) ?? prev),
+    });
   }
 
   return (

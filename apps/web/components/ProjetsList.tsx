@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { formatXAF } from "@/lib/format";
 import { ROLES, type Role } from "@campusgest/shared";
+import { useConfirmAction } from "@/components/Toast";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary, btnBrand } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -24,6 +26,8 @@ interface Projet {
 /** Shared projects: publication (Admin) + pot + contribution (§5.10). */
 export function ProjetsList({ admin }: { admin: boolean }) {
   const t = useTranslations("projets");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const locale = useLocale();
   const [items, setItems] = useState<Projet[] | null>(null);
   const [page, setPage] = useState(1);
@@ -66,7 +70,7 @@ export function ProjetsList({ admin }: { admin: boolean }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setForm({ titre: "", description: "", vision: "", besoins: "", contribution: "" });
@@ -77,17 +81,27 @@ export function ProjetsList({ admin }: { admin: boolean }) {
     }
   }
 
-  async function contribuer(id: string) {
-    const montant = Number(contribInputs[id]);
+  function contribuer(projet: Projet) {
+    const montant = Number(contribInputs[projet.id]);
     if (!montant || montant <= 0) return;
-    const res = await apiFetch(`/api/projets/${id}/contribuer`, {
-      method: "POST",
-      body: JSON.stringify({ montant }),
+    // The amount is restated in the dialog: it is money being committed, and the
+    // figure the reader typed is the one thing they cannot check afterwards.
+    return confirmAction({
+      level: "danger",
+      message: t("confirmContribuer", { montant: formatXAF(montant, locale), titre: projet.titre }),
+      confirmLabel: t("contribuer"),
+      success: t("contributed"),
+      failure: t("contribuerFailed"),
+      run: () =>
+        apiFetch(`/api/projets/${projet.id}/contribuer`, {
+          method: "POST",
+          body: JSON.stringify({ montant }),
+        }),
+      onDone: async () => {
+        setContribInputs((c) => ({ ...c, [projet.id]: "" }));
+        await load();
+      },
     });
-    if (res.ok) {
-      setContribInputs((c) => ({ ...c, [id]: "" }));
-      await load();
-    }
   }
 
   return (
@@ -179,7 +193,7 @@ export function ProjetsList({ admin }: { admin: boolean }) {
                     onChange={(e) => setContribInputs((c) => ({ ...c, [p.id]: e.target.value }))}
                     className={`${inputCls} w-36`}
                   />
-                  <button onClick={() => contribuer(p.id)} className={`${btnBrand} px-3 py-2 text-sm`}>
+                  <button onClick={() => contribuer(p)} className={`${btnBrand} px-3 py-2 text-sm`}>
                     {t("contribuer")}
                   </button>
                 </div>

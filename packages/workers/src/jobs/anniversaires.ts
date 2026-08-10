@@ -1,13 +1,12 @@
 import { prisma } from "@campusgest/db";
-import { publishNotif } from "../realtime";
 import { BIRTHDAY_NOTICE_DAYS } from "@campusgest/shared";
-import { sendPushToUser } from "../push";
+import { notifyEach } from "../notify";
 
 /**
  * Birthday job (daily) — design §5.6. D-7 reminder (opt-in): for every active
  * user who filled in their date and allowed it to be shared
  * (`birthday_public`), if the birthday falls in BIRTHDAY_NOTICE_DAYS days,
- * notifies every active user. Idempotent (deduplicated by title + day).
+ * notifies every active user. Idempotent (deduplicated by celebrant + day).
  */
 
 function startOfDayLocal(d: Date): number {
@@ -42,27 +41,29 @@ export async function runAnniversaires(now: Date = new Date()): Promise<Annivers
     if (bd.getUTCMonth() !== tMonth || bd.getUTCDate() !== tDay) continue;
     birthdays++;
 
-    const title = `Anniversaire de ${u.fullName}`;
+    // Deduplicated on the celebrant rather than on the rendered title, which is
+    // no longer stable across languages. Rows written before the message
+    // catalogue carry no parameters and are invisible here — at worst one
+    // duplicate on the first run after deployment.
     const deja = await prisma.notification.count({
-      where: { type: "anniversaire", title, createdAt: { gte: today } },
+      where: {
+        type: "anniversaire",
+        createdAt: { gte: today },
+        params: { path: ["celebrantId"], equals: u.id },
+      },
     });
     if (deja > 0) continue;
 
-    const dateStr = target.toLocaleDateString("fr-FR", { day: "numeric", month: "long" });
-    const body = `C'est bientôt l'anniversaire de ${u.fullName}, le ${dateStr}. Pensez à lui souhaiter !`;
-
-    await prisma.notification.createMany({
-      data: actifs.map((a) => ({
-        targetUserId: a.id,
-        type: "anniversaire" as const,
-        title,
-        body,
-        channels: { inApp: true, push: true },
-      })),
-    });
+    const params = {
+      celebrantId: u.id,
+      name: u.fullName,
+      date: target.toISOString(),
+    };
+    await notifyEach(
+      actifs.map((a) => ({ userId: a.id, key: "anniversaire" as const, params })),
+      "anniversaire",
+    );
     notifications += actifs.length;
-    publishNotif({ userIds: actifs.map((a) => a.id) });
-    for (const a of actifs) void sendPushToUser(a.id, { title, body, url: "/", tag: "anniversaire" });
   }
 
   return { birthdays, notifications };

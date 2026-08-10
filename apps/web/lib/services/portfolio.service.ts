@@ -13,7 +13,7 @@ export async function getPortfolio(userId: string) {
     where: { id: userId },
     select: { id: true, fullName: true, role: true, portfolio: true },
   });
-  if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
+  if (!user) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
   return { userId: user.id, fullName: user.fullName, role: user.role, portfolio: user.portfolio };
 }
 
@@ -38,7 +38,7 @@ export async function upsertPortfolio(userId: string, input: PortfolioInput) {
  */
 export async function deletePortfolio(userId: string) {
   const existe = await prisma.portfolio.findUnique({ where: { userId }, select: { id: true } });
-  if (!existe) throw new ServiceError(404, "Aucun portfolio à retirer.");
+  if (!existe) throw new ServiceError(404, "Aucun portfolio à retirer.", "portfolio.aucunARetirer");
   await prisma.portfolio.delete({ where: { userId } });
   return { ok: true };
 }

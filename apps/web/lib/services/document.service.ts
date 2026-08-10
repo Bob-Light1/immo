@@ -49,11 +49,10 @@ export async function createDocument(uploaderId: string, input: DocumentInput) {
   });
 
   // Notify the relevant recipients (everyone, or the targeted roles).
-  const title = "Nouveau document";
-  const body = input.titre;
+  const content = { key: "document.nouveau" as const, params: { titre: input.titre } };
   const roles = input.visibleRoles;
   if (!roles || roles.length === 0) {
-    await notifyAllActive("systeme", title, body);
+    await notifyAllActive("systeme", content);
   } else {
     const users = await prisma.user.findMany({
       where: { isActive: true, role: { in: roles } },
@@ -62,8 +61,7 @@ export async function createDocument(uploaderId: string, input: DocumentInput) {
     await notifyUsers(
       users.map((u) => u.id),
       "systeme",
-      title,
-      body,
+      content,
     );
   }
   return toDto(doc);
@@ -92,6 +90,6 @@ export async function listDocuments(
 
 export async function deleteDocument(id: string) {
   const existing = await prisma.document.findUnique({ where: { id } });
-  if (!existing) throw new ServiceError(404, "Document introuvable.");
+  if (!existing) throw new ServiceError(404, "Document introuvable.", "introuvable.document");
   await prisma.document.delete({ where: { id } });
 }

@@ -25,7 +25,7 @@ const SELECT = {
 
 export async function getProfile(userId: string) {
   const user = await prisma.user.findUnique({ where: { id: userId }, select: SELECT });
-  if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
+  if (!user) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
   // Only the enabled flag is exposed, never the secret.
   const { totpSecret, ...rest } = user;
   return { ...rest, twoFactorEnabled: !!totpSecret };

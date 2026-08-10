@@ -165,8 +165,14 @@ model Compteur {
 
 // ─────────────────────────── Invoices & payments ───────────────────────────
 model Facture {
-  id                 String           @id @default(uuid()) @db.Uuid
-  type               String           @db.VarChar(60)
+  id   String @id @default(uuid()) @db.Uuid
+  /// Free-text label as typed by the Admin ("Électricité", "Eau"…).
+  type String @db.VarChar(60)
+  /// Accent- and case-folded `type` (see `normalizeFactureType`). Comparing raw
+  /// labels made "Eau", "eau" and " Eau" three different types for the list
+  /// filter, the roll-over dedup and the duplicate guard — this is the column
+  /// every such comparison must use, and what the uniqueness rules build on.
+  typeKey            String           @map("type_key") @db.VarChar(60)
   montantTotal       BigInt           @map("montant_total")
   sommeCoeff         Decimal          @default(0) @map("somme_coeff") @db.Decimal(8, 2)
   baseUnitaire       BigInt           @default(0) @map("base_unitaire")
@@ -183,8 +189,13 @@ model Facture {
 
   lignes FactureLocataire[]
 
+  /// One invoice per type and per month: creating "Eau 2026-08" twice used to
+  /// bill the residence twice over. The roll-over job already assumed this key
+  /// was unique; it is now enforced. Rent has a second, stricter rule (one per
+  /// calendar year) carried by a partial index — see the migration.
+  @@unique([typeKey, mois])
   @@index([mois])
-  @@index([type, mois])
+  @@index([typeKey, mois])
   @@map("factures")
 }
 
@@ -218,7 +229,6 @@ model Paiement {
   justificatifUrl    String?          @map("justificatif_url")
   recordedById       String           @map("recorded_by") @db.Uuid
   recordedBy         User             @relation("PaiementRecordedBy", fields: [recordedById], references: [id])
-  recuPdfUrl         String?          @map("recu_pdf_url")
   createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz
 
   @@index([factureLocataireId])
@@ -252,8 +262,17 @@ model Notification {
   targetUserId String?          @map("target_user") @db.Uuid
   targetUser   User?            @relation("NotifTarget", fields: [targetUserId], references: [id])
   type         NotificationType
+  // `title`/`body` hold the rendering in the default locale. They stay the
+  // source of truth for user-authored content (announcements, community posts),
+  // which cannot be keyed, and act as the fallback for rows predating the
+  // catalogue.
   title        String           @db.VarChar(200)
   body         String
+  // Catalogue key + parameters (see `@campusgest/shared` notifications). When
+  // set, the message is re-rendered in the reader's current language, so a
+  // resident who switches locale also gets their existing inbox translated.
+  messageKey   String?          @map("message_key") @db.VarChar(60)
+  params       Json?
   channels     Json?
   isRead       Boolean          @default(false) @map("is_read")
   createdAt    DateTime         @default(now()) @map("created_at") @db.Timestamptz

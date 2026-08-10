@@ -2,8 +2,10 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch, getSession } from "@/lib/client/session";
 import { formatXAF, formatMois } from "@/lib/format";
+import { useConfirmAction } from "@/components/Toast";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -24,6 +26,8 @@ const empty = { mois: "", type: "", indiceDiff: "", prixUnit: "", tva: "", locCo
 /** Charge estimates per type: creation (Admin) + estimated/actual comparison (§5.11). */
 export function PredictionsList({ admin }: { admin: boolean }) {
   const t = useTranslations("predictions");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const locale = useLocale();
   const [items, setItems] = useState<Prediction[] | null>(null);
   const [page, setPage] = useState(1);
@@ -79,7 +83,7 @@ export function PredictionsList({ admin }: { admin: boolean }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setForm({ ...empty });
@@ -90,17 +94,24 @@ export function PredictionsList({ admin }: { admin: boolean }) {
     }
   }
 
-  async function saveReel(id: string) {
+  function saveReel(id: string) {
     const montantReel = Number(reels[id]);
     if (!Number.isFinite(montantReel) || montantReel < 0) return;
-    const res = await apiFetch(`/api/predictions/${id}/reel`, {
-      method: "PATCH",
-      body: JSON.stringify({ montantReel }),
+    return confirmAction({
+      message: t("confirmSaveReel", { montant: formatXAF(montantReel, locale) }),
+      confirmLabel: t("saveReel"),
+      success: t("reelSaved"),
+      failure: t("saveReelFailed"),
+      run: () =>
+        apiFetch(`/api/predictions/${id}/reel`, {
+          method: "PATCH",
+          body: JSON.stringify({ montantReel }),
+        }),
+      onDone: async () => {
+        setReels((r) => ({ ...r, [id]: "" }));
+        await load();
+      },
     });
-    if (res.ok) {
-      setReels((r) => ({ ...r, [id]: "" }));
-      await load();
-    }
   }
 
   return (
@@ -122,7 +133,7 @@ export function PredictionsList({ admin }: { admin: boolean }) {
           <form onSubmit={create} className="space-y-3">
             <div className="flex flex-wrap gap-3">
               <Field label={t("type")}>
-                <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} required minLength={2} placeholder="Électricité" className={`${inputCls} w-auto`} />
+                <input value={form.type} onChange={(e) => setForm({ ...form, type: e.target.value })} required minLength={2} placeholder={t("typePlaceholder")} className={`${inputCls} w-auto`} />
               </Field>
               <Field label={t("mois")}>
                 <input type="month" value={form.mois} onChange={(e) => setForm({ ...form, mois: e.target.value })} required className={`${inputCls} w-auto`} />

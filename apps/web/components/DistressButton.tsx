@@ -58,7 +58,7 @@ export function DistressButton() {
       if (res.ok) {
         const { id } = (await res.json()) as { id: string };
         // Geolocation consent is requested afterwards, alert already broadcast.
-        void confirm({ message: t("geoPrompt"), confirmLabel: t("label") }).then((ok) => {
+        void confirm({ message: t("geoPrompt"), confirmLabel: t("label") }).then(({ ok }) => {
           if (ok) void attachPosition(id);
         });
       }

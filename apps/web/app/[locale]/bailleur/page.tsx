@@ -6,6 +6,7 @@ import { apiFetch } from "@/lib/client/session";
 import { formatXAF, formatMois } from "@/lib/format";
 import { Card, PageTitle, Spinner, EmptyState } from "@/components/ui";
 import { FinanceChart } from "@/components/FinanceChart";
+import { LoyerCard, type LoyerAnnuel } from "@/components/LoyerCard";
 
 interface BailleurDashboard {
   kpis: {
@@ -15,6 +16,7 @@ interface BailleurDashboard {
     nbImpayes: number;
   };
   serie: { mois: string; facture: number; encaisse: number }[];
+  loyer: LoyerAnnuel | null;
   impayes: {
     ligneId: string;
     locataire: string;
@@ -23,6 +25,7 @@ interface BailleurDashboard {
     reste: number;
     joursRetard: number;
     statut: string;
+    loyer: boolean;
   }[];
 }
 
@@ -62,8 +65,11 @@ export default function BailleurHomePage() {
         ))}
       </div>
 
+      <LoyerCard loyer={d.loyer} />
+
       <Card className="mb-6">
-        <h2 className="mb-3 font-semibold text-navy">{t("tendanceTitle")}</h2>
+        <h2 className="font-semibold text-navy">{t("tendanceTitle")}</h2>
+        <p className="mb-3 text-xs text-slate-500">{t("chargesOnly")}</p>
         <FinanceChart serie={d.serie} />
       </Card>
 

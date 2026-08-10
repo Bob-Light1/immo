@@ -7,16 +7,19 @@ import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/lib/client/useAuth";
 import { logoutSession, type SessionUser } from "@/lib/client/session";
 import { disablePush } from "@/lib/client/push";
+import { useConfirm } from "./Toast";
 import { Spinner } from "./ui";
 import { Logo } from "./Brand";
 import { NotificationBell } from "./NotificationBell";
 import { DistressButton } from "./DistressButton";
 import { ThemeToggle } from "./ThemeToggle";
+import { LanguageSwitcher } from "./LanguageSwitcher";
 
 const NAV: Record<SessionUser["role"], { href: string; key: string }[]> = {
   admin: [
     { href: "/admin", key: "dashboard" },
     { href: "/admin/factures", key: "factures" },
+    { href: "/admin/compteurs", key: "compteurs" },
     { href: "/admin/users", key: "users" },
     { href: "/admin/infos", key: "infos" },
     { href: "/admin/annonces", key: "annonces" },
@@ -64,7 +67,7 @@ const NAV: Record<SessionUser["role"], { href: string; key: string }[]> = {
 // Grouping by section (fixed order). A section only shows when the role owns
 // at least one of its links — the bar stays readable despite ~15 entries.
 const GROUPS: { label: string; keys: string[] }[] = [
-  { label: "main", keys: ["dashboard", "mesFactures", "factures", "users"] },
+  { label: "main", keys: ["dashboard", "mesFactures", "factures", "compteurs", "users"] },
   {
     label: "communaute",
     keys: ["infos", "annonces", "documents", "suggestions", "evenements", "sondages", "projets", "predictions", "annuaire"],
@@ -138,11 +141,16 @@ export function PortalShell({
   const locale = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const confirm = useConfirm();
   const [open, setOpen] = useState(false);
 
   if (!user) return <Spinner />;
 
   async function logout() {
+    // Logging out is one tap away from every screen, including a half-filled
+    // form, and nothing here is saved as it is typed.
+    const { ok } = await confirm({ message: t("confirmLogout"), confirmLabel: t("logout") });
+    if (!ok) return;
     // Unsubscribe the device before ending the session: otherwise the push
     // subscription stays attached to the outgoing account and the next account
     // on this phone would receive its notifications.
@@ -169,6 +177,7 @@ export function PortalShell({
             <Logo />
           </Link>
           <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <LanguageSwitcher />
             <ThemeToggle />
             <DistressButton />
             <NotificationBell />

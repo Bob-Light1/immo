@@ -1,6 +1,26 @@
 // Pure calculation logic (independently testable) — the financial core.
 // See design document §5.1 and §5.11.
 
+import { moisDe } from "./dates";
+import type { ErrorCode } from "./errors";
+
+/**
+ * Invalid input reaching a calculation. Carries an HTTP status so the API layer
+ * can answer 400 instead of a blanket 500: these functions are also called with
+ * values read back from the database (publication, roll-over job), where Zod
+ * has no say. `code` lets the interface translate it — see `errors.ts`.
+ */
+export class CalculationError extends Error {
+  readonly status = 400;
+
+  constructor(
+    message: string,
+    public code?: ErrorCode,
+  ) {
+    super(message);
+  }
+}
+
 export interface CoeffEntry {
   locataireId: string;
   coefficient: number;
@@ -19,38 +39,64 @@ export interface RepartitionResult {
 }
 
 /**
- * Splits a total amount across tenants according to their coefficients.
- *  base = montantTotal / Σ(coeff); amount(i) = round(base × coeff_i).
- * The rounding delta is carried onto the last line so that
- * Σ(montantDu) === montantTotal holds exactly.
+ * Splits a total amount across tenants according to their coefficients, using
+ * the largest-remainder method: each line gets `floor(total × coeff / Σcoeff)`,
+ * then the leftover XAF are handed out one by one to the lines with the largest
+ * discarded fraction.
+ *
+ * Guarantees `Σ(montantDu) === montantTotal` exactly, and — unlike heaping the
+ * whole rounding delta onto one line — keeps every line within 1 XAF of its
+ * exact share, so no tenant can be handed a difference they cannot be given a
+ * reason for. Ties are broken by input order, which callers must therefore make
+ * deterministic (see the `orderBy` clauses in facture.service).
  */
 export function repartirFacture(
   montantTotal: number,
   coeffs: CoeffEntry[],
 ): RepartitionResult {
   if (coeffs.length === 0) {
-    throw new Error("Aucun locataire rattaché à la facture.");
+    throw new CalculationError("Aucun locataire rattaché à la facture.", "calcul.aucunLocataire");
+  }
+  if (!Number.isInteger(montantTotal) || montantTotal < 0) {
+    throw new CalculationError(
+      "Le montant total doit être un entier positif (XAF, sans centimes).",
+      "calcul.montantTotalInvalide",
+    );
   }
   const sommeCoeff = coeffs.reduce((s, c) => s + c.coefficient, 0);
   if (sommeCoeff <= 0) {
-    throw new Error("La somme des coefficients doit être strictement positive.");
+    throw new CalculationError(
+      "La somme des coefficients doit être strictement positive.",
+      "calcul.sommeCoeffInvalide",
+    );
   }
 
-  const baseUnitaire = Math.round(montantTotal / sommeCoeff);
-
-  const lignes: RepartitionLigne[] = coeffs.map((c) => ({
+  const exacts = coeffs.map((c) => (montantTotal * c.coefficient) / sommeCoeff);
+  const lignes: RepartitionLigne[] = coeffs.map((c, i) => ({
     locataireId: c.locataireId,
     coefficient: c.coefficient,
-    montantDu: Math.round(baseUnitaire * c.coefficient),
+    montantDu: Math.floor(exacts[i]!),
   }));
 
-  // Reconcile the rounding delta on the last line.
-  const total = lignes.reduce((s, l) => s + l.montantDu, 0);
-  const ecart = montantTotal - total;
-  if (ecart !== 0 && lignes.length > 0) {
-    lignes[lignes.length - 1]!.montantDu += ecart;
+  // Hand the leftover units to the largest discarded fractions first. Floating
+  // point can push an exact integer share just under its floor; such a line
+  // then carries a ~0.999 fraction and is served first, which restores it.
+  let reste = montantTotal - lignes.reduce((s, l) => s + l.montantDu, 0);
+  if (reste > 0) {
+    const ordre = lignes
+      .map((_, i) => i)
+      .sort((a, b) => {
+        const fa = exacts[a]! - Math.floor(exacts[a]!);
+        const fb = exacts[b]! - Math.floor(exacts[b]!);
+        return fb - fa || a - b;
+      });
+    for (let k = 0; k < reste; k++) {
+      lignes[ordre[k % ordre.length]!]!.montantDu += 1;
+    }
   }
 
+  // Amount owed for a coefficient of 1 — a display figure, never a divisor.
+  const baseUnitaire = Math.round(montantTotal / sommeCoeff);
   return { sommeCoeff, baseUnitaire, lignes };
 }
 
@@ -71,13 +117,21 @@ export function estimerCharge(p: PredictionParams): number {
 
 /**
  * Individual share of an estimate: the announced amount covers the whole
- * residence, yet each tenant needs to know what they will personally owe.
- * Split evenly (coefficient 1 by default, as when an invoice is created).
- * `null` when there is no active tenant.
+ * residence, yet each tenant needs to know what *they* will owe.
+ *
+ * The share follows the same rule as a real invoice — proportional to the
+ * tenant's coefficient over the sum of coefficients — otherwise a tenant billed
+ * at coefficient 2 would be shown half of what they are about to be charged.
+ * With every coefficient at 1, `sommeCoeff` is the tenant count and the split is
+ * even, as when an invoice is created. `null` when there is nothing to split by.
  */
-export function partEstimee(montantTotal: number, nbLocataires: number): number | null {
-  if (nbLocataires <= 0) return null;
-  return Math.round(montantTotal / nbLocataires);
+export function partEstimee(
+  montantTotal: number,
+  sommeCoeff: number,
+  coefficient = 1,
+): number | null {
+  if (sommeCoeff <= 0 || coefficient <= 0) return null;
+  return Math.round((montantTotal * coefficient) / sommeCoeff);
 }
 
 export interface PaiementDate {
@@ -92,11 +146,6 @@ export interface SuiviLoyer {
   payeAnnee: number;
   /** Balance left to pay before the end of the covered year. */
   restantAnnee: number;
-}
-
-/** "2026-08" from a date (local components). */
-function moisDe(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
 }
 
 /**

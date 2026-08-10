@@ -2,6 +2,9 @@
 // the refresh token stays in an HttpOnly cookie and is consumed by
 // /api/auth/refresh (rotation, design §4).
 
+import type { ApiErrorBody } from "@campusgest/shared";
+import { ApiError } from "./api-error";
+
 export interface SessionUser {
   id: string;
   username: string;
@@ -111,29 +114,50 @@ export async function logoutSession(): Promise<void> {
   clearSession();
 }
 
+export interface DownloadResult {
+  ok: boolean;
+  /**
+   * Line cap the server stopped an export at, `null` when it was complete.
+   * Exports are capped server-side and the totals of a capped statement only
+   * cover what was read, so the caller has to be able to say so — the signal
+   * used to travel in a header nobody read.
+   */
+  tronqueA: number | null;
+}
+
+/** Filename chosen by the server, which flags a capped export as "-partiel". */
+function filenameServeur(disposition: string | null): string | null {
+  const m = disposition?.match(/filename="([^"]+)"/);
+  return m ? m[1]! : null;
+}
+
 /** Downloads a file served by an authenticated route (Bearer → blob). */
-export async function downloadAuthed(path: string, filename: string): Promise<boolean> {
+export async function downloadAuthed(path: string, filename: string): Promise<DownloadResult> {
   const res = await apiFetch(path);
-  if (!res.ok) return false;
+  if (!res.ok) return { ok: false, tronqueA: null };
+
+  const cap = Number(res.headers.get("X-Export-Tronque"));
   const blob = await res.blob();
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = filename;
+  // The server's name wins: it carries the "-partiel" marker, which is the only
+  // warning that survives the file being saved or forwarded.
+  a.download = filenameServeur(res.headers.get("Content-Disposition")) ?? filename;
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  return true;
+  return { ok: true, tronqueA: Number.isFinite(cap) && cap > 0 ? cap : null };
 }
 
 /** Downloads a payment's PDF receipt (authenticated request → blob). */
-export function downloadRecu(paiementId: string): Promise<boolean> {
+export function downloadRecu(paiementId: string): Promise<DownloadResult> {
   return downloadAuthed(`/api/paiements/${paiementId}/recu`, `recu-${paiementId.slice(0, 8)}.pdf`);
 }
 
 /** Downloads a line's personal PDF invoice (rent, water, housing…). */
-export function downloadFactureLigne(ligneId: string, libelle: string): Promise<boolean> {
+export function downloadFactureLigne(ligneId: string, libelle: string): Promise<DownloadResult> {
   const slug = libelle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   return downloadAuthed(`/api/factures/lignes/${ligneId}/pdf`, `facture-${slug}.pdf`);
 }
@@ -161,8 +185,10 @@ export async function uploadFile(file: File, kind: "image" | "document"): Promis
   let res = await send();
   if (res.status === 401 && (await tryRefresh())) res = await send();
   if (!res.ok) {
-    const data = (await res.json().catch(() => ({}))) as { error?: string };
-    throw new Error(data.error ?? "Échec du téléversement.");
+    // Thrown with the code rather than the server's sentence: this runs outside
+    // the React tree, so the caller is the one that can translate it.
+    const data = (await res.json().catch(() => ({}))) as Partial<ApiErrorBody>;
+    throw new ApiError(data.error ?? "Échec du téléversement.", data.code ?? "upload.echec", data.params);
   }
   const data = (await res.json()) as { url: string };
   return data.url;

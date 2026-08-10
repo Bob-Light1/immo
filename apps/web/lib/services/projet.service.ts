@@ -59,9 +59,9 @@ export async function contribuer(
   montant: number,
 ) {
   const projet = await prisma.projetCommun.findUnique({ where: { id: projetId } });
-  if (!projet) throw new ServiceError(404, "Projet introuvable.");
+  if (!projet) throw new ServiceError(404, "Projet introuvable.", "introuvable.projet");
   if (!isVisible(projet.visibleRoles, user.role)) {
-    throw new ServiceError(403, "Ce projet ne vous est pas accessible.");
+    throw new ServiceError(403, "Ce projet ne vous est pas accessible.", "projet.inaccessible");
   }
   const contribution = await prisma.projetContribution.create({
     data: { projetId, userId: user.sub, montant: BigInt(montant) },

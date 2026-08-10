@@ -41,6 +41,13 @@ export function isLoyer(type: string): boolean {
   return normalizeFactureType(type) === "loyer";
 }
 
+export const COMPTEUR_TYPES = ["eau", "electricite"] as const;
+export type CompteurType = (typeof COMPTEUR_TYPES)[number];
+
+/** What a meter covers: the whole residence, one block, or a single room. */
+export const COMPTEUR_SCOPES = ["cite", "bloc", "chambre"] as const;
+export type CompteurScope = (typeof COMPTEUR_SCOPES)[number];
+
 export const PAIEMENT_MODES = ["especes", "orange_money", "mtn_momo", "virement"] as const;
 export type PaiementMode = (typeof PAIEMENT_MODES)[number];
 

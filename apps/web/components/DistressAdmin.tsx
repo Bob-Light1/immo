@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { formatDate } from "@/lib/format";
+import { useConfirmAction } from "@/components/Toast";
 import { Card, PageTitle, Spinner, EmptyState, Pager, btnSecondary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -21,6 +22,7 @@ interface Signal {
 export function DistressAdmin() {
   const t = useTranslations("distress");
   const locale = useLocale();
+  const confirmAction = useConfirmAction();
   const [items, setItems] = useState<Signal[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -39,17 +41,37 @@ export function DistressAdmin() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page]);
 
-  async function resolve(id: string) {
-    setItems((prev) => prev?.map((s) => (s.id === id ? { ...s, resolved: true } : s)) ?? prev);
-    await apiFetch(`/api/distress/${id}/resolve`, { method: "PATCH" });
+  function resolve(id: string) {
+    return confirmAction({
+      message: t("confirmResolve"),
+      confirmLabel: t("resolve"),
+      success: t("resolveDone"),
+      failure: t("resolveFailed"),
+      run: () => apiFetch(`/api/distress/${id}/resolve`, { method: "PATCH" }),
+      onDone: load,
+    });
   }
 
-  async function toggleBan(userId: string, disabled: boolean) {
-    await apiFetch(`/api/users/${userId}/distress-ban`, {
-      method: "PATCH",
-      body: JSON.stringify({ disabled }),
+  /**
+   * Banning takes the alert button away from a resident. Whatever the abuse it
+   * answers, it is a safety feature being withdrawn — never a one-click move.
+   */
+  function toggleBan(user: Signal["sender"], disabled: boolean) {
+    return confirmAction({
+      level: disabled ? "danger" : "info",
+      message: disabled
+        ? t("confirmBan", { name: user.fullName })
+        : t("confirmUnban", { name: user.fullName }),
+      confirmLabel: disabled ? t("ban") : t("unban"),
+      success: disabled ? t("banDone") : t("unbanDone"),
+      failure: t("banFailed"),
+      run: () =>
+        apiFetch(`/api/users/${user.id}/distress-ban`, {
+          method: "PATCH",
+          body: JSON.stringify({ disabled }),
+        }),
+      onDone: load,
     });
-    await load();
   }
 
   return (
@@ -102,7 +124,7 @@ export function DistressAdmin() {
                     </button>
                   )}
                   <button
-                    onClick={() => toggleBan(s.sender.id, !s.sender.distressDisabled)}
+                    onClick={() => toggleBan(s.sender, !s.sender.distressDisabled)}
                     className={`px-3 py-1 text-xs font-semibold ${
                       s.sender.distressDisabled ? "text-emerald-600" : "text-red-600"
                     } hover:underline`}

@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { formatDate } from "@/lib/format";
 import { Card, PageTitle, Spinner, EmptyState, inputCls, btnPrimary, ErrorText } from "@/components/ui";
@@ -16,6 +17,7 @@ interface MySuggestion {
 /** The user's suggestion box: submission + tracking (§5.4). */
 export function SuggestionBox() {
   const t = useTranslations("suggestions");
+  const apiError = useApiError();
   const locale = useLocale();
   const [contenu, setContenu] = useState("");
   const [busy, setBusy] = useState(false);
@@ -41,7 +43,7 @@ export function SuggestionBox() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setContenu("");

@@ -18,18 +18,18 @@ import {
 export async function POST(req: NextRequest) {
   return handle(async () => {
     const token = req.cookies.get(REFRESH_COOKIE)?.value;
-    if (!token) throw new AuthError(401, "Refresh token manquant.");
+    if (!token) throw new AuthError(401, "Refresh token manquant.", "auth.refreshManquant");
 
     let payload: { sub: string; ver: number };
     try {
       payload = verifyRefreshToken(token);
     } catch {
-      throw new AuthError(401, "Refresh token invalide ou expiré.");
+      throw new AuthError(401, "Refresh token invalide ou expiré.", "auth.refreshInvalide");
     }
 
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user || !user.isActive || user.tokenVersion !== payload.ver) {
-      throw new AuthError(401, "Session révoquée.");
+      throw new AuthError(401, "Session révoquée.", "auth.sessionRevoquee");
     }
 
     const accessToken = signAccessToken({ sub: user.id, role: user.role, ver: user.tokenVersion });

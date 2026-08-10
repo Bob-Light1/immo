@@ -42,10 +42,10 @@ export async function listSondages(userId: string, pagination: { page: number; l
 
 export async function vote(sondageId: string, userId: string, choix: number) {
   const s = await prisma.sondage.findUnique({ where: { id: sondageId } });
-  if (!s) throw new ServiceError(404, "Sondage introuvable.");
-  if (!s.isOpen) throw new ServiceError(409, "Ce sondage est clôturé.");
+  if (!s) throw new ServiceError(404, "Sondage introuvable.", "introuvable.sondage");
+  if (!s.isOpen) throw new ServiceError(409, "Ce sondage est clôturé.", "sondage.cloture");
   const options = s.options as string[];
-  if (choix < 0 || choix >= options.length) throw new ServiceError(400, "Choix invalide.");
+  if (choix < 0 || choix >= options.length) throw new ServiceError(400, "Choix invalide.", "sondage.choixInvalide");
 
   await prisma.sondageVote.upsert({
     where: { sondageId_userId: { sondageId, userId } },
@@ -57,7 +57,7 @@ export async function vote(sondageId: string, userId: string, choix: number) {
 
 export async function closeSondage(id: string) {
   const s = await prisma.sondage.findUnique({ where: { id } });
-  if (!s) throw new ServiceError(404, "Sondage introuvable.");
+  if (!s) throw new ServiceError(404, "Sondage introuvable.", "introuvable.sondage");
   await prisma.sondage.update({ where: { id }, data: { isOpen: false } });
   return { ok: true };
 }

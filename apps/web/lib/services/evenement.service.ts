@@ -36,26 +36,27 @@ export async function listEvenements(pagination: { page: number; limit: number }
 
 export async function decideEvenement(id: string, statut: "approuve" | "rejete") {
   const ev = await prisma.evenement.findUnique({ where: { id } });
-  if (!ev) throw new ServiceError(404, "Événement introuvable.");
+  if (!ev) throw new ServiceError(404, "Événement introuvable.", "introuvable.evenement");
   if (ev.statut !== "en_attente") {
-    throw new ServiceError(409, "Cet événement a déjà été traité.");
+    throw new ServiceError(409, "Cet événement a déjà été traité.", "evenement.dejaTraite");
   }
   const updated = await prisma.evenement.update({ where: { id }, data: { statut } });
 
-  const dateStr = new Date(ev.dateEvent).toLocaleDateString("fr-FR");
   if (statut === "approuve") {
-    await notifyAllActive(
-      "evenement",
-      `Nouvel événement : ${ev.titre}`,
-      `Le ${dateStr} à ${ev.heure}. Proposé et approuvé par l'administration.`,
-    );
+    await notifyAllActive("evenement", {
+      key: "evenement.approuve",
+      // The date is formatted by the catalogue, in the reader's language.
+      params: {
+        titre: ev.titre,
+        date: new Date(ev.dateEvent).toISOString(),
+        heure: ev.heure,
+      },
+    });
   } else {
-    await notifyUsers(
-      [ev.creatorId],
-      "evenement",
-      `Événement refusé : ${ev.titre}`,
-      "Votre proposition d'événement n'a pas été retenue par l'administration.",
-    );
+    await notifyUsers([ev.creatorId], "evenement", {
+      key: "evenement.refuse",
+      params: { titre: ev.titre },
+    });
   }
   return updated;
 }

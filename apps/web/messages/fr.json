@@ -16,6 +16,7 @@
   "nav": {
     "dashboard": "Tableau de bord",
     "factures": "Factures",
+    "compteurs": "Compteurs",
     "users": "Utilisateurs",
     "mesFactures": "Mes factures",
     "paiements": "Paiements",
@@ -45,7 +46,8 @@
       "compte": "Compte"
     },
     "openMenu": "Ouvrir le menu",
-    "closeMenu": "Fermer le menu"
+    "closeMenu": "Fermer le menu",
+    "confirmLogout": "Vous déconnecter ? Toute saisie en cours sera perdue."
   },
   "statut": {
     "en_attente": "En attente",
@@ -90,6 +92,7 @@
       "username": "Nom d'utilisateur",
       "role": "Rôle",
       "language": "Langue",
+      "languageSaved": "Langue de {name} mise à jour.",
       "email": "Email (optionnel)",
       "phone": "Téléphone (optionnel)",
       "contact": "Contact",
@@ -105,7 +108,9 @@
       "searchPlaceholder": "Rechercher (nom, identifiant, e-mail)…",
       "filterAllRoles": "Tous les rôles",
       "filterAllStatus": "Tous les statuts",
-      "deactivated": "Compte désactivé."
+      "deactivated": "Compte désactivé.",
+      "saveFailed": "Échec de l'enregistrement.",
+      "deactivateFailed": "Le compte n'a pas pu être désactivé."
     }
   },
   "factures": {
@@ -120,6 +125,7 @@
     "statut": "Statut",
     "export": "Export CSV",
     "reconduite": "reconduite",
+    "filtreTousStatuts": "Tous les statuts",
     "new": {
       "title": "Nouvelle facture",
       "type": "Type (Eau, Électricité…)",
@@ -131,9 +137,15 @@
       "submit": "Créer le brouillon",
       "montantAnnuelLocataire": "Montant annuel par locataire (XAF)",
       "moisLoyer": "Mois de départ (année couverte)",
-      "hintLoyer": "Loyer : aucune division. Le montant saisi est dû par chaque locataire actif pour l'année. À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant."
+      "locataires": "Locataires concernés",
+      "hintLoyer": "Loyer : aucune division. Le montant saisi est dû par chaque locataire actif pour l'année. À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant.",
+      "compteur": "Compteur (facultatif)",
+      "confirmCreate": "Créer cette facture ? Elle sera créée en brouillon : montants et échéance restent corrigeables jusqu'à sa publication.",
+      "created": "Facture créée en brouillon."
     },
     "detail": {
+      "type": "Type",
+      "mois": "Mois",
       "montantTotal": "Montant total",
       "baseUnitaire": "Base unitaire",
       "encaisse": "Encaissé",
@@ -154,9 +166,72 @@
       "payeAnnee": "Payé en {annee}",
       "restantAnnee": "Restant {annee}",
       "loyerNoCoeff": "Loyer : forfait annuel identique par locataire, sans coefficient.",
-      "facturePdf": "Facture PDF"
+      "facturePdf": "Facture PDF",
+      "edit": "Modifier le brouillon",
+      "editTitle": "Corriger le brouillon",
+      "locataires": "Locataires rattachés",
+      "editHint": "Seul un brouillon est modifiable. Après publication, la facture devient un document comptable.",
+      "save": "Enregistrer",
+      "cancel": "Annuler",
+      "editFailed": "Échec de la modification.",
+      "delete": "Supprimer le brouillon",
+      "confirmDelete": "Supprimer définitivement ce brouillon ? Cette action est irréversible.",
+      "deleteFailed": "Échec de la suppression.",
+      "montantAnnuelLocataire": "Montant annuel par locataire (XAF)",
+      "compteur": "Compteur",
+      "confirmCoeffs": "Enregistrer ces coefficients ? La répartition du montant entre les locataires sera recalculée.",
+      "coeffsSaved": "Coefficients enregistrés.",
+      "confirmEdit": "Enregistrer ces corrections ? Elles ne seront plus possibles après publication.",
+      "edited": "Facture corrigée.",
+      "published": "Facture publiée : elle est désormais visible des locataires.",
+      "deleteHint": "Pour confirmer, saisissez le mois de la facture ({mois}).",
+      "deleted": "Facture supprimée.",
+      "confirmPrint": "Éditer la facture de {name} ? Le document porte ses données personnelles."
     },
-    "exportPdf": "Export PDF"
+    "exportPdf": "Export PDF",
+    "exportFailed": "Échec de l'export.",
+    "exportTronque": "Export limité aux {max} premières lignes : le fichier et ses totaux sont partiels. Filtrez par mois pour un relevé complet.",
+    "locatairesPicker": {
+      "tous": "Tous les locataires actifs",
+      "aucun": "Sélectionnez au moins un locataire."
+    },
+    "confirmExport": "Exporter les factures publiées de la période sélectionnée ? Le fichier contiendra des données nominatives."
+  },
+  "compteurs": {
+    "title": "Compteurs",
+    "purpose": "Les compteurs servent de base aux factures d'eau et d'électricité : rattachez-en un à la facture, et relevez son index à chaque facturation.",
+    "type": "Type",
+    "libelle": "Libellé",
+    "libellePlaceholder": "Compteur général, Bloc A…",
+    "scope": "Portée",
+    "indexInitial": "Index initial",
+    "dernierIndex": "Dernier index relevé",
+    "usage": "Utilisation",
+    "usageDetail": "{factures} facture(s) · {chambres} chambre(s)",
+    "consommation": "Consommation depuis le dernier relevé : {delta}",
+    "create": "Ajouter le compteur",
+    "createFailed": "Échec de la création du compteur.",
+    "save": "Enregistrer",
+    "saveFailed": "Échec de l'enregistrement.",
+    "delete": "Supprimer",
+    "deleteBloque": "Compteur rattaché à une facture ou à une chambre : il n'est pas supprimable.",
+    "confirmDelete": "Supprimer le compteur « {libelle} » ?",
+    "deleteFailed": "Échec de la suppression.",
+    "empty": "Aucun compteur enregistré.",
+    "aucun": "Aucun compteur",
+    "aucunCompteur": "Aucun compteur enregistré : ajoutez-en un depuis la page Compteurs.",
+    "types": {
+      "eau": "Eau",
+      "electricite": "Électricité"
+    },
+    "scopes": {
+      "cite": "Cité",
+      "bloc": "Bloc",
+      "chambre": "Chambre"
+    },
+    "deleted": "Compteur supprimé.",
+    "saved": "Compteur enregistré.",
+    "created": "Compteur créé."
   },
   "paiement": {
     "encaisser": "Encaisser",
@@ -175,7 +250,17 @@
       "virement": "Virement"
     },
     "justificatif": "Justificatif",
-    "voirJustificatif": "Voir justificatif"
+    "voirJustificatif": "Voir justificatif",
+    "annulerPaiement": "Annuler ce paiement",
+    "motif": "Motif de l'annulation",
+    "motifPlaceholder": "Ex. : montant saisi sur le mauvais locataire",
+    "confirmAnnulation": "Annuler ce paiement de {montant} ? Le solde de la ligne sera recalculé et le reçu ne sera plus téléchargeable.",
+    "annulationFailed": "Échec de l'annulation du paiement.",
+    "motifTropCourt": "Indiquez un motif d'au moins 5 caractères.",
+    "confirmEncaisser": "Encaisser {montant} ? Un paiement ne se modifie pas : il ne peut ensuite qu'être annulé, avec un motif.",
+    "encaisse": "Paiement enregistré.",
+    "annulationDone": "Paiement annulé ; le solde a été recalculé.",
+    "confirmPrintRecu": "Éditer le reçu de {montant} ?"
   },
   "pagination": {
     "prev": "Précédent",
@@ -184,7 +269,9 @@
   },
   "locataire": {
     "title": "Mes factures",
-    "solde": "Reste à payer",
+    "documentFr": "Document officiel émis en français, quelle que soit la langue de l'application.",
+    "soldeCharges": "Charges — reste à payer",
+    "soldeLoyer": "Loyer — reste à payer sur l'année",
     "empty": "Aucune facture publiée pour le moment.",
     "montantDu": "Montant dû",
     "montantPaye": "Montant payé",
@@ -225,7 +312,13 @@
     "colJours": "Retard",
     "joursRetard": "{n} j",
     "noImpayes": "Aucun impayé. 🎉",
-    "noData": "Aucune donnée."
+    "noData": "Aucune donnée.",
+    "loyerTitle": "Loyer {annee}",
+    "loyerFacture": "Loyer facturé",
+    "loyerEncaisse": "Loyer encaissé",
+    "loyerTaux": "Taux de recouvrement",
+    "loyerHint": "Le loyer est un forfait annuel : il est suivi à part des charges mensuelles.",
+    "chargesOnly": "Charges mensuelles (hors loyer)"
   },
   "notifications": {
     "title": "Notifications",
@@ -247,7 +340,8 @@
     },
     "send": "Publier l'annonce",
     "sent": "Annonce envoyée à {n} destinataire(s).",
-    "failed": "Échec de l'envoi de l'annonce."
+    "failed": "Échec de l'envoi de l'annonce.",
+    "confirmSend": "Diffuser cette annonce ? Une notification part immédiatement à tous les destinataires et ne peut pas être rappelée."
   },
   "suggestions": {
     "title": "Boîte à suggestions",
@@ -263,7 +357,13 @@
     "manageEmpty": "Aucune suggestion.",
     "author": "Par {name}",
     "markRead": "Marquer lue",
-    "visibleBailleur": "Visible par le bailleur"
+    "visibleBailleur": "Visible par le bailleur",
+    "confirmPublish": "Rendre cette suggestion visible du bailleur ? Son auteur y sera nommé.",
+    "confirmHide": "Masquer cette suggestion au bailleur ?",
+    "published": "Suggestion visible du bailleur.",
+    "hidden": "Suggestion masquée.",
+    "visibilityFailed": "La visibilité n'a pas pu être modifiée.",
+    "readFailed": "La suggestion n'a pas pu être marquée comme lue."
   },
   "evenements": {
     "title": "Événements",
@@ -283,7 +383,12 @@
       "en_attente": "En attente",
       "approuve": "Approuvé",
       "rejete": "Rejeté"
-    }
+    },
+    "confirmApprove": "Approuver « {titre} » ? L'événement devient visible de tous les résidents.",
+    "confirmReject": "Rejeter « {titre} » ? Son auteur en sera informé.",
+    "approved": "Événement approuvé.",
+    "rejected": "Événement rejeté.",
+    "decisionFailed": "La décision n'a pas pu être enregistrée."
   },
   "profil": {
     "title": "Mon profil",
@@ -324,7 +429,15 @@
     "viewLocation": "Voir la position",
     "resolve": "Marquer résolu",
     "ban": "Bannir",
-    "unban": "Réactiver"
+    "unban": "Réactiver",
+    "confirmResolve": "Clore ce signalement ? Son auteur sera enregistré comme pris en charge.",
+    "confirmBan": "Retirer à {name} l'accès au bouton d'alerte ? Cette personne ne pourra plus donner l'alerte.",
+    "confirmUnban": "Rendre à {name} l'accès au bouton d'alerte ?",
+    "resolveDone": "Signalement clos.",
+    "resolveFailed": "Le signalement n'a pas pu être clos.",
+    "banDone": "Accès au bouton d'alerte retiré.",
+    "unbanDone": "Accès au bouton d'alerte rendu.",
+    "banFailed": "L'accès n'a pas pu être modifié."
   },
   "maintenance": {
     "title": "Maintenance",
@@ -347,7 +460,10 @@
       "ouvert": "Ouvert",
       "en_cours": "En cours",
       "resolu": "Résolu"
-    }
+    },
+    "confirmStatut": "Passer ce ticket en « {statut} » ?",
+    "statutSaved": "Statut du ticket mis à jour.",
+    "statutFailed": "Le statut n'a pas pu être modifié."
   },
   "sondages": {
     "title": "Sondages",
@@ -360,7 +476,13 @@
     "empty": "Aucun sondage.",
     "closed": "Clôturé",
     "close": "Clôturer",
-    "totalVotes": "{n} vote(s)"
+    "totalVotes": "{n} vote(s)",
+    "confirmVote": "Confirmer ce vote pour « {option} » ?",
+    "confirmClose": "Clôturer ce sondage ? Plus aucun vote ne sera accepté et la clôture est définitive.",
+    "voted": "Vote enregistré.",
+    "voteFailed": "Le vote n'a pas pu être enregistré.",
+    "closeDone": "Sondage clôturé.",
+    "closeFailed": "Le sondage n'a pas pu être clôturé."
   },
   "portfolio": {
     "myTitle": "Mon portfolio",
@@ -414,12 +536,16 @@
     "objectif": "Objectif : {v}",
     "nbContrib": "{n} contribution(s)",
     "amount": "Montant",
-    "contribuer": "Cotiser"
+    "contribuer": "Cotiser",
+    "confirmContribuer": "Confirmer une contribution de {montant} à « {titre} » ? Elle sera enregistrée à votre nom.",
+    "contributed": "Contribution enregistrée.",
+    "contribuerFailed": "La contribution n'a pas pu être enregistrée."
   },
   "predictions": {
     "title": "Estimations de charge",
     "type": "Type",
     "mois": "Mois",
+    "typePlaceholder": "Électricité",
     "params": {
       "indiceDiff": "Indice (I)",
       "prixUnit": "Prix unitaire (P)",
@@ -441,7 +567,10 @@
     "repartitionHint": "Part calculée en répartissant le total à parts égales entre les {count} locataires actifs.",
     "estimeTotal": "Total estimé (tous)",
     "maPart": "Ma part",
-    "partLocataire": "Part par locataire"
+    "partLocataire": "Part par locataire",
+    "confirmSaveReel": "Enregistrer {montant} comme montant réel ? L'écart de la prévision sera recalculé.",
+    "reelSaved": "Montant réel enregistré.",
+    "saveReelFailed": "Le montant réel n'a pas pu être enregistré."
   },
   "twofa": {
     "title": "Double authentification (2FA)",
@@ -454,7 +583,11 @@
     "confirm": "Confirmer",
     "cancel": "Annuler",
     "disable": "Désactiver",
-    "invalidCode": "Code invalide."
+    "invalidCode": "Code invalide.",
+    "confirmDisable": "Désactiver la double authentification ? Le compte ne sera plus protégé que par son mot de passe.",
+    "enabled": "Double authentification activée.",
+    "disabled": "Double authentification désactivée.",
+    "setupFailed": "L'activation n'a pas pu démarrer."
   },
   "posts": {
     "title": "Fil d'infos",
@@ -469,7 +602,12 @@
     "masquer": "Masquer",
     "afficher": "Afficher",
     "failed": "Échec de la publication.",
-    "searchPlaceholder": "Rechercher une info…"
+    "searchPlaceholder": "Rechercher une info…",
+    "confirmHide": "Masquer « {titre} » ? La publication disparaît du fil des résidents.",
+    "confirmShow": "Réafficher « {titre} » dans le fil des résidents ?",
+    "hiddenDone": "Publication masquée.",
+    "shownDone": "Publication réaffichée.",
+    "moderationFailed": "La publication n'a pas pu être modifiée."
   },
   "documents": {
     "title": "Documents",
@@ -498,17 +636,152 @@
     },
     "searchPlaceholder": "Rechercher un document…",
     "filterAllCat": "Toutes catégories",
-    "deleted": "Document supprimé."
+    "deleted": "Document supprimé.",
+    "deleteFailed": "Le document n'a pas pu être supprimé."
   },
   "theme": {
     "light": "Mode clair",
     "dark": "Mode sombre"
+  },
+  "language": {
+    "label": "Langue",
+    "fr": "Français",
+    "en": "English",
+    "de": "Deutsch"
   },
   "common": {
     "confirm": "Confirmer",
     "cancel": "Annuler",
     "close": "Fermer",
     "showPassword": "Afficher le mot de passe",
-    "hidePassword": "Masquer le mot de passe"
+    "hidePassword": "Masquer le mot de passe",
+    "confirmTitle": "Confirmation requise",
+    "processing": "Traitement…",
+    "tooShort": "Merci de préciser davantage.",
+    "preparing": "Préparation du document…",
+    "downloadFailed": "Le document n'a pas pu être produit.",
+    "print": "Imprimer"
+  },
+  "errors": {
+    "auth": {
+      "tokenManquant": "Session absente : reconnectez-vous.",
+      "tokenInvalide": "Session expirée : reconnectez-vous.",
+      "roleRefuse": "Votre rôle ne donne pas accès à cette action.",
+      "refreshManquant": "Session absente : reconnectez-vous.",
+      "refreshInvalide": "Session expirée : reconnectez-vous.",
+      "sessionRevoquee": "Session révoquée : reconnectez-vous.",
+      "profilRefuse": "Accès refusé à ce profil.",
+      "accesRefuse": "Accès refusé.",
+      "codeInvalide": "Code invalide.",
+      "motDePasseIncorrect": "Mot de passe actuel incorrect."
+    },
+    "introuvable": {
+      "user": "Utilisateur introuvable.",
+      "facture": "Facture introuvable.",
+      "ligneFacture": "Ligne de facture introuvable.",
+      "paiement": "Paiement introuvable.",
+      "compteur": "Compteur introuvable.",
+      "suggestion": "Suggestion introuvable.",
+      "sondage": "Sondage introuvable.",
+      "signal": "Signal introuvable.",
+      "ticket": "Ticket introuvable.",
+      "projet": "Projet introuvable.",
+      "post": "Publication introuvable.",
+      "notification": "Notification introuvable.",
+      "evenement": "Événement introuvable.",
+      "prediction": "Estimation introuvable.",
+      "document": "Document introuvable."
+    },
+    "user": {
+      "usernamePris": "Nom d'utilisateur déjà pris.",
+      "adminNonDesactivable": "Impossible de désactiver un admin."
+    },
+    "portfolio": {
+      "aucunARetirer": "Aucun portfolio à retirer."
+    },
+    "facture": {
+      "dejaPubliee": "Facture déjà publiée.",
+      "publieeNonModifiable": "Facture déjà publiée : elle n'est plus modifiable.",
+      "publieeNonSupprimable": "Facture déjà publiée : elle n'est plus supprimable.",
+      "nonPublieeDocument": "Facture non publiée : document indisponible.",
+      "aucunLocataireActif": "Aucun locataire actif sur cette facture.",
+      "aucunLocataireRattacher": "Aucun locataire actif à rattacher à la facture.",
+      "locatairesInconnus": "{count, plural, one {# locataire sélectionné est inconnu ou désactivé} other {# locataires sélectionnés sont inconnus ou désactivés}} ; la facture n'a pas été créée.",
+      "locatairesNonRattaches": "{count, plural, one {# locataire n'est pas rattaché} other {# locataires ne sont pas rattachés}} à cette facture.",
+      "typeMoisOccupe": "Une facture « {type} » existe déjà pour {mois}.",
+      "loyerAnneeOccupee": "Une facture de loyer couvre déjà l'année {annee} ({mois}). Le loyer est un forfait annuel : corrigez la facture existante plutôt que d'en créer une seconde.",
+      "loyerMontantAnnuelRequis": "Facture de loyer : renseignez le montant annuel dû par chaque locataire.",
+      "loyerMontantTotalInterdit": "Facture de loyer : le forfait se corrige par le montant annuel dû par chaque locataire, pas par un montant total.",
+      "loyerSansCoefficient": "Facture de loyer : forfait annuel identique par locataire, sans division ni coefficient.",
+      "loyerEcheanceTropTot": "Facture de loyer : le forfait couvre une année, l'échéance doit être au moins {mois} mois après le début de la période.",
+      "loyerEntree": "Passage en loyer : indiquez le montant annuel dû par chaque locataire.",
+      "loyerSortie": "Sortie du régime loyer : indiquez le montant total à répartir.",
+      "montantParLocataireReserveLoyer": "Le montant par locataire est réservé au loyer ; les autres factures se répartissent à partir d'un montant total.",
+      "echeanceHorsPeriode": "L'échéance ne tombe plus dans la période facturée : ajustez aussi la date limite.",
+      "doublonTypeMois": "Une facture de ce type existe déjà pour cette période.",
+      "doublonLoyerAnnee": "Une facture de loyer existe déjà pour cette année."
+    },
+    "paiement": {
+      "factureNonPubliee": "Impossible d'encaisser : facture non publiée.",
+      "montantDepasseSolde": "Le montant dépasse le solde restant ({reste, number} XAF).",
+      "encaissementConcurrent": "Un autre encaissement vient d'être enregistré sur cette ligne. Rechargez la facture et vérifiez le solde restant.",
+      "dejaAnnule": "Paiement déjà annulé."
+    },
+    "compteur": {
+      "libelleDuplique": "Un compteur « {libelle} » existe déjà pour ce type.",
+      "utilise": "Compteur utilisé : {factures, plural, one {# facture} other {# factures}} et {chambres, plural, one {# chambre} other {# chambres}} y sont rattachées."
+    },
+    "sondage": {
+      "cloture": "Ce sondage est clôturé.",
+      "choixInvalide": "Choix invalide."
+    },
+    "evenement": {
+      "dejaTraite": "Cet événement a déjà été traité."
+    },
+    "projet": {
+      "inaccessible": "Ce projet ne vous est pas accessible."
+    },
+    "notification": {
+      "accesRefuse": "Accès refusé à cette notification.",
+      "aucunDestinataire": "Aucun destinataire actif pour cette portée."
+    },
+    "distress": {
+      "banni": "Votre accès au signal de détresse a été suspendu par l'administration.",
+      "pasLeVotre": "Ce signal n'est pas le vôtre.",
+      "dejaResolu": "Signal déjà résolu."
+    },
+    "upload": {
+      "stockageNonConfigure": "Stockage indisponible : contactez l'administration.",
+      "genreInvalide": "Genre de fichier invalide.",
+      "fichierManquant": "Aucun fichier sélectionné.",
+      "fichierVide": "Fichier vide.",
+      "fichierTropGros": "Fichier trop volumineux (max {maxMo} Mo).",
+      "typeNonAutorise": "Type de fichier non autorisé. Acceptés : {acceptes}.",
+      "extensionInconnue": "Type de fichier non autorisé.",
+      "contenuIncoherent": "Le contenu du fichier ne correspond pas à son type déclaré.",
+      "echec": "Échec du téléversement."
+    },
+    "calcul": {
+      "aucunLocataire": "Aucun locataire rattaché à la facture.",
+      "montantTotalInvalide": "Le montant total doit être un entier positif (XAF, sans centimes).",
+      "sommeCoeffInvalide": "La somme des coefficients doit être strictement positive."
+    },
+    "validation": {
+      "telephoneInvalide": "Numéro de téléphone invalide (6 à 20 caractères, chiffres et séparateurs).",
+      "moisFormat": "Mois attendu au format AAAA-MM (01 à 12).",
+      "heureFormat": "Heure attendue au format HH:mm.",
+      "aucuneModification": "Aucune modification fournie.",
+      "montantXor": "Renseignez soit le montant total, soit le montant par locataire.",
+      "dateLimiteHorsPeriode": "L'échéance doit tomber entre le premier jour du mois facturé et {mois} mois plus tard.",
+      "dateLimiteLoyer": "Facture de loyer : le forfait couvre une année, l'échéance doit donc être au moins {mois} mois après le début de la période (par exemple le 31 décembre)."
+    },
+    "generic": {
+      "tropDeRequetes": "Trop de requêtes. Réessayez dans {secondes} s.",
+      "doublon": "Cet enregistrement existe déjà.",
+      "referenceInexistante": "Référence inexistante dans la requête.",
+      "introuvable": "Enregistrement introuvable.",
+      "entreeInvalide": "Saisie invalide : vérifiez les champs du formulaire.",
+      "serveur": "Erreur serveur. Réessayez dans un instant."
+    }
   }
 }

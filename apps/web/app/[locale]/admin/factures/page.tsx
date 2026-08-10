@@ -3,9 +3,11 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch, downloadAuthed } from "@/lib/client/session";
-import { formatXAF, formatDate, formatMois } from "@/lib/format";
-import { Card, PageTitle, PubBadge, Spinner, EmptyState, Pager, btnPrimary, btnSecondary, inputCls } from "@/components/ui";
+import { apiFetch } from "@/lib/client/session";
+import { FACTURE_TYPES } from "@campusgest/shared";
+import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
+import { Card, PubBadge, Spinner, EmptyState, Pager, btnPrimary, inputCls } from "@/components/ui";
+import { ExportFactures } from "@/components/ExportFactures";
 
 const PAGE_SIZE = 20;
 
@@ -22,9 +24,15 @@ interface FactureRow {
 
 export default function AdminFacturesPage() {
   const t = useTranslations("factures");
+  const tStatut = useTranslations("statut");
   const locale = useLocale();
   const [factures, setFactures] = useState<FactureRow[] | null>(null);
   const [mois, setMois] = useState("");
+  // The API has always filtered on type (accent- and case-folded) and on
+  // publication status; only the month was ever reachable from here, so finding
+  // the drafts left to publish meant paging through everything.
+  const [type, setType] = useState("");
+  const [statut, setStatut] = useState("");
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
 
@@ -32,6 +40,8 @@ export default function AdminFacturesPage() {
     setFactures(null);
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
     if (mois) params.set("mois", mois);
+    if (type) params.set("type", type);
+    if (statut) params.set("statut", statut);
     apiFetch(`/api/factures?${params}`).then(async (res) => {
       if (res.ok) {
         const data = (await res.json()) as { items: FactureRow[]; total: number };
@@ -39,7 +49,15 @@ export default function AdminFacturesPage() {
         setTotal(data.total);
       }
     });
-  }, [mois, page]);
+  }, [mois, type, statut, page]);
+
+  /** Any filter change resets to the first page: page 4 of a new filter is empty. */
+  function filtrer(set: (v: string) => void) {
+    return (v: string) => {
+      set(v);
+      setPage(1);
+    };
+  }
 
   return (
     <>
@@ -49,35 +67,34 @@ export default function AdminFacturesPage() {
           <input
             type="month"
             value={mois}
-            onChange={(e) => {
-              setMois(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => filtrer(setMois)(e.target.value)}
             className={`${inputCls} w-auto`}
             aria-label={t("mois")}
           />
-          <button
-            onClick={() =>
-              downloadAuthed(
-                `/api/export/factures${mois ? `?mois=${mois}` : ""}`,
-                `factures${mois ? "-" + mois : ""}.csv`,
-              )
-            }
-            className={btnSecondary}
+          <input
+            list="filtre-types"
+            value={type}
+            onChange={(e) => filtrer(setType)(e.target.value)}
+            placeholder={t("type")}
+            className={`${inputCls} w-36`}
+            aria-label={t("type")}
+          />
+          <datalist id="filtre-types">
+            {FACTURE_TYPES.map((v) => (
+              <option key={v} value={v} />
+            ))}
+          </datalist>
+          <select
+            value={statut}
+            onChange={(e) => filtrer(setStatut)(e.target.value)}
+            className={`${inputCls} w-auto`}
+            aria-label={t("statut")}
           >
-            {t("export")}
-          </button>
-          <button
-            onClick={() =>
-              downloadAuthed(
-                `/api/export/recap${mois ? `?mois=${mois}` : ""}`,
-                `releve${mois ? "-" + mois : ""}.pdf`,
-              )
-            }
-            className={btnSecondary}
-          >
-            {t("exportPdf")}
-          </button>
+            <option value="">{t("filtreTousStatuts")}</option>
+            <option value="brouillon">{tStatut("brouillon")}</option>
+            <option value="publiee">{tStatut("publiee")}</option>
+          </select>
+          <ExportFactures mois={mois} />
           <Link href={`/${locale}/admin/factures/new`} className={btnPrimary}>
             {t("create")}
           </Link>
@@ -117,7 +134,7 @@ export default function AdminFacturesPage() {
                       </span>
                     )}
                   </td>
-                  <td className="px-4 py-3">{formatMois(f.mois, locale)}</td>
+                  <td className="px-4 py-3">{formatPeriodeFacture(f.type, f.mois, locale)}</td>
                   <td className="px-4 py-3 text-right font-mono">{formatXAF(f.montantTotal, locale)}</td>
                   <td className="px-4 py-3">{formatDate(f.dateLimite, locale)}</td>
                   <td className="px-4 py-3 text-center">{f._count.lignes}</td>

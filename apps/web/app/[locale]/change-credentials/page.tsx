@@ -3,6 +3,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import {
   apiFetch,
   getSession,
@@ -21,6 +22,7 @@ import { PasswordInput } from "@/components/PasswordInput";
  */
 export default function ChangeCredentialsPage() {
   const t = useTranslations("credentials");
+  const apiError = useApiError();
   const locale = useLocale();
   const router = useRouter();
   const [newUsername, setNewUsername] = useState("");
@@ -73,7 +75,7 @@ export default function ChangeCredentialsPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? t("failed"));
+        setError(apiError(data, t("failed")));
         return;
       }
       // The server reissues an access token (tokenVersion incremented).

@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
+import { usePathname, useRouter } from "next/navigation";
 import { apiFetch, getSession, updateSessionUser } from "@/lib/client/session";
 import { LOCALES, type Locale } from "@campusgest/shared";
 import { Card, PageTitle, Field, Spinner, ErrorText, inputCls, btnPrimary } from "@/components/ui";
@@ -23,7 +25,12 @@ const pad = (n: number) => String(n).padStart(2, "0");
 /** Profile & preferences: birthday opt-in + notification channels (§5.6, §8.3). */
 export function ProfileForm() {
   const t = useTranslations("profil");
+  const apiError = useApiError();
+  // Endonyms, so the option is legible whatever the current interface language.
+  const tLang = useTranslations("language");
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const [p, setP] = useState<Profile | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,13 +101,19 @@ export function ProfileForm() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       const updated = (await res.json()) as Profile;
       setP(updated);
       updateSessionUser({ fullName: updated.fullName, language: updated.language });
       setSaved(true);
+      // Apply the language immediately rather than on the next navigation: a
+      // confirmation in a language the user just moved away from is exactly the
+      // "saved, but nothing changed" impression the switcher exists to remove.
+      if (updated.language !== locale) {
+        router.replace(`/${updated.language}${pathname.replace(/^\/[^/]+/, "")}`);
+      }
     } catch {
       setError(t("failed"));
     } finally {
@@ -135,7 +148,7 @@ export function ProfileForm() {
               <select value={p.language} onChange={(e) => setField("language", e.target.value as Locale)} className={`${inputCls} w-auto`}>
                 {LOCALES.map((l) => (
                   <option key={l} value={l}>
-                    {l.toUpperCase()}
+                    {tLang(l)}
                   </option>
                 ))}
               </select>

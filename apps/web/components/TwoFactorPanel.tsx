@@ -3,11 +3,14 @@
 import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { apiFetch, getSession } from "@/lib/client/session";
+import { useConfirmAction, useToast } from "@/components/Toast";
 import { Card, Field, ErrorText, inputCls, btnPrimary, btnSecondary } from "@/components/ui";
 
 /** Enables / disables TOTP 2FA (Admin) — design §9. */
 export function TwoFactorPanel() {
   const t = useTranslations("twofa");
+  const toast = useToast();
+  const confirmAction = useConfirmAction();
   const [enabled, setEnabled] = useState<boolean | null>(null);
   const [setup, setSetup] = useState<{ secret: string; otpauth: string } | null>(null);
   const [code, setCode] = useState("");
@@ -29,13 +32,17 @@ export function TwoFactorPanel() {
     setBusy(true);
     try {
       const res = await apiFetch("/api/auth/2fa/setup", { method: "POST" });
-      if (res.ok) setSetup((await res.json()) as { secret: string; otpauth: string });
+      if (!res.ok) {
+        setError(t("setupFailed"));
+        return;
+      }
+      setSetup((await res.json()) as { secret: string; otpauth: string });
     } finally {
       setBusy(false);
     }
   }
 
-  async function confirm() {
+  async function verifyCode() {
     if (!setup) return;
     setError(null);
     setBusy(true);
@@ -51,25 +58,32 @@ export function TwoFactorPanel() {
       setEnabled(true);
       setSetup(null);
       setCode("");
+      toast.success(t("enabled"));
     } finally {
       setBusy(false);
     }
   }
 
+  /**
+   * Turning 2FA off leaves the account on its password alone, and the code in
+   * the field is enough to do it in one click — hence the confirmation.
+   */
   async function disable() {
     setError(null);
     setBusy(true);
     try {
-      const res = await apiFetch("/api/auth/2fa/disable", {
-        method: "POST",
-        body: JSON.stringify({ code }),
+      const done = await confirmAction({
+        level: "danger",
+        message: t("confirmDisable"),
+        confirmLabel: t("disable"),
+        success: t("disabled"),
+        failure: t("invalidCode"),
+        run: () => apiFetch("/api/auth/2fa/disable", { method: "POST", body: JSON.stringify({ code }) }),
       });
-      if (!res.ok) {
-        setError(t("invalidCode"));
-        return;
+      if (done) {
+        setEnabled(false);
+        setCode("");
       }
-      setEnabled(false);
-      setCode("");
     } finally {
       setBusy(false);
     }
@@ -103,7 +117,7 @@ export function TwoFactorPanel() {
             <input value={code} onChange={(e) => setCode(e.target.value)} inputMode="numeric" maxLength={6} className={`${inputCls} w-32`} />
           </Field>
           <div className="flex gap-2">
-            <button onClick={confirm} disabled={busy || code.length !== 6} className={btnPrimary}>
+            <button onClick={verifyCode} disabled={busy || code.length !== 6} className={btnPrimary}>
               {t("confirm")}
             </button>
             <button onClick={() => setSetup(null)} className={btnSecondary}>

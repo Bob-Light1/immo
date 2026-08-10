@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { formatDate } from "@/lib/format";
+import { useConfirmAction, useToast } from "@/components/Toast";
 import { Card, PageTitle, Spinner, EmptyState, Pager, btnSecondary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -23,6 +24,8 @@ interface Suggestion {
 export function SuggestionsList({ admin }: { admin: boolean }) {
   const t = useTranslations("suggestions");
   const locale = useLocale();
+  const toast = useToast();
+  const confirmAction = useConfirmAction();
   const [items, setItems] = useState<Suggestion[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -43,15 +46,33 @@ export function SuggestionsList({ admin }: { admin: boolean }) {
 
   async function markRead(id: string) {
     setItems((prev) => prev?.map((s) => (s.id === id ? { ...s, isReadAdmin: true } : s)) ?? prev);
-    await apiFetch(`/api/suggestions/${id}/read`, { method: "PATCH" });
+    const res = await apiFetch(`/api/suggestions/${id}/read`, { method: "PATCH" });
+    // The marker was applied on screen before the server agreed; put it back
+    // rather than leave a suggestion looking handled when it is not.
+    if (!res.ok) {
+      setItems((prev) => prev?.map((s) => (s.id === id ? { ...s, isReadAdmin: false } : s)) ?? prev);
+      toast.error(t("readFailed"));
+    }
   }
 
+  /**
+   * Handing a suggestion to the Bailleur names its author to them, so the
+   * decision is confirmed in both directions.
+   */
   async function toggleVisibility(s: Suggestion) {
     const next = !s.bailleurVisible;
-    setItems((prev) => prev?.map((x) => (x.id === s.id ? { ...x, bailleurVisible: next } : x)) ?? prev);
-    await apiFetch(`/api/suggestions/${s.id}/visibility`, {
-      method: "PATCH",
-      body: JSON.stringify({ bailleurVisible: next }),
+    await confirmAction({
+      level: next ? "danger" : "info",
+      message: next ? t("confirmPublish") : t("confirmHide"),
+      confirmLabel: t("visibleBailleur"),
+      success: next ? t("published") : t("hidden"),
+      failure: t("visibilityFailed"),
+      run: () =>
+        apiFetch(`/api/suggestions/${s.id}/visibility`, {
+          method: "PATCH",
+          body: JSON.stringify({ bailleurVisible: next }),
+        }),
+      onDone: load,
     });
   }
 

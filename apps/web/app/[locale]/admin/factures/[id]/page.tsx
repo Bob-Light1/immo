@@ -1,24 +1,25 @@
 "use client";
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch, downloadFactureLigne, downloadRecu, uploadFile } from "@/lib/client/session";
-import { formatXAF, formatDate, formatMois } from "@/lib/format";
-import type { LigneStatut, PaiementMode } from "@campusgest/shared";
+import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
+import type { CompteurType, LigneStatut, PaiementMode } from "@campusgest/shared";
 import { PAIEMENT_MODES, isLoyer, suiviLoyer } from "@campusgest/shared";
 import {
   Card,
   StatutBadge,
   PubBadge,
   Spinner,
-  ErrorText,
   inputCls,
   btnPrimary,
   btnSecondary,
   btnBrand,
 } from "@/components/ui";
-import { useConfirm } from "@/components/Toast";
+import { useConfirmAction, useDownload, type ConfirmActionOptions } from "@/components/Toast";
+import { LocatairesPicker } from "@/components/LocatairesPicker";
+import { CompteurSelect } from "@/components/CompteurSelect";
 
 interface Paiement {
   id: string;
@@ -49,20 +50,35 @@ interface FactureDetail {
   mois: string;
   dateLimite: string;
   statutPub: "brouillon" | "publiee";
+  compteur: { id: string; type: CompteurType; libelle: string } | null;
   lignes: Ligne[];
 }
 
 export default function AdminFactureDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("factures.detail");
+  const tCommon = useTranslations("common");
   const tPay = useTranslations("paiement");
   const locale = useLocale();
-  const confirm = useConfirm();
+  const confirmAction = useConfirmAction();
+  const download = useDownload();
 
+  const router = useRouter();
   const [facture, setFacture] = useState<FactureDetail | null>(null);
   const [coeffs, setCoeffs] = useState<Record<string, string>>({});
-  const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Draft correction form (closed by default)
+  const [editing, setEditing] = useState(false);
+  const [editType, setEditType] = useState("");
+  const [editMontant, setEditMontant] = useState("");
+  const [editMois, setEditMois] = useState("");
+  const [editDateLimite, setEditDateLimite] = useState("");
+  // Roster of the draft: stated explicitly here, since correcting it is the
+  // point (a tenant who arrived after the draft was written, typically on a
+  // rolled-over one).
+  const [editLocataires, setEditLocataires] = useState<string[]>([]);
+  // `null` detaches the meter, which is what the empty option sends.
+  const [editCompteurId, setEditCompteurId] = useState<string | null>(null);
   // Line currently being settled (inline form)
   const [paying, setPaying] = useState<Ligne | null>(null);
   const [payMontant, setPayMontant] = useState("");
@@ -90,29 +106,27 @@ export default function AdminFactureDetailPage() {
   const loyer = isLoyer(facture.type);
   const annee = facture.mois.slice(0, 4);
 
-  async function action(fn: () => Promise<Response>, failMsg: string) {
+  /**
+   * Every write on this screen is guarded: the amounts here are what the
+   * tenants owe, and once the invoice is published they are financial history.
+   * The dialog reports the outcome itself, so nothing on the page has to.
+   */
+  async function guarded(options: ConfirmActionOptions) {
     setBusy(true);
-    setError(null);
     try {
-      const res = await fn();
-      if (!res.ok) {
-        const data = await res.json().catch(() => null);
-        setError(data?.error ?? failMsg);
-        return false;
-      }
-      await load();
-      return true;
-    } catch {
-      setError(failMsg);
-      return false;
+      return await confirmAction({ onDone: load, ...options });
     } finally {
       setBusy(false);
     }
   }
 
   function saveCoefficients() {
-    action(
-      () =>
+    return guarded({
+      message: t("confirmCoeffs"),
+      confirmLabel: t("saveCoeffs"),
+      success: t("coeffsSaved"),
+      failure: t("coeffFailed"),
+      run: () =>
         apiFetch(`/api/factures/${id}/coefficients`, {
           method: "POST",
           body: JSON.stringify({
@@ -122,14 +136,128 @@ export default function AdminFactureDetailPage() {
             })),
           }),
         }),
-      t("coeffFailed"),
-    );
+    });
   }
 
-  async function publish() {
-    const ok = await confirm({ message: t("confirmPublish"), confirmLabel: t("publish") });
-    if (!ok) return;
-    action(() => apiFetch(`/api/factures/${id}/publish`, { method: "POST" }), t("publishFailed"));
+  function publish() {
+    return guarded({
+      level: "danger",
+      message: t("confirmPublish"),
+      confirmLabel: t("publish"),
+      success: t("published"),
+      failure: t("publishFailed"),
+      run: () => apiFetch(`/api/factures/${id}/publish`, { method: "POST" }),
+    });
+  }
+
+  function openEdit() {
+    if (!facture) return;
+    setEditType(facture.type);
+    // For rent the editable figure is the flat annual amount, which the invoice
+    // carries as its base unit, not the total.
+    setEditMontant(String(loyer ? facture.baseUnitaire : facture.montantTotal));
+    setEditMois(facture.mois);
+    setEditDateLimite(facture.dateLimite.slice(0, 10));
+    setEditLocataires(facture.lignes.map((l) => l.locataireId));
+    setEditCompteurId(facture.compteur?.id ?? null);
+    setEditing(true);
+  }
+
+  async function submitEdit(e: FormEvent) {
+    e.preventDefault();
+    const montant = Number(editMontant);
+    const ok = await guarded({
+      message: t("confirmEdit"),
+      confirmLabel: t("save"),
+      success: t("edited"),
+      failure: t("editFailed"),
+      run: () =>
+        apiFetch(`/api/factures/${id}`, {
+          method: "PATCH",
+          body: JSON.stringify({
+            type: editType,
+            ...(isLoyer(editType)
+              ? { montantParLocataire: montant }
+              : { montantTotal: montant }),
+            mois: editMois,
+            dateLimite: editDateLimite,
+            locataireIds: editLocataires,
+            // Rent measures nothing: switching a draft over to it drops the meter.
+            compteurId: isLoyer(editType) ? null : editCompteurId,
+          }),
+        }),
+    });
+    if (ok) setEditing(false);
+  }
+
+  /**
+   * Deleting a draft takes its lines and their coefficients with it, so the
+   * month has to be retyped: the button sits next to the ones used daily.
+   */
+  function remove() {
+    if (!facture) return;
+    return guarded({
+      level: "critical",
+      message: t("confirmDelete"),
+      challenge: { phrase: facture.mois, hint: t("deleteHint", { mois: facture.mois }) },
+      confirmLabel: t("delete"),
+      success: t("deleted"),
+      failure: t("deleteFailed"),
+      run: () => apiFetch(`/api/factures/${id}`, { method: "DELETE" }),
+      // Nothing left to reload: the invoice this screen shows is gone.
+      onDone: () => router.replace(`/${locale}/admin/factures`),
+    });
+  }
+
+  /**
+   * A payment is never edited, only cancelled with a reason, and the reason is
+   * what the audit log will keep — so it is collected in the dialog itself.
+   */
+  function cancelPaiement(p: Paiement) {
+    return guarded({
+      level: "danger",
+      message: tPay("confirmAnnulation", { montant: formatXAF(p.montant, locale) }),
+      confirmLabel: tPay("annulerPaiement"),
+      prompt: {
+        label: tPay("motif"),
+        placeholder: tPay("motifPlaceholder"),
+        minLength: 5,
+        tooShort: tPay("motifTropCourt"),
+      },
+      success: tPay("annulationDone"),
+      failure: tPay("annulationFailed"),
+      run: (motif) =>
+        apiFetch(`/api/paiements/${p.id}`, {
+          method: "DELETE",
+          body: JSON.stringify({ motif }),
+        }),
+    });
+  }
+
+  /**
+   * Editing someone else's document is confirmed: a PDF leaving this screen
+   * carries a tenant's name and what they owe.
+   */
+  function printFactureLigne(l: Ligne) {
+    return download({
+      run: () => downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`),
+      failure: tCommon("downloadFailed"),
+      confirm: {
+        message: t("confirmPrint", { name: l.locataire.fullName }),
+        confirmLabel: tCommon("print"),
+      },
+    });
+  }
+
+  function printRecu(p: Paiement) {
+    return download({
+      run: () => downloadRecu(p.id),
+      failure: tCommon("downloadFailed"),
+      confirm: {
+        message: tPay("confirmPrintRecu", { montant: formatXAF(p.montant, locale) }),
+        confirmLabel: tCommon("print"),
+      },
+    });
   }
 
   function openPay(l: Ligne) {
@@ -143,31 +271,29 @@ export default function AdminFactureDetailPage() {
   async function submitPay(e: FormEvent) {
     e.preventDefault();
     if (!paying) return;
-    setBusy(true);
-    setError(null);
-    let justificatifUrl: string | undefined;
-    try {
-      if (payJustif) justificatifUrl = await uploadFile(payJustif, "document");
-    } catch (err) {
-      setError(err instanceof Error ? err.message : tPay("failed"));
-      setBusy(false);
-      return;
-    }
-    setBusy(false);
-    const ok = await action(
-      () =>
-        apiFetch("/api/paiements", {
+    const ligne = paying;
+    const ok = await guarded({
+      level: "danger",
+      message: tPay("confirmEncaisser", { montant: formatXAF(Number(payMontant), locale) }),
+      confirmLabel: tPay("valider"),
+      success: tPay("encaisse"),
+      failure: tPay("failed"),
+      // The receipt is uploaded inside the guarded run, so a cancelled dialog
+      // leaves nothing behind in the object store.
+      run: async () => {
+        const justificatifUrl = payJustif ? await uploadFile(payJustif, "document") : undefined;
+        return apiFetch("/api/paiements", {
           method: "POST",
           body: JSON.stringify({
-            factureLocataireId: paying.id,
+            factureLocataireId: ligne.id,
             montant: Number(payMontant),
             mode: payMode,
             reference: payRef || undefined,
             justificatifUrl,
           }),
-        }),
-      tPay("failed"),
-    );
+        });
+      },
+    });
     if (ok) setPaying(null);
   }
 
@@ -177,10 +303,16 @@ export default function AdminFactureDetailPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-navy">
-          {facture.type} — {formatMois(facture.mois, locale)}
+          {facture.type} — {formatPeriodeFacture(facture.type, facture.mois, locale)}
         </h1>
         <PubBadge statut={facture.statutPub} />
       </div>
+
+      {facture.compteur && (
+        <p className="-mt-4 mb-6 text-sm text-slate-500">
+          {t("compteur")} : <span className="font-medium text-navy">{facture.compteur.libelle}</span>
+        </p>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
@@ -217,11 +349,14 @@ export default function AdminFactureDetailPage() {
           </thead>
           <tbody>
             {facture.lignes.map((l) => {
-              const suivi = suiviLoyer({
-                montantAnnuel: l.montantDu,
-                montantPaye: l.montantPaye,
-                paiements: l.paiements.map((p) => ({ montant: p.montant, date: p.createdAt })),
-              });
+              // Rent only: the annual tracking has no meaning on a monthly charge.
+              const suivi = loyer
+                ? suiviLoyer({
+                    montantAnnuel: l.montantDu,
+                    montantPaye: l.montantPaye,
+                    paiements: l.paiements.map((p) => ({ montant: p.montant, date: p.createdAt })),
+                  })
+                : null;
               return (
               <tr key={l.id} className="border-b border-slate-100 last:border-0">
                 <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
@@ -230,7 +365,7 @@ export default function AdminFactureDetailPage() {
                     {brouillon ? (
                       <input
                         type="number"
-                        step={0.1}
+                        step={0.01}
                         min={0.1}
                         max={99.99}
                         value={coeffs[l.locataireId] ?? ""}
@@ -247,13 +382,13 @@ export default function AdminFactureDetailPage() {
                 <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
                 {loyer && (
                   <td className="px-4 py-3 text-right font-mono">
-                    {formatXAF(suivi.payeCeMois, locale)}
+                    {formatXAF(suivi?.payeCeMois ?? 0, locale)}
                   </td>
                 )}
                 <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
                 {loyer && (
                   <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
-                    {formatXAF(suivi.restantAnnee, locale)}
+                    {formatXAF(suivi?.restantAnnee ?? 0, locale)}
                   </td>
                 )}
                 <td className="px-4 py-3">
@@ -273,9 +408,7 @@ export default function AdminFactureDetailPage() {
                       )}
                       <button
                         className="text-xs text-navy underline-offset-2 hover:underline"
-                        onClick={() =>
-                          downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`)
-                        }
+                        onClick={() => printFactureLigne(l)}
                       >
                         {t("facturePdf")}
                       </button>
@@ -293,9 +426,16 @@ export default function AdminFactureDetailPage() {
                           )}
                           <button
                             className="text-xs text-navy underline-offset-2 hover:underline"
-                            onClick={() => downloadRecu(p.id)}
+                            onClick={() => printRecu(p)}
                           >
                             {tPay("recu", { montant: formatXAF(p.montant, locale) })}
+                          </button>
+                          <button
+                            className="text-xs text-red-600 underline-offset-2 hover:underline"
+                            onClick={() => cancelPaiement(p)}
+                            disabled={busy}
+                          >
+                            {tPay("annulerPaiement")}
                           </button>
                         </div>
                       ))}
@@ -308,6 +448,94 @@ export default function AdminFactureDetailPage() {
           </tbody>
         </table>
       </Card>
+
+      {editing && (
+        <Card className="mt-6 max-w-lg border-brand">
+          <h2 className="mb-1 font-semibold text-navy">{t("editTitle")}</h2>
+          <p className="mb-4 text-xs text-slate-500">{t("editHint")}</p>
+          <form onSubmit={submitEdit} className="flex flex-wrap items-end gap-3">
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">{t("type")}</label>
+              <input
+                value={editType}
+                onChange={(e) => setEditType(e.target.value)}
+                required
+                minLength={2}
+                maxLength={60}
+                className={`${inputCls} w-40`}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {isLoyer(editType) ? t("montantAnnuelLocataire") : t("montantTotal")}
+              </label>
+              <input
+                type="number"
+                min={1}
+                step={1}
+                value={editMontant}
+                onChange={(e) => setEditMontant(e.target.value)}
+                required
+                className={`${inputCls} w-40`}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">{t("mois")}</label>
+              <input
+                type="month"
+                value={editMois}
+                onChange={(e) => setEditMois(e.target.value)}
+                required
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t("dateLimite")}
+              </label>
+              <input
+                type="date"
+                value={editDateLimite}
+                onChange={(e) => setEditDateLimite(e.target.value)}
+                required
+                className={inputCls}
+              />
+            </div>
+            {!isLoyer(editType) && (
+              <div>
+                <label className="mb-1 block text-xs font-medium text-slate-600">
+                  {t("compteur")}
+                </label>
+                <CompteurSelect
+                  value={editCompteurId}
+                  onChange={setEditCompteurId}
+                  className="w-48"
+                />
+              </div>
+            )}
+            <div className="w-full">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
+                {t("locataires")}
+              </label>
+              <LocatairesPicker
+                value={editLocataires}
+                onChange={(ids) => setEditLocataires(ids ?? [])}
+                autoriseTous={false}
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={busy || editLocataires.length === 0}
+              className={btnPrimary}
+            >
+              {busy ? "…" : t("save")}
+            </button>
+            <button type="button" className={btnSecondary} onClick={() => setEditing(false)}>
+              {t("cancel")}
+            </button>
+          </form>
+        </Card>
+      )}
 
       {paying && (
         <Card className="mt-6 max-w-lg border-brand">
@@ -375,7 +603,6 @@ export default function AdminFactureDetailPage() {
       )}
 
       <div className="mt-6 space-y-3">
-        <ErrorText>{error}</ErrorText>
         {brouillon && (
           <div className="flex flex-wrap items-center gap-3">
             {loyer ? (
@@ -385,8 +612,18 @@ export default function AdminFactureDetailPage() {
                 {t("saveCoeffs")}
               </button>
             )}
+            <button className={btnSecondary} onClick={openEdit} disabled={busy}>
+              {t("edit")}
+            </button>
             <button className={btnPrimary} onClick={publish} disabled={busy}>
               {t("publish")}
+            </button>
+            <button
+              className="text-sm text-red-600 underline-offset-2 hover:underline"
+              onClick={remove}
+              disabled={busy}
+            >
+              {t("delete")}
             </button>
           </div>
         )}

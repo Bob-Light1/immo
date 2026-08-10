@@ -1,13 +1,25 @@
 import { z } from "zod";
+import { issueCode } from "./errors";
 import {
   ROLES,
   LOCALES,
+  DEFAULT_LOCALE,
+  COMPTEUR_TYPES,
+  COMPTEUR_SCOPES,
   PAIEMENT_MODES,
   TICKET_CATEGORIES,
   TICKET_STATUTS,
   DOCUMENT_CATEGORIES,
   MIN_PASSWORD_LENGTH,
 } from "./types";
+import {
+  MOIS_REGEX,
+  dateLimiteCoherente,
+  dateLimiteLoyerCoherente,
+  DATE_LIMITE_MAX_MOIS,
+  LOYER_ECHEANCE_MIN_MOIS,
+} from "./dates";
+import { isLoyer } from "./types";
 
 // ─── Auth ───
 export const loginSchema = z.object({
@@ -27,12 +39,16 @@ export type ChangeCredentialsInput = z.infer<typeof changeCredentialsSchema>;
 // ─── Users ───
 // Phone is mandatory (reachability if trouble occurs on site): 6 to 20
 // characters, digits and the usual separators (+, spaces, parentheses, dashes).
+// Written as a single refinement rather than a min/max/regex chain: only a
+// refinement can carry an error code, and the reader gets one sentence instead
+// of up to three overlapping complaints about the same field.
 export const phoneSchema = z
   .string()
   .trim()
-  .min(6, "Numéro de téléphone trop court.")
-  .max(20)
-  .regex(/^[+0-9][0-9 ().-]*$/, "Numéro de téléphone invalide.");
+  .refine(
+    (v) => v.length >= 6 && v.length <= 20 && /^[+0-9][0-9 ().-]*$/.test(v),
+    issueCode("validation.telephoneInvalide", "Numéro de téléphone invalide."),
+  );
 
 export const createUserSchema = z.object({
   username: z.string().min(3).max(50),
@@ -40,7 +56,7 @@ export const createUserSchema = z.object({
   role: z.enum(ROLES),
   email: z.string().email().max(150).optional().or(z.literal("")),
   phone: phoneSchema,
-  language: z.enum(LOCALES).default("fr"),
+  language: z.enum(LOCALES).default(DEFAULT_LOCALE),
   roomId: z.string().uuid().optional(),
 });
 export type CreateUserInput = z.infer<typeof createUserSchema>;
@@ -59,34 +75,136 @@ export const updateProfileSchema = z.object({
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;
 
+// ─── Meters ───
+// Meter readings are cumulative counts (m³, kWh) stored as BigInt: cap them the
+// same way amounts are, so a mistyped reading is rejected at the edge.
+const indexCompteur = z.coerce.number().int().nonnegative().max(1_000_000_000_000);
+
+export const createCompteurSchema = z.object({
+  type: z.enum(COMPTEUR_TYPES),
+  libelle: z.string().trim().min(2).max(60),
+  scope: z.enum(COMPTEUR_SCOPES).default("cite"),
+  dernierIndex: indexCompteur.default(0),
+});
+export type CreateCompteurInput = z.infer<typeof createCompteurSchema>;
+
+/**
+ * `type` is deliberately absent: invoices already attached to the meter were
+ * raised against a water or an electricity count, and flipping it would rewrite
+ * what they measured. A mistyped type is fixed by creating the right meter.
+ */
+export const updateCompteurSchema = z
+  .object({
+    libelle: z.string().trim().min(2).max(60).optional(),
+    scope: z.enum(COMPTEUR_SCOPES).optional(),
+    dernierIndex: indexCompteur.optional(),
+  })
+  .refine(
+    (d) => Object.values(d).some((v) => v !== undefined),
+    issueCode("validation.aucuneModification", "Aucune modification fournie."),
+  );
+export type UpdateCompteurInput = z.infer<typeof updateCompteurSchema>;
+
 // ─── Invoices ───
-const moisRegex = /^\d{4}-\d{2}$/;
+const moisSchema = z
+  .string()
+  .refine(
+    (v) => MOIS_REGEX.test(v),
+    issueCode("validation.moisFormat", "Format attendu : YYYY-MM (mois 01 à 12)"),
+  );
+
+// XAF are stored as BigInt but serialized as JS numbers: cap amounts well below
+// the safe-integer range so a fat-fingered entry is rejected at the edge rather
+// than silently losing precision somewhere down the line.
+const montantXAF = z.coerce.number().int().positive().max(1_000_000_000_000);
+
+// The bound is a constant, but it travels as a parameter all the same: the
+// translated wording has to be able to state it, and hard-coding it into three
+// catalogues would put the number out of reach of the code that defines it.
+const dateLimiteMessage = issueCode(
+  "validation.dateLimiteHorsPeriode",
+  `L'échéance doit tomber entre le premier jour du mois facturé et ${DATE_LIMITE_MAX_MOIS} mois plus tard.`,
+  { path: ["dateLimite"], params: { mois: DATE_LIMITE_MAX_MOIS } },
+);
+
+const dateLimiteLoyerMessage = issueCode(
+  "validation.dateLimiteLoyer",
+  `Facture de loyer : le forfait couvre une année, l'échéance doit donc être au moins ${LOYER_ECHEANCE_MIN_MOIS} mois après le début de la période (par exemple le 31 décembre).`,
+  { path: ["dateLimite"], params: { mois: LOYER_ECHEANCE_MIN_MOIS } },
+);
 
 export const createFactureSchema = z
   .object({
-    type: z.string().min(2).max(60),
+    type: z.string().trim().min(2).max(60),
     // Global amount to split (Eau, Électricité, Hébergement…).
-    montantTotal: z.coerce.number().int().positive().optional(),
+    montantTotal: montantXAF.optional(),
     // "Loyer" regime: flat annual amount owed by each tenant, never split.
-    montantParLocataire: z.coerce.number().int().positive().optional(),
-    mois: z.string().regex(moisRegex, "Format attendu : YYYY-MM"),
+    montantParLocataire: montantXAF.optional(),
+    mois: moisSchema,
     dateLimite: z.coerce.date(),
     compteurId: z.string().uuid().optional(),
     // targeted tenants; empty -> every active tenant
     locataireIds: z.array(z.string().uuid()).optional(),
   })
-  .refine((d) => (d.montantTotal != null) !== (d.montantParLocataire != null), {
-    message: "Renseignez soit le montant total, soit le montant par locataire.",
-    path: ["montantTotal"],
-  });
+  .refine(
+    (d) => (d.montantTotal != null) !== (d.montantParLocataire != null),
+    issueCode(
+      "validation.montantXor",
+      "Renseignez soit le montant total, soit le montant par locataire.",
+      { path: ["montantTotal"] },
+    ),
+  )
+  .refine((d) => dateLimiteCoherente(d.mois, d.dateLimite), dateLimiteMessage)
+  .refine((d) => !isLoyer(d.type) || dateLimiteLoyerCoherente(d.mois, d.dateLimite), dateLimiteLoyerMessage);
 export type CreateFactureInput = z.infer<typeof createFactureSchema>;
+
+/**
+ * Draft correction. A mistyped amount used to be unfixable — coefficients were
+ * the only editable part — which left cancelling and re-creating as the sole
+ * way out. Every field here recomputes the split, so it is confined to drafts.
+ */
+export const updateFactureSchema = z
+  .object({
+    type: z.string().trim().min(2).max(60).optional(),
+    montantTotal: montantXAF.optional(),
+    montantParLocataire: montantXAF.optional(),
+    mois: moisSchema.optional(),
+    dateLimite: z.coerce.date().optional(),
+    // Tenants attached to the draft. The roster was frozen at creation, so a
+    // tenant who moved in before publication — the ordinary case on a
+    // rolled-over draft — forced the invoice to be deleted and re-entered.
+    // Coefficients already set are kept; a newcomer starts at 1.
+    locataireIds: z.array(z.string().uuid()).min(1).optional(),
+    // `null` detaches the meter. Absent leaves it as it is.
+    compteurId: z.string().uuid().nullable().optional(),
+  })
+  .refine(
+    (d) => Object.values(d).some((v) => v !== undefined),
+    issueCode("validation.aucuneModification", "Aucune modification fournie."),
+  )
+  .refine(
+    (d) => !(d.montantTotal != null && d.montantParLocataire != null),
+    issueCode(
+      "validation.montantXor",
+      "Renseignez soit le montant total, soit le montant par locataire.",
+      { path: ["montantTotal"] },
+    ),
+  )
+  // Only checkable here when both fields travel together; the service re-checks
+  // against the invoice's stored month when only one of them is sent.
+  .refine((d) => !(d.mois && d.dateLimite) || dateLimiteCoherente(d.mois, d.dateLimite), dateLimiteMessage);
+export type UpdateFactureInput = z.infer<typeof updateFactureSchema>;
 
 export const coefficientsSchema = z.object({
   coefficients: z
     .array(
       z.object({
         locataireId: z.string().uuid(),
-        coefficient: z.coerce.number().min(0.1).max(99.99),
+        // Two decimals, matching the Decimal(4,2) column. A finer value was
+        // accepted, split on its full precision, then rounded by Postgres on
+        // the way in: the draft's amounts no longer matched the coefficient on
+        // record, and a recompute at publication silently moved them.
+        coefficient: z.coerce.number().min(0.1).max(99.99).multipleOf(0.01),
       }),
     )
     .min(1),
@@ -95,12 +213,23 @@ export type CoefficientsInput = z.infer<typeof coefficientsSchema>;
 
 export const paiementSchema = z.object({
   factureLocataireId: z.string().uuid(),
-  montant: z.coerce.number().int().positive(),
+  montant: montantXAF,
   mode: z.enum(PAIEMENT_MODES),
   reference: z.string().max(80).optional(),
   justificatifUrl: z.string().url().optional(),
 });
 export type PaiementInput = z.infer<typeof paiementSchema>;
+
+/**
+ * Cancelling a wrongly recorded payment. The reason is mandatory and lands in
+ * the audit log: the payment row itself is removed (so its receipt PDF stops
+ * being downloadable, which a soft-delete flag would not achieve), leaving the
+ * audit trail as the sole account of what happened.
+ */
+export const annulationPaiementSchema = z.object({
+  motif: z.string().trim().min(5).max(200),
+});
+export type AnnulationPaiementInput = z.infer<typeof annulationPaiementSchema>;
 
 // ─── Notifications & announcements ───
 // Announcement scope: "all" = every active user, otherwise a single role.
@@ -136,7 +265,9 @@ export const evenementSchema = z.object({
   titre: z.string().min(2).max(200),
   description: z.string().max(2000).optional(),
   dateEvent: z.coerce.date(),
-  heure: z.string().regex(/^\d{2}:\d{2}$/, "Format attendu : HH:mm"),
+  heure: z
+    .string()
+    .refine((v) => /^\d{2}:\d{2}$/.test(v), issueCode("validation.heureFormat", "Format attendu : HH:mm")),
 });
 export type EvenementInput = z.infer<typeof evenementSchema>;
 
@@ -258,8 +389,8 @@ export const predictionReelSchema = z.object({
 });
 
 export const predictionSchema = z.object({
-  mois: z.string().regex(moisRegex),
-  type: z.string().min(2).max(60),
+  mois: moisSchema,
+  type: z.string().trim().min(2).max(60),
   indiceDiff: z.coerce.number().int().nonnegative().optional(),
   prixUnit: z.coerce.number().int().nonnegative().optional(),
   tva: z.coerce.number().int().nonnegative().optional(),

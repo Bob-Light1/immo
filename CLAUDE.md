@@ -58,9 +58,15 @@ export async function PUT(req: NextRequest) {
 
 **Validation.** Every Zod schema lives in `packages/shared/src/schemas.ts` and is shared by client and server. Shared types mirror the Prisma enums — update both when the schema changes.
 
-**Money & calculations.** Pure financial logic belongs in `packages/shared/src/calculations.ts` with tests in `calculations.test.ts`. Invoice splitting distributes a total by coefficient and reconciles the rounding delta onto the last line so `Σ montantDu === montantTotal` exactly. Never introduce floats into an amount path. Exception: `Loyer` invoices are a flat annual amount per tenant, not split (`isLoyer()`).
+**Money & calculations.** Pure financial logic belongs in `packages/shared/src/calculations.ts` with tests in `calculations.test.ts`. Invoice splitting distributes a total by coefficient using the largest-remainder method: `Σ montantDu === montantTotal` exactly, and every line stays within 1 XAF of its exact share. Ties break on input order, so callers must read lines with a deterministic `orderBy`. Never introduce floats into an amount path. Exception: `Loyer` invoices are a flat annual amount per tenant, not split (`isLoyer()`).
+
+**Invoice rules.** `Facture.typeKey` is the accent- and case-folded `type` (`normalizeFactureType`) and is what every comparison, filter and dedup uses — never the raw label. One invoice per `(typeKey, mois)`; rent additionally allows only one per calendar year, and its deadline must span that year (`dateLimiteLoyerCoherente`). Rent is excluded from the monthly dashboard aggregates, which cover charges only. Amounts, months and deadlines are correctable only while `statutPub = "brouillon"`; a published invoice is financial history. A payment is never edited — it is cancelled (`cancelPaiement`), which removes the row, recomputes the balance from what survives, and leaves the audit log as the account of it. Balance writes are guarded on the balance that was read (`updateMany` + `increment`), never assigned.
+
+**Month keys.** `YYYY-MM` strings come from `@campusgest/shared/dates` (`moisDe`, `moisCourant`, `moisDecale`), always derived from *local* components. Never re-derive one with `toISOString()`. Deploy with `TZ` set to the residence's zone.
 
 **i18n.** No hardcoded user-facing strings. Add the key to all three of `fr.json`, `en.json`, `de.json`. `fr` is the default locale.
+
+**Confirmations & feedback.** Every consequential action is guarded and its outcome announced, through `components/Toast.tsx` only — never `window.confirm`, `window.prompt` or `window.alert`. Use `useConfirmAction` (dialog → request → toast → `onDone`) rather than assembling the four by hand; `useConfirm` alone is for a guard with no request behind it, and `useDownload` for anything that produces a file, since a failed blob download is otherwise silent. `level` sets the bar: `info` for a reversible action, `danger` for an irreversible one, `critical` adds a `challenge` phrase to retype (invoice deletion). Collect a reason with `prompt`, not a separate dialog. Optimistic updates are applied in `onDone`, after the server agrees — never before. Forms keep their inline `ErrorText`; row and toolbar actions report through toasts.
 
 **Workers.** Job logic lives in `packages/workers/src/jobs/*` (testable without Redis); `index.ts` only schedules. Schedules: `echeances` daily 07:00, `anniversaires` daily 08:00, `reconductions` monthly on the 1st at 06:00.
 
@@ -73,4 +79,4 @@ export async function PUT(req: NextRequest) {
 
 ## Before finishing
 
-Run `npm run typecheck` and, when `packages/shared` changed, `npm run test`. Prisma schema edits require `npm run db:generate` plus a migration.
+Run `npm run typecheck` and `npm run test` (`packages/shared` holds the calculation and date tests; `apps/web` holds the money-service tests, which mock Prisma and need no database). Prisma schema edits require `npm run db:generate` plus a migration.

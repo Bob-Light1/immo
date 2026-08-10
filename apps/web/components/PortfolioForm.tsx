@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch, uploadFile } from "@/lib/client/session";
 import { Card, Field, Spinner, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 import { useConfirm } from "@/components/Toast";
@@ -23,6 +24,7 @@ const fromTags = (s: string) => s.split(",").map((x) => x.trim()).filter(Boolean
 /** Editing my professional portfolio (§5.7). */
 export function PortfolioForm() {
   const t = useTranslations("portfolio");
+  const apiError = useApiError();
   const confirm = useConfirm();
   const [loaded, setLoaded] = useState(false);
   // A portfolio only exists after a first save: removal is therefore offered
@@ -73,7 +75,7 @@ export function PortfolioForm() {
       const url = await uploadFile(file, "image");
       setPhotoUrl(url);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failed"));
+      setError(apiError(err, t("failed")));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = "";
@@ -101,7 +103,7 @@ export function PortfolioForm() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setSaved(true);
@@ -113,7 +115,11 @@ export function PortfolioForm() {
 
   /** Removes my profile from the directory (the account stays intact). */
   async function remove() {
-    const ok = await confirm({ message: t("confirmDelete"), confirmLabel: t("delete") });
+    const { ok } = await confirm({
+      level: "danger",
+      message: t("confirmDelete"),
+      confirmLabel: t("delete"),
+    });
     if (!ok) return;
     setBusy(true);
     setError(null);
@@ -122,7 +128,7 @@ export function PortfolioForm() {
       const res = await apiFetch("/api/portfolios", { method: "DELETE" });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("deleteFailed"));
+        setError(apiError(d, t("deleteFailed")));
         return;
       }
       setExists(false);

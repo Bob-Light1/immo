@@ -4,9 +4,10 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch, downloadFactureLigne } from "@/lib/client/session";
-import { formatXAF, formatDate, formatMois } from "@/lib/format";
+import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
 import type { LigneStatut } from "@campusgest/shared";
 import { isLoyer, suiviLoyer } from "@campusgest/shared";
+import { useDownload } from "@/components/Toast";
 import { Card, StatutBadge, PubBadge, Spinner } from "@/components/ui";
 
 interface Ligne {
@@ -28,6 +29,7 @@ interface FactureDetail {
   mois: string;
   dateLimite: string;
   statutPub: "brouillon" | "publiee";
+  compteur: { id: string; libelle: string } | null;
   lignes: Ligne[];
 }
 
@@ -35,7 +37,9 @@ interface FactureDetail {
 export default function BailleurFactureDetailPage() {
   const { id } = useParams<{ id: string }>();
   const t = useTranslations("factures.detail");
+  const tCommon = useTranslations("common");
   const locale = useLocale();
+  const download = useDownload();
   const [facture, setFacture] = useState<FactureDetail | null>(null);
 
   useEffect(() => {
@@ -56,10 +60,16 @@ export default function BailleurFactureDetailPage() {
     <>
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-bold text-navy">
-          {facture.type} — {formatMois(facture.mois, locale)}
+          {facture.type} — {formatPeriodeFacture(facture.type, facture.mois, locale)}
         </h1>
         <PubBadge statut={facture.statutPub} />
       </div>
+
+      {facture.compteur && (
+        <p className="-mt-4 mb-6 text-sm text-slate-500">
+          {t("compteur")} : <span className="font-medium text-navy">{facture.compteur.libelle}</span>
+        </p>
+      )}
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
         {[
@@ -97,11 +107,17 @@ export default function BailleurFactureDetailPage() {
           </thead>
           <tbody>
             {facture.lignes.map((l) => {
-              const suivi = suiviLoyer({
-                montantAnnuel: l.montantDu,
-                montantPaye: l.montantPaye,
-                paiements: (l.paiements ?? []).map((p) => ({ montant: p.montant, date: p.createdAt })),
-              });
+              // Rent only: the annual tracking has no meaning on a monthly charge.
+              const suivi = loyer
+                ? suiviLoyer({
+                    montantAnnuel: l.montantDu,
+                    montantPaye: l.montantPaye,
+                    paiements: (l.paiements ?? []).map((p) => ({
+                      montant: p.montant,
+                      date: p.createdAt,
+                    })),
+                  })
+                : null;
               return (
                 <tr key={l.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
@@ -109,13 +125,13 @@ export default function BailleurFactureDetailPage() {
                   <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
                   {loyer && (
                     <td className="px-4 py-3 text-right font-mono">
-                      {formatXAF(suivi.payeCeMois, locale)}
+                      {formatXAF(suivi?.payeCeMois ?? 0, locale)}
                     </td>
                   )}
                   <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
                   {loyer && (
                     <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
-                      {formatXAF(suivi.restantAnnee, locale)}
+                      {formatXAF(suivi?.restantAnnee ?? 0, locale)}
                     </td>
                   )}
                   <td className="px-4 py-3">
@@ -129,7 +145,15 @@ export default function BailleurFactureDetailPage() {
                       <button
                         className="text-xs text-navy underline-offset-2 hover:underline"
                         onClick={() =>
-                          downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`)
+                          download({
+                            run: () =>
+                              downloadFactureLigne(l.id, `${facture!.type}-${l.locataire.fullName}`),
+                            failure: tCommon("downloadFailed"),
+                            confirm: {
+                              message: t("confirmPrint", { name: l.locataire.fullName }),
+                              confirmLabel: tCommon("print"),
+                            },
+                          })
                         }
                       >
                         {t("facturePdf")}

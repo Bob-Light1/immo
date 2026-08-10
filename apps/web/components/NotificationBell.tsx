@@ -51,9 +51,13 @@ export function NotificationBell() {
     }
   }
 
+  // Re-subscribing on a locale change is what makes a language switch reach the
+  // inbox: the server re-renders keyed notifications, so the panel is already
+  // translated by the time the user opens it.
   useEffect(() => {
     let mounted = true;
-    apiFetch("/api/notifications?limit=15").then(async (res) => {
+    setItems([]);
+    apiFetch(`/api/notifications?limit=15&locale=${locale}`).then(async (res) => {
       if (!res.ok || !mounted) return;
       const data = (await res.json()) as { items: Notif[]; unread: number };
       setItems(data.items);
@@ -61,7 +65,7 @@ export function NotificationBell() {
     });
 
     // Live stream: the EventSource carries the refresh cookie (same-origin).
-    const es = new EventSource("/api/notifications/stream");
+    const es = new EventSource(`/api/notifications/stream?locale=${locale}`);
     es.addEventListener("notification", (e) => {
       const n = JSON.parse((e as MessageEvent).data) as Notif;
       setItems((prev) => (prev.some((p) => p.id === n.id) ? prev : [n, ...prev].slice(0, 30)));
@@ -74,7 +78,7 @@ export function NotificationBell() {
       mounted = false;
       es.close();
     };
-  }, []);
+  }, [locale]);
 
   useEffect(() => {
     function onClick(e: MouseEvent) {
@@ -84,16 +88,29 @@ export function NotificationBell() {
     return () => document.removeEventListener("mousedown", onClick);
   }, []);
 
+  // Read markers stay optimistic and unconfirmed — a dialog per notification
+  // would be unusable — but a refused one is put back rather than left showing
+  // an inbox emptier than it is.
   async function markRead(id: string) {
     setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: true } : n)));
     setUnread((u) => Math.max(0, u - 1));
-    await apiFetch(`/api/notifications/${id}/read`, { method: "PATCH" });
+    const res = await apiFetch(`/api/notifications/${id}/read`, { method: "PATCH" });
+    if (!res.ok) {
+      setItems((prev) => prev.map((n) => (n.id === id ? { ...n, isRead: false } : n)));
+      setUnread((u) => u + 1);
+    }
   }
 
   async function markAll() {
+    const previous = items;
+    const previousUnread = unread;
     setItems((prev) => prev.map((n) => ({ ...n, isRead: true })));
     setUnread(0);
-    await apiFetch("/api/notifications/read-all", { method: "POST" });
+    const res = await apiFetch("/api/notifications/read-all", { method: "POST" });
+    if (!res.ok) {
+      setItems(previous);
+      setUnread(previousUnread);
+    }
   }
 
   return (

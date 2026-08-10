@@ -16,6 +16,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "factures": "Bills",
+    "compteurs": "Meters",
     "users": "Users",
     "mesFactures": "My bills",
     "paiements": "Payments",
@@ -45,7 +46,8 @@
       "compte": "Account"
     },
     "openMenu": "Open menu",
-    "closeMenu": "Close menu"
+    "closeMenu": "Close menu",
+    "confirmLogout": "Log out? Anything being typed will be lost."
   },
   "statut": {
     "en_attente": "Pending",
@@ -90,6 +92,7 @@
       "username": "Username",
       "role": "Role",
       "language": "Language",
+      "languageSaved": "{name}'s language updated.",
       "email": "Email (optional)",
       "phone": "Phone (optional)",
       "contact": "Contact",
@@ -105,7 +108,9 @@
       "searchPlaceholder": "Search (name, username, email)…",
       "filterAllRoles": "All roles",
       "filterAllStatus": "All statuses",
-      "deactivated": "Account deactivated."
+      "deactivated": "Account deactivated.",
+      "saveFailed": "Save failed.",
+      "deactivateFailed": "The account could not be deactivated."
     }
   },
   "factures": {
@@ -120,6 +125,7 @@
     "statut": "Status",
     "export": "Export CSV",
     "reconduite": "carried over",
+    "filtreTousStatuts": "All statuses",
     "new": {
       "title": "New bill",
       "type": "Type (Water, Electricity…)",
@@ -131,9 +137,15 @@
       "submit": "Create draft",
       "montantAnnuelLocataire": "Annual amount per tenant (XAF)",
       "moisLoyer": "Starting month (year covered)",
-      "hintLoyer": "Rent: no split. The amount entered is owed by each active tenant for the year. After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance."
+      "locataires": "Tenants concerned",
+      "hintLoyer": "Rent: no split. The amount entered is owed by each active tenant for the year. After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance.",
+      "compteur": "Meter (optional)",
+      "confirmCreate": "Create this invoice? It starts as a draft: amounts and deadline stay correctable until it is published.",
+      "created": "Invoice created as a draft."
     },
     "detail": {
+      "type": "Type",
+      "mois": "Month",
       "montantTotal": "Total amount",
       "baseUnitaire": "Unit base",
       "encaisse": "Collected",
@@ -154,9 +166,72 @@
       "payeAnnee": "Paid in {annee}",
       "restantAnnee": "Remaining {annee}",
       "loyerNoCoeff": "Rent: identical annual amount per tenant, no coefficient.",
-      "facturePdf": "Bill PDF"
+      "facturePdf": "Bill PDF",
+      "edit": "Edit draft",
+      "editTitle": "Correct the draft",
+      "locataires": "Tenants attached",
+      "editHint": "Only a draft can be edited. Once published, the invoice becomes an accounting document.",
+      "save": "Save",
+      "cancel": "Cancel",
+      "editFailed": "Could not save the changes.",
+      "delete": "Delete draft",
+      "confirmDelete": "Permanently delete this draft? This cannot be undone.",
+      "deleteFailed": "Could not delete the draft.",
+      "montantAnnuelLocataire": "Annual amount per tenant (XAF)",
+      "compteur": "Meter",
+      "confirmCoeffs": "Save these coefficients? The split of the total between tenants will be recomputed.",
+      "coeffsSaved": "Coefficients saved.",
+      "confirmEdit": "Save these corrections? They are no longer possible once the invoice is published.",
+      "edited": "Invoice corrected.",
+      "published": "Invoice published: the tenants can now see it.",
+      "deleteHint": "To confirm, type the invoice's month ({mois}).",
+      "deleted": "Invoice deleted.",
+      "confirmPrint": "Produce {name}'s invoice? The document carries their personal data."
     },
-    "exportPdf": "Export PDF"
+    "exportPdf": "Export PDF",
+    "exportFailed": "Export failed.",
+    "exportTronque": "Export capped at the first {max} lines: the file and its totals are partial. Filter by month for a complete statement.",
+    "locatairesPicker": {
+      "tous": "All active tenants",
+      "aucun": "Select at least one tenant."
+    },
+    "confirmExport": "Export the published invoices for the selected period? The file will contain named personal data."
+  },
+  "compteurs": {
+    "title": "Meters",
+    "purpose": "Meters are what water and electricity bills are raised against: attach one to the bill, and record its reading at each billing.",
+    "type": "Type",
+    "libelle": "Label",
+    "libellePlaceholder": "Main meter, Block A…",
+    "scope": "Scope",
+    "indexInitial": "Initial reading",
+    "dernierIndex": "Last reading",
+    "usage": "Usage",
+    "usageDetail": "{factures} bill(s) · {chambres} room(s)",
+    "consommation": "Consumption since the last reading: {delta}",
+    "create": "Add meter",
+    "createFailed": "Could not create the meter.",
+    "save": "Save",
+    "saveFailed": "Could not save.",
+    "delete": "Delete",
+    "deleteBloque": "Meter attached to a bill or a room: it cannot be deleted.",
+    "confirmDelete": "Delete meter “{libelle}”?",
+    "deleteFailed": "Could not delete.",
+    "empty": "No meter recorded.",
+    "aucun": "No meter",
+    "aucunCompteur": "No meter recorded yet: add one from the Meters page.",
+    "types": {
+      "eau": "Water",
+      "electricite": "Electricity"
+    },
+    "scopes": {
+      "cite": "Residence",
+      "bloc": "Block",
+      "chambre": "Room"
+    },
+    "deleted": "Meter deleted.",
+    "saved": "Meter saved.",
+    "created": "Meter created."
   },
   "paiement": {
     "encaisser": "Collect",
@@ -175,7 +250,17 @@
       "virement": "Bank transfer"
     },
     "justificatif": "Proof",
-    "voirJustificatif": "View proof"
+    "voirJustificatif": "View proof",
+    "annulerPaiement": "Cancel this payment",
+    "motif": "Reason for cancelling",
+    "motifPlaceholder": "e.g. amount recorded against the wrong tenant",
+    "confirmAnnulation": "Cancel this {montant} payment? The line balance will be recomputed and the receipt will no longer be available.",
+    "annulationFailed": "Could not cancel the payment.",
+    "motifTropCourt": "Give a reason of at least 5 characters.",
+    "confirmEncaisser": "Take {montant}? A payment is never edited: afterwards it can only be cancelled, with a reason.",
+    "encaisse": "Payment recorded.",
+    "annulationDone": "Payment cancelled; the balance has been recomputed.",
+    "confirmPrintRecu": "Produce the receipt for {montant}?"
   },
   "pagination": {
     "prev": "Previous",
@@ -184,7 +269,9 @@
   },
   "locataire": {
     "title": "My bills",
-    "solde": "Outstanding balance",
+    "documentFr": "Official document issued in French, whatever the language of the app.",
+    "soldeCharges": "Charges — outstanding",
+    "soldeLoyer": "Rent — outstanding for the year",
     "empty": "No published bills yet.",
     "montantDu": "Amount due",
     "montantPaye": "Amount paid",
@@ -225,7 +312,13 @@
     "colJours": "Overdue",
     "joursRetard": "{n} d",
     "noImpayes": "No unpaid bills. 🎉",
-    "noData": "No data."
+    "noData": "No data.",
+    "loyerTitle": "Rent {annee}",
+    "loyerFacture": "Rent billed",
+    "loyerEncaisse": "Rent collected",
+    "loyerTaux": "Collection rate",
+    "loyerHint": "Rent is a yearly flat amount: it is tracked apart from monthly charges.",
+    "chargesOnly": "Monthly charges (rent excluded)"
   },
   "notifications": {
     "title": "Notifications",
@@ -247,7 +340,8 @@
     },
     "send": "Post announcement",
     "sent": "Announcement sent to {n} recipient(s).",
-    "failed": "Failed to send the announcement."
+    "failed": "Failed to send the announcement.",
+    "confirmSend": "Send this announcement? A notification goes out to every recipient at once and cannot be recalled."
   },
   "suggestions": {
     "title": "Suggestion box",
@@ -263,7 +357,13 @@
     "manageEmpty": "No suggestions.",
     "author": "By {name}",
     "markRead": "Mark read",
-    "visibleBailleur": "Visible to landlord"
+    "visibleBailleur": "Visible to landlord",
+    "confirmPublish": "Make this suggestion visible to the landlord? Its author will be named on it.",
+    "confirmHide": "Hide this suggestion from the landlord?",
+    "published": "Suggestion now visible to the landlord.",
+    "hidden": "Suggestion hidden.",
+    "visibilityFailed": "The visibility could not be changed.",
+    "readFailed": "The suggestion could not be marked as read."
   },
   "evenements": {
     "title": "Events",
@@ -283,7 +383,12 @@
       "en_attente": "Pending",
       "approuve": "Approved",
       "rejete": "Rejected"
-    }
+    },
+    "confirmApprove": "Approve “{titre}”? The event becomes visible to every resident.",
+    "confirmReject": "Reject “{titre}”? Its author will be told.",
+    "approved": "Event approved.",
+    "rejected": "Event rejected.",
+    "decisionFailed": "The decision could not be recorded."
   },
   "profil": {
     "title": "My profile",
@@ -324,7 +429,15 @@
     "viewLocation": "View location",
     "resolve": "Mark resolved",
     "ban": "Ban",
-    "unban": "Reinstate"
+    "unban": "Reinstate",
+    "confirmResolve": "Close this alert? Its sender will be recorded as attended to.",
+    "confirmBan": "Remove {name}'s access to the alert button? They will no longer be able to raise an alarm.",
+    "confirmUnban": "Give {name} back access to the alert button?",
+    "resolveDone": "Alert closed.",
+    "resolveFailed": "The alert could not be closed.",
+    "banDone": "Alert button access removed.",
+    "unbanDone": "Alert button access restored.",
+    "banFailed": "The access could not be changed."
   },
   "maintenance": {
     "title": "Maintenance",
@@ -347,7 +460,10 @@
       "ouvert": "Open",
       "en_cours": "In progress",
       "resolu": "Resolved"
-    }
+    },
+    "confirmStatut": "Move this ticket to “{statut}”?",
+    "statutSaved": "Ticket status updated.",
+    "statutFailed": "The status could not be changed."
   },
   "sondages": {
     "title": "Polls",
@@ -360,7 +476,13 @@
     "empty": "No polls.",
     "closed": "Closed",
     "close": "Close",
-    "totalVotes": "{n} vote(s)"
+    "totalVotes": "{n} vote(s)",
+    "confirmVote": "Confirm this vote for “{option}”?",
+    "confirmClose": "Close this poll? No further votes will be accepted and closing is final.",
+    "voted": "Vote recorded.",
+    "voteFailed": "The vote could not be recorded.",
+    "closeDone": "Poll closed.",
+    "closeFailed": "The poll could not be closed."
   },
   "portfolio": {
     "myTitle": "My portfolio",
@@ -414,12 +536,16 @@
     "objectif": "Goal: {v}",
     "nbContrib": "{n} contribution(s)",
     "amount": "Amount",
-    "contribuer": "Contribute"
+    "contribuer": "Contribute",
+    "confirmContribuer": "Confirm a contribution of {montant} to “{titre}”? It will be recorded in your name.",
+    "contributed": "Contribution recorded.",
+    "contribuerFailed": "The contribution could not be recorded."
   },
   "predictions": {
     "title": "Charge estimates",
     "type": "Type",
     "mois": "Month",
+    "typePlaceholder": "Electricity",
     "params": {
       "indiceDiff": "Index (I)",
       "prixUnit": "Unit price (P)",
@@ -441,7 +567,10 @@
     "repartitionHint": "Share computed by splitting the total equally between the {count} active tenants.",
     "estimeTotal": "Estimated total (all)",
     "maPart": "My share",
-    "partLocataire": "Share per tenant"
+    "partLocataire": "Share per tenant",
+    "confirmSaveReel": "Record {montant} as the actual amount? The forecast's variance will be recomputed.",
+    "reelSaved": "Actual amount recorded.",
+    "saveReelFailed": "The actual amount could not be recorded."
   },
   "twofa": {
     "title": "Two-factor authentication (2FA)",
@@ -454,7 +583,11 @@
     "confirm": "Confirm",
     "cancel": "Cancel",
     "disable": "Disable",
-    "invalidCode": "Invalid code."
+    "invalidCode": "Invalid code.",
+    "confirmDisable": "Disable two-factor authentication? The account will then be protected by its password alone.",
+    "enabled": "Two-factor authentication enabled.",
+    "disabled": "Two-factor authentication disabled.",
+    "setupFailed": "Setup could not be started."
   },
   "posts": {
     "title": "News feed",
@@ -469,7 +602,12 @@
     "masquer": "Hide",
     "afficher": "Show",
     "failed": "Publication failed.",
-    "searchPlaceholder": "Search news…"
+    "searchPlaceholder": "Search news…",
+    "confirmHide": "Hide “{titre}”? The post leaves the residents' feed.",
+    "confirmShow": "Show “{titre}” in the residents' feed again?",
+    "hiddenDone": "Post hidden.",
+    "shownDone": "Post shown again.",
+    "moderationFailed": "The post could not be changed."
   },
   "documents": {
     "title": "Documents",
@@ -498,17 +636,152 @@
     },
     "searchPlaceholder": "Search a document…",
     "filterAllCat": "All categories",
-    "deleted": "Document deleted."
+    "deleted": "Document deleted.",
+    "deleteFailed": "The document could not be deleted."
   },
   "theme": {
     "light": "Light mode",
     "dark": "Dark mode"
+  },
+  "language": {
+    "label": "Language",
+    "fr": "Français",
+    "en": "English",
+    "de": "Deutsch"
   },
   "common": {
     "confirm": "Confirm",
     "cancel": "Cancel",
     "close": "Close",
     "showPassword": "Show password",
-    "hidePassword": "Hide password"
+    "hidePassword": "Hide password",
+    "confirmTitle": "Confirmation required",
+    "processing": "Working…",
+    "tooShort": "Please give more detail.",
+    "preparing": "Preparing the document…",
+    "downloadFailed": "The document could not be produced.",
+    "print": "Print"
+  },
+  "errors": {
+    "auth": {
+      "tokenManquant": "No session: please sign in again.",
+      "tokenInvalide": "Session expired: please sign in again.",
+      "roleRefuse": "Your role does not grant access to this action.",
+      "refreshManquant": "No session: please sign in again.",
+      "refreshInvalide": "Session expired: please sign in again.",
+      "sessionRevoquee": "Session revoked: please sign in again.",
+      "profilRefuse": "Access to this profile is denied.",
+      "accesRefuse": "Access denied.",
+      "codeInvalide": "Invalid code.",
+      "motDePasseIncorrect": "Current password is incorrect."
+    },
+    "introuvable": {
+      "user": "User not found.",
+      "facture": "Bill not found.",
+      "ligneFacture": "Bill line not found.",
+      "paiement": "Payment not found.",
+      "compteur": "Meter not found.",
+      "suggestion": "Suggestion not found.",
+      "sondage": "Poll not found.",
+      "signal": "Signal not found.",
+      "ticket": "Ticket not found.",
+      "projet": "Project not found.",
+      "post": "Post not found.",
+      "notification": "Notification not found.",
+      "evenement": "Event not found.",
+      "prediction": "Estimate not found.",
+      "document": "Document not found."
+    },
+    "user": {
+      "usernamePris": "That username is already taken.",
+      "adminNonDesactivable": "An admin account cannot be deactivated."
+    },
+    "portfolio": {
+      "aucunARetirer": "No portfolio to remove."
+    },
+    "facture": {
+      "dejaPubliee": "Bill already published.",
+      "publieeNonModifiable": "Bill already published: it can no longer be edited.",
+      "publieeNonSupprimable": "Bill already published: it can no longer be deleted.",
+      "nonPublieeDocument": "Bill not published: the document is unavailable.",
+      "aucunLocataireActif": "No active tenant on this bill.",
+      "aucunLocataireRattacher": "No active tenant to attach to the bill.",
+      "locatairesInconnus": "{count, plural, one {# selected tenant is unknown or deactivated} other {# selected tenants are unknown or deactivated}}; the bill was not created.",
+      "locatairesNonRattaches": "{count, plural, one {# tenant is not attached} other {# tenants are not attached}} to this bill.",
+      "typeMoisOccupe": "A “{type}” bill already exists for {mois}.",
+      "loyerAnneeOccupee": "A rent bill already covers {annee} ({mois}). Rent is a flat annual amount: correct the existing bill rather than creating a second one.",
+      "loyerMontantAnnuelRequis": "Rent bill: enter the annual amount owed by each tenant.",
+      "loyerMontantTotalInterdit": "Rent bill: the flat amount is corrected through the annual amount per tenant, not through a total.",
+      "loyerSansCoefficient": "Rent bill: identical annual amount per tenant, with no split and no coefficient.",
+      "loyerEcheanceTropTot": "Rent bill: the flat amount covers a year, so the deadline must be at least {mois} months after the start of the period.",
+      "loyerEntree": "Switching to rent: enter the annual amount owed by each tenant.",
+      "loyerSortie": "Leaving the rent regime: enter the total amount to split.",
+      "montantParLocataireReserveLoyer": "The per-tenant amount is reserved for rent; other bills are split from a total amount.",
+      "echeanceHorsPeriode": "The deadline no longer falls within the billed period: adjust the due date as well.",
+      "doublonTypeMois": "A bill of this type already exists for this period.",
+      "doublonLoyerAnnee": "A rent bill already exists for this year."
+    },
+    "paiement": {
+      "factureNonPubliee": "Cannot record a payment: the bill is not published.",
+      "montantDepasseSolde": "The amount exceeds the remaining balance ({reste, number} XAF).",
+      "encaissementConcurrent": "Another payment has just been recorded on this line. Reload the bill and check the remaining balance.",
+      "dejaAnnule": "Payment already cancelled."
+    },
+    "compteur": {
+      "libelleDuplique": "A meter “{libelle}” already exists for this type.",
+      "utilise": "Meter in use: {factures, plural, one {# bill} other {# bills}} and {chambres, plural, one {# room} other {# rooms}} are attached to it."
+    },
+    "sondage": {
+      "cloture": "This poll is closed.",
+      "choixInvalide": "Invalid choice."
+    },
+    "evenement": {
+      "dejaTraite": "This event has already been handled."
+    },
+    "projet": {
+      "inaccessible": "This project is not accessible to you."
+    },
+    "notification": {
+      "accesRefuse": "Access to this notification is denied.",
+      "aucunDestinataire": "No active recipient for this scope."
+    },
+    "distress": {
+      "banni": "Your access to the distress signal has been suspended by the administration.",
+      "pasLeVotre": "This signal is not yours.",
+      "dejaResolu": "Signal already resolved."
+    },
+    "upload": {
+      "stockageNonConfigure": "Storage unavailable: please contact the administration.",
+      "genreInvalide": "Invalid file kind.",
+      "fichierManquant": "No file selected.",
+      "fichierVide": "The file is empty.",
+      "fichierTropGros": "File too large (max {maxMo} MB).",
+      "typeNonAutorise": "File type not allowed. Accepted: {acceptes}.",
+      "extensionInconnue": "File type not allowed.",
+      "contenuIncoherent": "The file content does not match its declared type.",
+      "echec": "Upload failed."
+    },
+    "calcul": {
+      "aucunLocataire": "No tenant attached to the bill.",
+      "montantTotalInvalide": "The total amount must be a positive integer (XAF, no cents).",
+      "sommeCoeffInvalide": "The sum of the coefficients must be strictly positive."
+    },
+    "validation": {
+      "telephoneInvalide": "Invalid phone number (6 to 20 characters, digits and separators).",
+      "moisFormat": "Month expected in YYYY-MM format (01 to 12).",
+      "heureFormat": "Time expected in HH:mm format.",
+      "aucuneModification": "No change submitted.",
+      "montantXor": "Enter either the total amount or the per-tenant amount.",
+      "dateLimiteHorsPeriode": "The deadline must fall between the first day of the billed month and {mois} months later.",
+      "dateLimiteLoyer": "Rent bill: the flat amount covers a year, so the deadline must be at least {mois} months after the start of the period (31 December, for instance)."
+    },
+    "generic": {
+      "tropDeRequetes": "Too many requests. Try again in {secondes} s.",
+      "doublon": "This record already exists.",
+      "referenceInexistante": "The request references something that does not exist.",
+      "introuvable": "Record not found.",
+      "entreeInvalide": "Invalid input: check the form fields.",
+      "serveur": "Server error. Please try again shortly."
+    }
   }
 }

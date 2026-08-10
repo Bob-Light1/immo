@@ -16,7 +16,7 @@ export async function POST(req: NextRequest) {
       select: { totpSecret: true },
     });
     if (!user.totpSecret || !verifyTotp(user.totpSecret, code)) {
-      throw new ServiceError(400, "Code invalide.");
+      throw new ServiceError(400, "Code invalide.", "auth.codeInvalide");
     }
     await prisma.user.update({ where: { id: auth.sub }, data: { totpSecret: null } });
     await audit(req, auth.sub, "auth.2fa_disabled", "user", auth.sub);

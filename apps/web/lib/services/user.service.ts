@@ -24,7 +24,7 @@ function genTempPassword(len = 8): string {
  */
 export async function createUser(input: CreateUserInput) {
   const existing = await prisma.user.findUnique({ where: { username: input.username } });
-  if (existing) throw new ServiceError(409, "Nom d'utilisateur déjà pris.");
+  if (existing) throw new ServiceError(409, "Nom d'utilisateur déjà pris.", "user.usernamePris");
 
   const tempPassword = genTempPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
@@ -77,6 +77,9 @@ export async function listUsers(
         role: true,
         email: true,
         phone: true,
+        // Exposed so the Admin can correct an account whose owner cannot read
+        // the interface well enough to find the switcher themselves.
+        language: true,
         isActive: true,
         firstLogin: true,
         createdAt: true,
@@ -95,8 +98,8 @@ export async function listUsers(
  */
 export async function deactivateUser(id: string) {
   const user = await prisma.user.findUnique({ where: { id } });
-  if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
-  if (user.role === "admin") throw new ServiceError(400, "Impossible de désactiver un admin.");
+  if (!user) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
+  if (user.role === "admin") throw new ServiceError(400, "Impossible de désactiver un admin.", "user.adminNonDesactivable");
 
   const updated = await prisma.user.update({
     where: { id },
@@ -151,10 +154,10 @@ export async function deactivateUser(id: string) {
 /** Credential change performed by the user themselves. */
 export async function changeCredentials(userId: string, input: ChangeCredentialsInput) {
   const user = await prisma.user.findUnique({ where: { id: userId } });
-  if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
+  if (!user) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
 
   const ok = await bcrypt.compare(input.currentPassword, user.passwordHash);
-  if (!ok) throw new ServiceError(400, "Mot de passe actuel incorrect.");
+  if (!ok) throw new ServiceError(400, "Mot de passe actuel incorrect.", "auth.motDePasseIncorrect");
 
   const data: { passwordHash: string; firstLogin: boolean; tokenVersion: { increment: number }; username?: string } = {
     passwordHash: await bcrypt.hash(input.newPassword, 12),
@@ -164,7 +167,7 @@ export async function changeCredentials(userId: string, input: ChangeCredentials
 
   if (input.newUsername && input.newUsername !== user.username) {
     const taken = await prisma.user.findUnique({ where: { username: input.newUsername } });
-    if (taken) throw new ServiceError(409, "Nom d'utilisateur déjà pris.");
+    if (taken) throw new ServiceError(409, "Nom d'utilisateur déjà pris.", "user.usernamePris");
     data.username = input.newUsername;
   }
 

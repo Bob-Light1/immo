@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { annonceSchema, paginationSchema } from "@campusgest/shared";
+import { annonceSchema, paginationSchema, LOCALES, type Locale } from "@campusgest/shared";
 import { handle, json } from "@/lib/api";
 import { requireAuth, requireRole } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
@@ -16,7 +16,12 @@ export async function GET(req: NextRequest) {
       page: sp.get("page") ?? undefined,
       limit: sp.get("limit") ?? undefined,
     });
-    return json(await listNotifications(user.sub, user.role, { page, limit }));
+    // The interface locale, so the inbox is rendered in the language actually
+    // on screen. Unrecognized values are dropped: the service then falls back
+    // to the account preference.
+    const asked = sp.get("locale");
+    const locale = LOCALES.includes(asked as Locale) ? (asked as Locale) : undefined;
+    return json(await listNotifications(user.sub, user.role, { page, limit }, locale));
   });
 }
 

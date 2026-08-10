@@ -21,9 +21,13 @@ export async function sendDistress(userId: string, input: DistressInput) {
     where: { id: userId },
     select: { fullName: true, distressDisabled: true, distressReview: true },
   });
-  if (!user) throw new ServiceError(404, "Utilisateur introuvable.");
+  if (!user) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
   if (user.distressDisabled) {
-    throw new ServiceError(403, "Votre accès au signal de détresse a été suspendu par l'administration.");
+    throw new ServiceError(
+      403,
+      "Votre accès au signal de détresse a été suspendu par l'administration.",
+      "distress.banni",
+    );
   }
 
   // Anti-abuse: number of signals over the sliding window.
@@ -49,25 +53,24 @@ export async function sendDistress(userId: string, input: DistressInput) {
 
   // Real-time broadcast to every active user (forced push), flagged "to be
   // checked" when the account is under review — the signal still goes out.
-  const flag = enRevue ? " (à vérifier)" : "";
-  const loc = signal.latitude != null ? " Position partagée." : "";
-  await notifyAllActive(
-    "detresse",
-    `🚨 Signal de détresse${flag}`,
-    `${user.fullName} a déclenché un signal de détresse.${loc}`,
-  );
+  await notifyAllActive("detresse", {
+    key: "distress.signal",
+    params: {
+      name: user.fullName,
+      revue: enRevue ? "yes" : "no",
+      position: signal.latitude != null ? "yes" : "no",
+    },
+  });
 
   if (enRevue) {
     const admins = await prisma.user.findMany({
       where: { role: "admin", isActive: true },
       select: { id: true },
     });
-    await notifyUsers(
-      admins.map((a) => a.id),
-      "detresse",
-      "Signal de détresse en revue anti-abus",
-      `${user.fullName} dépasse le seuil de signaux récents. À arbitrer (revue / ban).`,
-    );
+    await notifyUsers(admins.map((a) => a.id), "detresse", {
+      key: "distress.revue",
+      params: { name: user.fullName },
+    });
   }
 
   return { id: signal.id, review: enRevue };
@@ -86,9 +89,9 @@ export async function attachDistressPosition(
   pos: DistressPositionInput,
 ) {
   const signal = await prisma.distressSignal.findUnique({ where: { id: signalId } });
-  if (!signal) throw new ServiceError(404, "Signal introuvable.");
-  if (signal.senderId !== userId) throw new ServiceError(403, "Ce signal n'est pas le vôtre.");
-  if (signal.resolved) throw new ServiceError(409, "Signal déjà résolu.");
+  if (!signal) throw new ServiceError(404, "Signal introuvable.", "introuvable.signal");
+  if (signal.senderId !== userId) throw new ServiceError(403, "Ce signal n'est pas le vôtre.", "distress.pasLeVotre");
+  if (signal.resolved) throw new ServiceError(409, "Signal déjà résolu.", "distress.dejaResolu");
   // Idempotent: an already-attached position is never overwritten.
   if (signal.latitude != null) return { ok: true, alreadySet: true };
 
@@ -104,11 +107,15 @@ export async function attachDistressPosition(
     where: { id: signal.senderId },
     select: { fullName: true },
   });
-  await notifyAllActive(
-    "detresse",
-    "📍 Position reçue — signal de détresse",
-    `${sender?.fullName ?? "Un résident"} : ${pos.latitude.toFixed(5)}, ${pos.longitude.toFixed(5)}`,
-  );
+  await notifyAllActive("detresse", {
+    key: "distress.position",
+    params: {
+      nomConnu: sender ? "yes" : "no",
+      name: sender?.fullName ?? "",
+      latitude: pos.latitude.toFixed(5),
+      longitude: pos.longitude.toFixed(5),
+    },
+  });
 
   return { ok: true, alreadySet: false };
 }
@@ -132,7 +139,7 @@ export async function listDistress(pagination: { page: number; limit: number }) 
 
 export async function resolveDistress(id: string, adminId: string) {
   const s = await prisma.distressSignal.findUnique({ where: { id } });
-  if (!s) throw new ServiceError(404, "Signal introuvable.");
+  if (!s) throw new ServiceError(404, "Signal introuvable.", "introuvable.signal");
   await prisma.distressSignal.update({
     where: { id },
     data: { resolved: true, resolvedById: adminId },
@@ -143,7 +150,7 @@ export async function resolveDistress(id: string, adminId: string) {
 /** Manual ban / reactivation (audited upstream by the route). */
 export async function setDistressBan(userId: string, disabled: boolean) {
   const u = await prisma.user.findUnique({ where: { id: userId }, select: { id: true } });
-  if (!u) throw new ServiceError(404, "Utilisateur introuvable.");
+  if (!u) throw new ServiceError(404, "Utilisateur introuvable.", "introuvable.user");
   await prisma.user.update({
     where: { id: userId },
     // A reactivation also clears the under-review flag.

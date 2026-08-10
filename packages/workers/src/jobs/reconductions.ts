@@ -1,6 +1,14 @@
 import { prisma } from "@campusgest/db";
 import { publishNotif } from "../realtime";
-import { repartirFacture, isLoyer, MAX_RECONDUCTION_STREAK } from "@campusgest/shared";
+import { notifRow } from "../notify";
+import {
+  repartirFacture,
+  isLoyer,
+  moisDe,
+  moisDecale,
+  normalizeFactureType,
+  MAX_RECONDUCTION_STREAK,
+} from "@campusgest/shared";
 
 /**
  * Roll-over job (monthly) — design §5.1 / §0.2.
@@ -13,12 +21,20 @@ import { repartirFacture, isLoyer, MAX_RECONDUCTION_STREAK } from "@campusgest/s
  * Idempotent: a type already invoiced for the current month is skipped.
  */
 
-function moisStr(d: Date): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-}
-
-function addMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() + 1, d.getDate());
+/**
+ * The source deadline shifted one month on.
+ *
+ * Read and rebuilt in the UTC frame, which is how `@db.Date` columns are stored
+ * and read: local components landed on the previous day west of Greenwich. The
+ * day is clamped to the target month's length, so a deadline on the 31st moves
+ * to the 28th or 30th instead of overflowing into the month after — a January
+ * deadline used to roll over to 3 March.
+ */
+function moisSuivant(d: Date): Date {
+  const annee = d.getUTCFullYear();
+  const mois = d.getUTCMonth() + 1;
+  const dernierJour = new Date(Date.UTC(annee, mois + 1, 0)).getUTCDate();
+  return new Date(Date.UTC(annee, mois, Math.min(d.getUTCDate(), dernierJour)));
 }
 
 export interface ReconductionsResult {
@@ -28,8 +44,8 @@ export interface ReconductionsResult {
 }
 
 export async function runReconductions(now: Date = new Date()): Promise<ReconductionsResult> {
-  const moisCur = moisStr(now);
-  const moisPrec = moisStr(new Date(now.getFullYear(), now.getMonth() - 1, 1));
+  const moisCur = moisDe(now);
+  const moisPrec = moisDecale(moisCur, -1);
 
   const admin = await prisma.user.findFirst({
     where: { role: "admin", isActive: true },
@@ -52,8 +68,10 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
   const traites = new Set<string>();
 
   for (const src of sources) {
-    if (traites.has(src.type)) continue; // one roll-over per type
-    traites.add(src.type);
+    // Folded key: comparing raw labels made "Eau" and "eau" two types, so the
+    // same charge could be rolled over twice in one month.
+    if (traites.has(src.typeKey)) continue; // one roll-over per type
+    traites.add(src.typeKey);
 
     // Rent is a flat annual amount: rolling it over monthly would create a
     // second debt for the same year.
@@ -62,7 +80,9 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
       continue;
     }
 
-    const existe = await prisma.facture.count({ where: { mois: moisCur, type: src.type } });
+    const existe = await prisma.facture.count({
+      where: { mois: moisCur, typeKey: src.typeKey },
+    });
     if (existe > 0) {
       skipped++;
       continue;
@@ -83,9 +103,10 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
     await prisma.facture.create({
       data: {
         type: src.type,
+        typeKey: normalizeFactureType(src.type),
         montantTotal: src.montantTotal,
         mois: moisCur,
-        dateLimite: addMonth(new Date(src.dateLimite)),
+        dateLimite: moisSuivant(new Date(src.dateLimite)),
         compteurId: src.compteurId,
         createdById: admin.id,
         statutPub: "brouillon",
@@ -104,12 +125,17 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
     });
     created++;
 
+    // Role-targeted rows: no named recipient, so no push and no per-user
+    // language — they are rendered from the key when each admin reads them.
     await prisma.notification.create({
       data: {
         targetRole: "admin",
         type: "systeme",
-        title: `Facture reconduite à valider — ${src.type} ${moisCur}`,
-        body: `Un brouillon de la facture ${src.type} a été reconduit depuis ${moisPrec}. Vérifiez le montant puis publiez.`,
+        ...notifRow("reconduction.brouillon", {
+          type: src.type,
+          mois: moisCur,
+          moisPrecedent: moisPrec,
+        }),
       },
     });
 
@@ -118,8 +144,7 @@ export async function runReconductions(now: Date = new Date()): Promise<Reconduc
         data: {
           targetRole: "admin",
           type: "systeme",
-          title: `Reconduction répétée — ${src.type}`,
-          body: `La facture ${src.type} est reconduite depuis ${streak} mois consécutifs. Confirmez que le montant est toujours correct.`,
+          ...notifRow("reconduction.repetee", { type: src.type, streak }),
         },
       });
       alerts++;

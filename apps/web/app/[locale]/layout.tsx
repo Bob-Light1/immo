@@ -1,18 +1,34 @@
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
 import { NextIntlClientProvider } from "next-intl";
-import { getMessages } from "next-intl/server";
+import { getMessages, getTranslations } from "next-intl/server";
+import { DEFAULT_LOCALE } from "@campusgest/shared";
 import { UiProvider } from "@/components/Toast";
 import "../globals.css";
 
-export const metadata: Metadata = {
-  title: "KingCity",
-  description: "Gestion de cité universitaire — Cameroun",
-  manifest: "/manifest.json",
-  // iOS ignores the manifest icons: the home screen uses apple-touch-icon.
-  icons: { apple: "/icons/icon-192.png" },
-  appleWebApp: { capable: true, statusBarStyle: "default", title: "KingCity" },
-};
+/**
+ * The manifest declares the installed app's language, so it has to follow the
+ * locale the resident installed from — otherwise every home-screen entry
+ * announces itself in French. One static file per locale (`manifest.<loc>.json`,
+ * default locale keeps `manifest.json` so the service worker precache and the
+ * install prompt find it at the usual path); their `description` must be kept in
+ * step with `messages/*.json` by hand.
+ */
+export async function generateMetadata({
+  params: { locale },
+}: {
+  params: { locale: string };
+}): Promise<Metadata> {
+  const t = await getTranslations({ locale, namespace: "home" });
+  return {
+    title: "KingCity",
+    description: t("tagline"),
+    manifest: locale === DEFAULT_LOCALE ? "/manifest.json" : `/manifest.${locale}.json`,
+    // iOS ignores the manifest icons: the home screen uses apple-touch-icon.
+    icons: { apple: "/icons/icon-192.png" },
+    appleWebApp: { capable: true, statusBarStyle: "default", title: "KingCity" },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#1A3C6E",

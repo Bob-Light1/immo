@@ -2,9 +2,11 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { formatDate } from "@/lib/format";
 import type { EvenementStatut } from "@campusgest/shared";
+import { useConfirmAction } from "@/components/Toast";
 import {
   Card,
   PageTitle,
@@ -47,6 +49,8 @@ function EventBadge({ statut }: { statut: EvenementStatut }) {
 /** Event list & proposals; decision (approve/reject) when `admin` (§5.5). */
 export function EventsList({ admin }: { admin: boolean }) {
   const t = useTranslations("evenements");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const locale = useLocale();
   const [items, setItems] = useState<Evenement[] | null>(null);
   const [page, setPage] = useState(1);
@@ -83,7 +87,7 @@ export function EventsList({ admin }: { admin: boolean }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setTitre("");
@@ -99,11 +103,24 @@ export function EventsList({ admin }: { admin: boolean }) {
     }
   }
 
-  async function decide(id: string, statut: "approuve" | "rejete") {
-    setItems((prev) => prev?.map((ev) => (ev.id === id ? { ...ev, statut } : ev)) ?? prev);
-    await apiFetch(`/api/evenements/${id}/statut`, {
-      method: "PATCH",
-      body: JSON.stringify({ statut }),
+  function decide(ev: Evenement, statut: "approuve" | "rejete") {
+    const approve = statut === "approuve";
+    return confirmAction({
+      level: approve ? "info" : "danger",
+      message: approve
+        ? t("confirmApprove", { titre: ev.titre })
+        : t("confirmReject", { titre: ev.titre }),
+      confirmLabel: approve ? t("approve") : t("reject"),
+      success: approve ? t("approved") : t("rejected"),
+      failure: t("decisionFailed"),
+      run: () =>
+        apiFetch(`/api/evenements/${ev.id}/statut`, {
+          method: "PATCH",
+          body: JSON.stringify({ statut }),
+        }),
+      // Moved only once the decision is recorded: the badge is what the author
+      // will be told, so it must not show a decision the server refused.
+      onDone: () => setItems((prev) => prev?.map((x) => (x.id === ev.id ? { ...x, statut } : x)) ?? prev),
     });
   }
 
@@ -156,10 +173,10 @@ export function EventsList({ admin }: { admin: boolean }) {
               </div>
               {admin && ev.statut === "en_attente" && (
                 <div className="mt-3 flex gap-2">
-                  <button onClick={() => decide(ev.id, "approuve")} className={`${btnPrimary} px-3 py-1 text-xs`}>
+                  <button onClick={() => decide(ev, "approuve")} className={`${btnPrimary} px-3 py-1 text-xs`}>
                     {t("approve")}
                   </button>
-                  <button onClick={() => decide(ev.id, "rejete")} className={`${btnSecondary} px-3 py-1 text-xs`}>
+                  <button onClick={() => decide(ev, "rejete")} className={`${btnSecondary} px-3 py-1 text-xs`}>
                     {t("reject")}
                   </button>
                 </div>

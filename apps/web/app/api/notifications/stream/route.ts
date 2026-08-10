@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { serialize } from "@/lib/api";
 import { verifyRefreshToken, REFRESH_COOKIE } from "@/lib/auth";
 import { onNotifFor, SAFETY_POLL_MS, FALLBACK_POLL_MS } from "@/lib/realtime";
+import { localizeNotification } from "@/lib/services/notification.service";
+import { LOCALES, type Locale } from "@campusgest/shared";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,6 +27,7 @@ export async function GET(req: NextRequest) {
 
   let userId: string;
   let role: string;
+  let locale: string;
   try {
     const payload = verifyRefreshToken(cookie);
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
@@ -33,6 +36,10 @@ export async function GET(req: NextRequest) {
     }
     userId = user.id;
     role = user.role;
+    // EventSource cannot set headers, so the interface locale travels in the
+    // query string; the account preference takes over when it is absent.
+    const asked = req.nextUrl.searchParams.get("locale");
+    locale = LOCALES.includes(asked as Locale) ? asked! : user.language;
   } catch {
     return new Response("unauthorized", { status: 401 });
   }
@@ -57,7 +64,7 @@ export async function GET(req: NextRequest) {
           });
           if (fresh.length > 0) {
             lastTs = fresh[fresh.length - 1]!.createdAt;
-            for (const n of fresh) send("notification", serialize(n));
+            for (const n of fresh) send("notification", serialize(localizeNotification(n, locale)));
           }
           const unread = await prisma.notification.count({ where: { ...where, isRead: false } });
           send("unread", { unread });

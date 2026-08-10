@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch, uploadFile } from "@/lib/client/session";
+import { useConfirmAction } from "@/components/Toast";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -23,6 +25,8 @@ interface Post {
  */
 export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: boolean }) {
   const t = useTranslations("posts");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const [items, setItems] = useState<Post[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -64,7 +68,7 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setTitre("");
@@ -74,18 +78,27 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
       if (page === 1) await load();
       else setPage(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failed"));
+      setError(apiError(err, t("failed")));
     } finally {
       setBusy(false);
     }
   }
 
-  async function toggleHidden(p: Post) {
-    const res = await apiFetch(`/api/posts/${p.id}/hidden`, {
-      method: "PATCH",
-      body: JSON.stringify({ isHidden: !p.isHidden }),
+  function toggleHidden(p: Post) {
+    const hide = !p.isHidden;
+    return confirmAction({
+      level: hide ? "danger" : "info",
+      message: hide ? t("confirmHide", { titre: p.titre }) : t("confirmShow", { titre: p.titre }),
+      confirmLabel: hide ? t("masquer") : t("afficher"),
+      success: hide ? t("hiddenDone") : t("shownDone"),
+      failure: t("moderationFailed"),
+      run: () =>
+        apiFetch(`/api/posts/${p.id}/hidden`, {
+          method: "PATCH",
+          body: JSON.stringify({ isHidden: hide }),
+        }),
+      onDone: load,
     });
-    if (res.ok) await load();
   }
 
   // Local search over the loaded page (title + description).

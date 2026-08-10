@@ -3,6 +3,8 @@
  * per 15 min per IP). Enough for a single-instance deployment (Docker VPS);
  * move it to Redis if the app ever scales to several instances.
  */
+import { ServiceError } from "./api";
+
 interface Bucket {
   count: number;
   resetAt: number;
@@ -33,4 +35,29 @@ export function rateLimit(
     return { ok: false, retryAfterSec: Math.ceil((bucket.resetAt - now) / 1000) };
   }
   return { ok: true, retryAfterSec: 0 };
+}
+
+/** Write budget for one admin on the money endpoints (per minute). */
+export const MUTATION_MAX = 30;
+export const MUTATION_WINDOW_MS = 60_000;
+
+/**
+ * Guards a mutating endpoint, keyed by actor. Invoices and payments write
+ * financial history: a runaway client (or a double-submitting form) should be
+ * stopped before it reaches the database, not after.
+ */
+export function rateLimitMutation(scope: string, userId: string): void {
+  const { ok, retryAfterSec } = rateLimit(
+    `${scope}:${userId}`,
+    MUTATION_MAX,
+    MUTATION_WINDOW_MS,
+  );
+  if (!ok) {
+    throw new ServiceError(
+      429,
+      `Trop de requêtes. Réessayez dans ${retryAfterSec} s.`,
+      "generic.tropDeRequetes",
+      { secondes: retryAfterSec },
+    );
+  }
 }

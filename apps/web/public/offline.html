@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#1A3C6E" />
-    <title>KingCity — hors ligne</title>
+    <title>KingCity</title>
     <style>
       :root {
         color-scheme: light dark;
@@ -96,12 +96,52 @@
         </svg>
         King<em>City</em>
       </span>
-      <h1>Vous êtes hors ligne</h1>
-      <p>
+      <h1 id="title">Vous êtes hors ligne</h1>
+      <p id="text">
         Cette application a besoin d'une connexion pour afficher vos factures, notifications et
         messages. Reconnectez-vous au réseau puis réessayez.
       </p>
-      <a href="/">Réessayer</a>
+      <a id="retry" href="/">Réessayer</a>
     </div>
+
+    <!--
+      This is the one page a resident sees when the network drops, and it is
+      served straight from the service-worker cache: next-intl never runs, so
+      the three wordings ship inline. The locale comes from the NEXT_LOCALE
+      cookie the middleware writes — that is the choice made inside the app —
+      and falls back to the browser's own language. The French markup above is
+      the no-JavaScript default.
+    -->
+    <script>
+      (function () {
+        var MESSAGES = {
+          fr: {
+            title: "Vous êtes hors ligne",
+            text: "Cette application a besoin d'une connexion pour afficher vos factures, notifications et messages. Reconnectez-vous au réseau puis réessayez.",
+            retry: "Réessayer",
+          },
+          en: {
+            title: "You are offline",
+            text: "This application needs a connection to show your invoices, notifications and messages. Reconnect to the network, then try again.",
+            retry: "Try again",
+          },
+          de: {
+            title: "Sie sind offline",
+            text: "Diese Anwendung benötigt eine Verbindung, um Ihre Rechnungen, Benachrichtigungen und Nachrichten anzuzeigen. Stellen Sie die Netzwerkverbindung wieder her und versuchen Sie es erneut.",
+            retry: "Erneut versuchen",
+          },
+        };
+
+        var cookie = document.cookie.match(/(?:^|;\s*)NEXT_LOCALE=([^;]+)/);
+        var locale = (cookie && cookie[1]) || (navigator.language || "fr").slice(0, 2);
+        var m = MESSAGES[locale];
+        if (!m) return;
+
+        document.documentElement.lang = locale;
+        document.getElementById("title").textContent = m.title;
+        document.getElementById("text").textContent = m.text;
+        document.getElementById("retry").textContent = m.retry;
+      })();
+    </script>
   </body>
 </html>

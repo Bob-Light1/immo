@@ -9,12 +9,6 @@ import type { Role, TicketInput, TicketStatutInput } from "@campusgest/shared";
  * The author is notified on every status change.
  */
 
-const STATUT_LABEL: Record<string, string> = {
-  ouvert: "Ouvert",
-  en_cours: "En cours",
-  resolu: "Résolu",
-};
-
 export async function createTicket(authorId: string, input: TicketInput) {
   const ticket = await prisma.maintenanceTicket.create({
     data: {
@@ -30,12 +24,10 @@ export async function createTicket(authorId: string, input: TicketInput) {
     where: { role: "admin", isActive: true },
     select: { id: true },
   });
-  await notifyUsers(
-    admins.map((a) => a.id),
-    "maintenance",
-    "Nouveau ticket de maintenance",
-    `${input.categorie} — ${input.description.slice(0, 120)}`,
-  );
+  await notifyUsers(admins.map((a) => a.id), "maintenance", {
+    key: "ticket.nouveau",
+    params: { categorie: input.categorie, description: input.description.slice(0, 120) },
+  });
 
   return ticket;
 }
@@ -64,7 +56,7 @@ export async function listTickets(
 
 export async function updateTicketStatut(id: string, input: TicketStatutInput) {
   const ticket = await prisma.maintenanceTicket.findUnique({ where: { id } });
-  if (!ticket) throw new ServiceError(404, "Ticket introuvable.");
+  if (!ticket) throw new ServiceError(404, "Ticket introuvable.", "introuvable.ticket");
 
   const updated = await prisma.maintenanceTicket.update({
     where: { id },
@@ -76,12 +68,11 @@ export async function updateTicketStatut(id: string, input: TicketStatutInput) {
   });
 
   if (input.statut !== ticket.statut) {
-    await notifyUsers(
-      [ticket.authorId],
-      "maintenance",
-      "Mise à jour de votre ticket",
-      `Votre ticket « ${ticket.categorie} » est maintenant : ${STATUT_LABEL[input.statut] ?? input.statut}.`,
-    );
+    await notifyUsers([ticket.authorId], "maintenance", {
+      key: "ticket.statut",
+      // The status label is resolved by the catalogue, in the reader's language.
+      params: { categorie: ticket.categorie, statut: input.statut },
+    });
   }
   return updated;
 }

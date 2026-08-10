@@ -2,13 +2,17 @@
 
 import { useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { ANNONCE_SCOPES, type AnnonceScope } from "@campusgest/shared";
+import { useConfirm } from "@/components/Toast";
 import { Card, PageTitle, Field, inputCls, btnPrimary, ErrorText } from "@/components/ui";
 
 /** Composer for an announcement to all (or one role) — Admin & Bailleur (§5.3). */
 export function AnnonceComposer() {
   const t = useTranslations("annonces");
+  const apiError = useApiError();
+  const confirm = useConfirm();
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
   const [scope, setScope] = useState<AnnonceScope>("all");
@@ -18,6 +22,14 @@ export function AnnonceComposer() {
 
   async function submit(e: FormEvent) {
     e.preventDefault();
+    // A push reaches every recipient's phone the moment it is sent and cannot
+    // be recalled, so the last chance to reread the wording is here.
+    const { ok } = await confirm({
+      level: "danger",
+      message: t("confirmSend"),
+      confirmLabel: t("send"),
+    });
+    if (!ok) return;
     setBusy(true);
     setError(null);
     setSentCount(null);
@@ -28,7 +40,7 @@ export function AnnonceComposer() {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       const d = (await res.json()) as { sent: number };

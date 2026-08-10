@@ -23,8 +23,42 @@ describe("repartirFacture", () => {
     ]);
     const total = r.lignes.reduce((s, l) => s + l.montantDu, 0);
     expect(total).toBe(10_000);
-    // base = round(3333.33) = 3333; the delta (+1) lands on the last line
-    expect(r.lignes.map((l) => l.montantDu)).toEqual([3_333, 3_333, 3_334]);
+    // Largest remainder: each line is floor(3333.33) = 3333, and the single
+    // leftover XAF goes to the first line (equal fractions, tie on input order).
+    expect(r.lignes.map((l) => l.montantDu)).toEqual([3_334, 3_333, 3_333]);
+  });
+
+  it("garde chaque ligne à moins d'1 XAF de sa part exacte", () => {
+    // 7 tenants on an amount that divides badly: heaping the whole delta on the
+    // last line used to hand it an amount nobody could justify.
+    const coeffs = Array.from({ length: 7 }, (_, i) => ({
+      locataireId: String(i),
+      coefficient: 1,
+    }));
+    const montantTotal = 100_000;
+    const r = repartirFacture(montantTotal, coeffs);
+
+    expect(r.lignes.reduce((s, l) => s + l.montantDu, 0)).toBe(montantTotal);
+    const exact = montantTotal / 7;
+    for (const l of r.lignes) {
+      expect(Math.abs(l.montantDu - exact)).toBeLessThan(1);
+    }
+  });
+
+  it("ne dépend pas de l'ordre des lignes pour le montant de chacun", () => {
+    const coeffs = [
+      { locataireId: "a", coefficient: 1 },
+      { locataireId: "b", coefficient: 2.5 },
+      { locataireId: "c", coefficient: 0.5 },
+    ];
+    const direct = repartirFacture(70_001, coeffs);
+    const inverse = repartirFacture(70_001, [...coeffs].reverse());
+
+    const montant = (r: typeof direct, id: string) =>
+      r.lignes.find((l) => l.locataireId === id)!.montantDu;
+    for (const id of ["a", "b", "c"]) {
+      expect(montant(direct, id)).toBe(montant(inverse, id));
+    }
   });
 
   it("tous à n=1 : répartition égale exacte", () => {
@@ -72,13 +106,21 @@ describe("estimerCharge", () => {
 });
 
 describe("partEstimee", () => {
-  it("répartit l'estimation à parts égales entre locataires actifs", () => {
+  it("répartit l'estimation à parts égales quand tous les coefficients valent 1", () => {
     expect(partEstimee(60_000, 4)).toBe(15_000);
     expect(partEstimee(10_000, 3)).toBe(3_333);
   });
 
-  it("renvoie null quand aucun locataire actif", () => {
+  it("suit le coefficient du locataire, comme la facture réelle", () => {
+    // Σcoeff = 4 : la base vaut 15 000, donc un coefficient 2 doit voir 30 000
+    // et non la moitié de la cité.
+    expect(partEstimee(60_000, 4, 2)).toBe(30_000);
+    expect(partEstimee(60_000, 4, 0.5)).toBe(7_500);
+  });
+
+  it("renvoie null quand il n'y a rien à répartir", () => {
     expect(partEstimee(60_000, 0)).toBeNull();
+    expect(partEstimee(60_000, 4, 0)).toBeNull();
   });
 });
 

@@ -16,6 +16,7 @@
   "nav": {
     "dashboard": "Dashboard",
     "factures": "Rechnungen",
+    "compteurs": "Zähler",
     "users": "Benutzer",
     "mesFactures": "Meine Rechnungen",
     "paiements": "Zahlungen",
@@ -45,7 +46,8 @@
       "compte": "Konto"
     },
     "openMenu": "Menü öffnen",
-    "closeMenu": "Menü schließen"
+    "closeMenu": "Menü schließen",
+    "confirmLogout": "Abmelden? Alle noch nicht gespeicherten Eingaben gehen verloren."
   },
   "statut": {
     "en_attente": "Ausstehend",
@@ -90,6 +92,7 @@
       "username": "Benutzername",
       "role": "Rolle",
       "language": "Sprache",
+      "languageSaved": "Sprache von {name} aktualisiert.",
       "email": "E-Mail (optional)",
       "phone": "Telefon (optional)",
       "contact": "Kontakt",
@@ -105,7 +108,9 @@
       "searchPlaceholder": "Suchen (Name, Benutzer, E-Mail)…",
       "filterAllRoles": "Alle Rollen",
       "filterAllStatus": "Alle Status",
-      "deactivated": "Konto deaktiviert."
+      "deactivated": "Konto deaktiviert.",
+      "saveFailed": "Speichern fehlgeschlagen.",
+      "deactivateFailed": "Das Konto konnte nicht deaktiviert werden."
     }
   },
   "factures": {
@@ -120,6 +125,7 @@
     "statut": "Status",
     "export": "CSV-Export",
     "reconduite": "fortgeführt",
+    "filtreTousStatuts": "Alle Status",
     "new": {
       "title": "Neue Rechnung",
       "type": "Art (Wasser, Strom…)",
@@ -131,9 +137,15 @@
       "submit": "Entwurf erstellen",
       "montantAnnuelLocataire": "Jahresbetrag pro Mieter (XAF)",
       "moisLoyer": "Startmonat (abgedecktes Jahr)",
-      "hintLoyer": "Miete: keine Aufteilung. Der eingegebene Betrag ist von jedem aktiven Mieter für das Jahr geschuldet. Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag."
+      "locataires": "Betroffene Mieter",
+      "hintLoyer": "Miete: keine Aufteilung. Der eingegebene Betrag ist von jedem aktiven Mieter für das Jahr geschuldet. Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag.",
+      "compteur": "Zähler (optional)",
+      "confirmCreate": "Diese Rechnung erstellen? Sie beginnt als Entwurf: Beträge und Frist bleiben bis zur Veröffentlichung korrigierbar.",
+      "created": "Rechnung als Entwurf erstellt."
     },
     "detail": {
+      "type": "Typ",
+      "mois": "Monat",
       "montantTotal": "Gesamtbetrag",
       "baseUnitaire": "Einheitsbasis",
       "encaisse": "Eingenommen",
@@ -154,9 +166,72 @@
       "payeAnnee": "Gezahlt in {annee}",
       "restantAnnee": "Rest {annee}",
       "loyerNoCoeff": "Miete: identischer Jahresbetrag pro Mieter, ohne Koeffizient.",
-      "facturePdf": "Rechnung als PDF"
+      "facturePdf": "Rechnung als PDF",
+      "edit": "Entwurf bearbeiten",
+      "editTitle": "Entwurf korrigieren",
+      "locataires": "Zugeordnete Mieter",
+      "editHint": "Nur ein Entwurf ist änderbar. Nach der Veröffentlichung wird die Rechnung zum Buchhaltungsbeleg.",
+      "save": "Speichern",
+      "cancel": "Abbrechen",
+      "editFailed": "Änderung fehlgeschlagen.",
+      "delete": "Entwurf löschen",
+      "confirmDelete": "Diesen Entwurf endgültig löschen? Das lässt sich nicht rückgängig machen.",
+      "deleteFailed": "Löschen fehlgeschlagen.",
+      "montantAnnuelLocataire": "Jahresbetrag je Mieter (XAF)",
+      "compteur": "Zähler",
+      "confirmCoeffs": "Diese Koeffizienten speichern? Die Aufteilung des Betrags auf die Mieter wird neu berechnet.",
+      "coeffsSaved": "Koeffizienten gespeichert.",
+      "confirmEdit": "Diese Korrekturen speichern? Nach der Veröffentlichung sind sie nicht mehr möglich.",
+      "edited": "Rechnung korrigiert.",
+      "published": "Rechnung veröffentlicht: Die Mieter können sie nun sehen.",
+      "deleteHint": "Geben Sie zur Bestätigung den Monat der Rechnung ein ({mois}).",
+      "deleted": "Rechnung gelöscht.",
+      "confirmPrint": "Die Rechnung von {name} erstellen? Das Dokument enthält personenbezogene Daten."
     },
-    "exportPdf": "PDF-Export"
+    "exportPdf": "PDF-Export",
+    "exportFailed": "Export fehlgeschlagen.",
+    "exportTronque": "Export auf die ersten {max} Zeilen begrenzt: Datei und Summen sind unvollständig. Filtern Sie nach Monat für einen vollständigen Auszug.",
+    "locatairesPicker": {
+      "tous": "Alle aktiven Mieter",
+      "aucun": "Wählen Sie mindestens einen Mieter aus."
+    },
+    "confirmExport": "Die veröffentlichten Rechnungen des gewählten Zeitraums exportieren? Die Datei enthält personenbezogene Daten."
+  },
+  "compteurs": {
+    "title": "Zähler",
+    "purpose": "Zähler sind die Grundlage der Wasser- und Stromrechnungen: Ordnen Sie der Rechnung einen Zähler zu und erfassen Sie bei jeder Abrechnung seinen Stand.",
+    "type": "Typ",
+    "libelle": "Bezeichnung",
+    "libellePlaceholder": "Hauptzähler, Block A…",
+    "scope": "Geltungsbereich",
+    "indexInitial": "Anfangsstand",
+    "dernierIndex": "Letzter Zählerstand",
+    "usage": "Verwendung",
+    "usageDetail": "{factures} Rechnung(en) · {chambres} Zimmer",
+    "consommation": "Verbrauch seit dem letzten Stand: {delta}",
+    "create": "Zähler hinzufügen",
+    "createFailed": "Zähler konnte nicht erstellt werden.",
+    "save": "Speichern",
+    "saveFailed": "Speichern fehlgeschlagen.",
+    "delete": "Löschen",
+    "deleteBloque": "Zähler ist einer Rechnung oder einem Zimmer zugeordnet: Löschen nicht möglich.",
+    "confirmDelete": "Zähler „{libelle}“ löschen?",
+    "deleteFailed": "Löschen fehlgeschlagen.",
+    "empty": "Kein Zähler erfasst.",
+    "aucun": "Kein Zähler",
+    "aucunCompteur": "Noch kein Zähler erfasst: Fügen Sie einen auf der Seite Zähler hinzu.",
+    "types": {
+      "eau": "Wasser",
+      "electricite": "Strom"
+    },
+    "scopes": {
+      "cite": "Wohnheim",
+      "bloc": "Block",
+      "chambre": "Zimmer"
+    },
+    "deleted": "Zähler gelöscht.",
+    "saved": "Zähler gespeichert.",
+    "created": "Zähler erstellt."
   },
   "paiement": {
     "encaisser": "Einnehmen",
@@ -175,7 +250,17 @@
       "virement": "Überweisung"
     },
     "justificatif": "Nachweis",
-    "voirJustificatif": "Nachweis ansehen"
+    "voirJustificatif": "Nachweis ansehen",
+    "annulerPaiement": "Diese Zahlung stornieren",
+    "motif": "Grund der Stornierung",
+    "motifPlaceholder": "z. B. Betrag beim falschen Mieter erfasst",
+    "confirmAnnulation": "Diese Zahlung über {montant} stornieren? Der Saldo wird neu berechnet und die Quittung ist nicht mehr abrufbar.",
+    "annulationFailed": "Stornierung fehlgeschlagen.",
+    "motifTropCourt": "Geben Sie einen Grund mit mindestens 5 Zeichen an.",
+    "confirmEncaisser": "{montant} verbuchen? Eine Zahlung wird nicht bearbeitet: Sie kann danach nur mit Begründung storniert werden.",
+    "encaisse": "Zahlung erfasst.",
+    "annulationDone": "Zahlung storniert; der Saldo wurde neu berechnet.",
+    "confirmPrintRecu": "Die Quittung über {montant} erstellen?"
   },
   "pagination": {
     "prev": "Zurück",
@@ -184,7 +269,9 @@
   },
   "locataire": {
     "title": "Meine Rechnungen",
-    "solde": "Offener Betrag",
+    "documentFr": "Amtliches Dokument, unabhängig von der App-Sprache auf Französisch ausgestellt.",
+    "soldeCharges": "Nebenkosten — offener Betrag",
+    "soldeLoyer": "Miete — offener Jahresbetrag",
     "empty": "Noch keine veröffentlichten Rechnungen.",
     "montantDu": "Geschuldeter Betrag",
     "montantPaye": "Gezahlter Betrag",
@@ -225,7 +312,13 @@
     "colJours": "Verzug",
     "joursRetard": "{n} T",
     "noImpayes": "Keine offenen Posten. 🎉",
-    "noData": "Keine Daten."
+    "noData": "Keine Daten.",
+    "loyerTitle": "Miete {annee}",
+    "loyerFacture": "Miete berechnet",
+    "loyerEncaisse": "Miete eingenommen",
+    "loyerTaux": "Einzugsquote",
+    "loyerHint": "Die Miete ist ein Jahresbetrag: Sie wird getrennt von den monatlichen Kosten geführt.",
+    "chargesOnly": "Monatliche Kosten (ohne Miete)"
   },
   "notifications": {
     "title": "Benachrichtigungen",
@@ -247,7 +340,8 @@
     },
     "send": "Ankündigung veröffentlichen",
     "sent": "Ankündigung an {n} Empfänger gesendet.",
-    "failed": "Senden der Ankündigung fehlgeschlagen."
+    "failed": "Senden der Ankündigung fehlgeschlagen.",
+    "confirmSend": "Diese Mitteilung senden? Eine Benachrichtigung geht sofort an alle Empfänger und kann nicht zurückgerufen werden."
   },
   "suggestions": {
     "title": "Vorschlagsbox",
@@ -263,7 +357,13 @@
     "manageEmpty": "Keine Vorschläge.",
     "author": "Von {name}",
     "markRead": "Als gelesen markieren",
-    "visibleBailleur": "Für Vermieter sichtbar"
+    "visibleBailleur": "Für Vermieter sichtbar",
+    "confirmPublish": "Diesen Vorschlag für den Vermieter sichtbar machen? Sein Verfasser wird dabei genannt.",
+    "confirmHide": "Diesen Vorschlag vor dem Vermieter verbergen?",
+    "published": "Vorschlag ist für den Vermieter sichtbar.",
+    "hidden": "Vorschlag verborgen.",
+    "visibilityFailed": "Die Sichtbarkeit konnte nicht geändert werden.",
+    "readFailed": "Der Vorschlag konnte nicht als gelesen markiert werden."
   },
   "evenements": {
     "title": "Veranstaltungen",
@@ -283,7 +383,12 @@
       "en_attente": "Ausstehend",
       "approuve": "Genehmigt",
       "rejete": "Abgelehnt"
-    }
+    },
+    "confirmApprove": "„{titre}“ genehmigen? Die Veranstaltung wird für alle Bewohner sichtbar.",
+    "confirmReject": "„{titre}“ ablehnen? Der Verfasser wird darüber informiert.",
+    "approved": "Veranstaltung genehmigt.",
+    "rejected": "Veranstaltung abgelehnt.",
+    "decisionFailed": "Die Entscheidung konnte nicht erfasst werden."
   },
   "profil": {
     "title": "Mein Profil",
@@ -324,7 +429,15 @@
     "viewLocation": "Standort anzeigen",
     "resolve": "Als erledigt markieren",
     "ban": "Sperren",
-    "unban": "Reaktivieren"
+    "unban": "Reaktivieren",
+    "confirmResolve": "Diese Meldung schließen? Ihr Absender wird als betreut erfasst.",
+    "confirmBan": "{name} den Zugang zum Alarmknopf entziehen? Diese Person kann dann keinen Alarm mehr auslösen.",
+    "confirmUnban": "{name} den Zugang zum Alarmknopf zurückgeben?",
+    "resolveDone": "Meldung geschlossen.",
+    "resolveFailed": "Die Meldung konnte nicht geschlossen werden.",
+    "banDone": "Zugang zum Alarmknopf entzogen.",
+    "unbanDone": "Zugang zum Alarmknopf wiederhergestellt.",
+    "banFailed": "Der Zugang konnte nicht geändert werden."
   },
   "maintenance": {
     "title": "Wartung",
@@ -347,7 +460,10 @@
       "ouvert": "Offen",
       "en_cours": "In Bearbeitung",
       "resolu": "Erledigt"
-    }
+    },
+    "confirmStatut": "Dieses Ticket auf „{statut}“ setzen?",
+    "statutSaved": "Ticketstatus aktualisiert.",
+    "statutFailed": "Der Status konnte nicht geändert werden."
   },
   "sondages": {
     "title": "Umfragen",
@@ -360,7 +476,13 @@
     "empty": "Keine Umfragen.",
     "closed": "Geschlossen",
     "close": "Schließen",
-    "totalVotes": "{n} Stimme(n)"
+    "totalVotes": "{n} Stimme(n)",
+    "confirmVote": "Diese Stimme für „{option}“ bestätigen?",
+    "confirmClose": "Diese Umfrage schließen? Es werden keine weiteren Stimmen angenommen, und der Abschluss ist endgültig.",
+    "voted": "Stimme erfasst.",
+    "voteFailed": "Die Stimme konnte nicht erfasst werden.",
+    "closeDone": "Umfrage geschlossen.",
+    "closeFailed": "Die Umfrage konnte nicht geschlossen werden."
   },
   "portfolio": {
     "myTitle": "Mein Portfolio",
@@ -414,12 +536,16 @@
     "objectif": "Ziel: {v}",
     "nbContrib": "{n} Beitrag/Beiträge",
     "amount": "Betrag",
-    "contribuer": "Beitragen"
+    "contribuer": "Beitragen",
+    "confirmContribuer": "Einen Beitrag von {montant} zu „{titre}“ bestätigen? Er wird auf Ihren Namen erfasst.",
+    "contributed": "Beitrag erfasst.",
+    "contribuerFailed": "Der Beitrag konnte nicht erfasst werden."
   },
   "predictions": {
     "title": "Kostenschätzungen",
     "type": "Typ",
     "mois": "Monat",
+    "typePlaceholder": "Strom",
     "params": {
       "indiceDiff": "Index (I)",
       "prixUnit": "Stückpreis (P)",
@@ -441,7 +567,10 @@
     "repartitionHint": "Anteil berechnet durch gleichmäßige Aufteilung auf die {count} aktiven Mieter.",
     "estimeTotal": "Geschätzte Gesamtsumme (alle)",
     "maPart": "Mein Anteil",
-    "partLocataire": "Anteil pro Mieter"
+    "partLocataire": "Anteil pro Mieter",
+    "confirmSaveReel": "{montant} als tatsächlichen Betrag erfassen? Die Abweichung der Prognose wird neu berechnet.",
+    "reelSaved": "Tatsächlicher Betrag erfasst.",
+    "saveReelFailed": "Der tatsächliche Betrag konnte nicht erfasst werden."
   },
   "twofa": {
     "title": "Zwei-Faktor-Authentifizierung (2FA)",
@@ -454,7 +583,11 @@
     "confirm": "Bestätigen",
     "cancel": "Abbrechen",
     "disable": "Deaktivieren",
-    "invalidCode": "Ungültiger Code."
+    "invalidCode": "Ungültiger Code.",
+    "confirmDisable": "Zwei-Faktor-Authentifizierung deaktivieren? Das Konto ist dann nur noch durch sein Passwort geschützt.",
+    "enabled": "Zwei-Faktor-Authentifizierung aktiviert.",
+    "disabled": "Zwei-Faktor-Authentifizierung deaktiviert.",
+    "setupFailed": "Die Einrichtung konnte nicht gestartet werden."
   },
   "posts": {
     "title": "Infofeed",
@@ -469,7 +602,12 @@
     "masquer": "Ausblenden",
     "afficher": "Anzeigen",
     "failed": "Veröffentlichung fehlgeschlagen.",
-    "searchPlaceholder": "Infos suchen…"
+    "searchPlaceholder": "Infos suchen…",
+    "confirmHide": "„{titre}“ verbergen? Der Beitrag verschwindet aus dem Feed der Bewohner.",
+    "confirmShow": "„{titre}“ wieder im Feed der Bewohner anzeigen?",
+    "hiddenDone": "Beitrag verborgen.",
+    "shownDone": "Beitrag wieder sichtbar.",
+    "moderationFailed": "Der Beitrag konnte nicht geändert werden."
   },
   "documents": {
     "title": "Dokumente",
@@ -498,17 +636,152 @@
     },
     "searchPlaceholder": "Dokument suchen…",
     "filterAllCat": "Alle Kategorien",
-    "deleted": "Dokument gelöscht."
+    "deleted": "Dokument gelöscht.",
+    "deleteFailed": "Das Dokument konnte nicht gelöscht werden."
   },
   "theme": {
     "light": "Heller Modus",
     "dark": "Dunkler Modus"
+  },
+  "language": {
+    "label": "Sprache",
+    "fr": "Français",
+    "en": "English",
+    "de": "Deutsch"
   },
   "common": {
     "confirm": "Bestätigen",
     "cancel": "Abbrechen",
     "close": "Schließen",
     "showPassword": "Passwort anzeigen",
-    "hidePassword": "Passwort verbergen"
+    "hidePassword": "Passwort verbergen",
+    "confirmTitle": "Bestätigung erforderlich",
+    "processing": "Wird ausgeführt …",
+    "tooShort": "Bitte machen Sie genauere Angaben.",
+    "preparing": "Dokument wird erstellt …",
+    "downloadFailed": "Das Dokument konnte nicht erstellt werden.",
+    "print": "Drucken"
+  },
+  "errors": {
+    "auth": {
+      "tokenManquant": "Keine Sitzung: Bitte melden Sie sich erneut an.",
+      "tokenInvalide": "Sitzung abgelaufen: Bitte melden Sie sich erneut an.",
+      "roleRefuse": "Ihre Rolle erlaubt diese Aktion nicht.",
+      "refreshManquant": "Keine Sitzung: Bitte melden Sie sich erneut an.",
+      "refreshInvalide": "Sitzung abgelaufen: Bitte melden Sie sich erneut an.",
+      "sessionRevoquee": "Sitzung widerrufen: Bitte melden Sie sich erneut an.",
+      "profilRefuse": "Zugriff auf dieses Profil verweigert.",
+      "accesRefuse": "Zugriff verweigert.",
+      "codeInvalide": "Ungültiger Code.",
+      "motDePasseIncorrect": "Aktuelles Passwort ist falsch."
+    },
+    "introuvable": {
+      "user": "Benutzer nicht gefunden.",
+      "facture": "Rechnung nicht gefunden.",
+      "ligneFacture": "Rechnungsposition nicht gefunden.",
+      "paiement": "Zahlung nicht gefunden.",
+      "compteur": "Zähler nicht gefunden.",
+      "suggestion": "Vorschlag nicht gefunden.",
+      "sondage": "Umfrage nicht gefunden.",
+      "signal": "Signal nicht gefunden.",
+      "ticket": "Ticket nicht gefunden.",
+      "projet": "Projekt nicht gefunden.",
+      "post": "Beitrag nicht gefunden.",
+      "notification": "Benachrichtigung nicht gefunden.",
+      "evenement": "Veranstaltung nicht gefunden.",
+      "prediction": "Schätzung nicht gefunden.",
+      "document": "Dokument nicht gefunden."
+    },
+    "user": {
+      "usernamePris": "Dieser Benutzername ist bereits vergeben.",
+      "adminNonDesactivable": "Ein Admin-Konto kann nicht deaktiviert werden."
+    },
+    "portfolio": {
+      "aucunARetirer": "Kein Portfolio zum Entfernen."
+    },
+    "facture": {
+      "dejaPubliee": "Rechnung bereits veröffentlicht.",
+      "publieeNonModifiable": "Rechnung bereits veröffentlicht: sie ist nicht mehr änderbar.",
+      "publieeNonSupprimable": "Rechnung bereits veröffentlicht: sie ist nicht mehr löschbar.",
+      "nonPublieeDocument": "Rechnung nicht veröffentlicht: Dokument nicht verfügbar.",
+      "aucunLocataireActif": "Kein aktiver Mieter auf dieser Rechnung.",
+      "aucunLocataireRattacher": "Kein aktiver Mieter, der der Rechnung zugeordnet werden kann.",
+      "locatairesInconnus": "{count, plural, one {# ausgewählter Mieter ist unbekannt oder deaktiviert} other {# ausgewählte Mieter sind unbekannt oder deaktiviert}}; die Rechnung wurde nicht erstellt.",
+      "locatairesNonRattaches": "{count, plural, one {# Mieter ist dieser Rechnung nicht zugeordnet} other {# Mieter sind dieser Rechnung nicht zugeordnet}}.",
+      "typeMoisOccupe": "Eine Rechnung „{type}“ besteht bereits für {mois}.",
+      "loyerAnneeOccupee": "Eine Mietrechnung deckt bereits das Jahr {annee} ab ({mois}). Die Miete ist ein jährlicher Pauschalbetrag: korrigieren Sie die bestehende Rechnung, statt eine zweite anzulegen.",
+      "loyerMontantAnnuelRequis": "Mietrechnung: Geben Sie den Jahresbetrag an, den jeder Mieter schuldet.",
+      "loyerMontantTotalInterdit": "Mietrechnung: Der Pauschalbetrag wird über den Jahresbetrag je Mieter korrigiert, nicht über einen Gesamtbetrag.",
+      "loyerSansCoefficient": "Mietrechnung: identischer Jahresbetrag je Mieter, ohne Aufteilung und ohne Koeffizient.",
+      "loyerEcheanceTropTot": "Mietrechnung: Der Pauschalbetrag deckt ein Jahr ab, die Fälligkeit muss mindestens {mois} Monate nach Beginn des Zeitraums liegen.",
+      "loyerEntree": "Wechsel zur Miete: Geben Sie den Jahresbetrag an, den jeder Mieter schuldet.",
+      "loyerSortie": "Verlassen der Mietregelung: Geben Sie den aufzuteilenden Gesamtbetrag an.",
+      "montantParLocataireReserveLoyer": "Der Betrag je Mieter ist der Miete vorbehalten; andere Rechnungen werden aus einem Gesamtbetrag aufgeteilt.",
+      "echeanceHorsPeriode": "Die Fälligkeit liegt nicht mehr im abgerechneten Zeitraum: Passen Sie auch das Fälligkeitsdatum an.",
+      "doublonTypeMois": "Eine Rechnung dieses Typs besteht bereits für diesen Zeitraum.",
+      "doublonLoyerAnnee": "Eine Mietrechnung besteht bereits für dieses Jahr."
+    },
+    "paiement": {
+      "factureNonPubliee": "Zahlung nicht möglich: Die Rechnung ist nicht veröffentlicht.",
+      "montantDepasseSolde": "Der Betrag übersteigt den Restsaldo ({reste, number} XAF).",
+      "encaissementConcurrent": "Auf dieser Position wurde soeben eine andere Zahlung erfasst. Laden Sie die Rechnung neu und prüfen Sie den Restsaldo.",
+      "dejaAnnule": "Zahlung bereits storniert."
+    },
+    "compteur": {
+      "libelleDuplique": "Ein Zähler „{libelle}“ besteht bereits für diesen Typ.",
+      "utilise": "Zähler in Verwendung: {factures, plural, one {# Rechnung} other {# Rechnungen}} und {chambres, plural, one {# Zimmer} other {# Zimmer}} sind ihm zugeordnet."
+    },
+    "sondage": {
+      "cloture": "Diese Umfrage ist geschlossen.",
+      "choixInvalide": "Ungültige Auswahl."
+    },
+    "evenement": {
+      "dejaTraite": "Diese Veranstaltung wurde bereits bearbeitet."
+    },
+    "projet": {
+      "inaccessible": "Dieses Projekt ist für Sie nicht zugänglich."
+    },
+    "notification": {
+      "accesRefuse": "Zugriff auf diese Benachrichtigung verweigert.",
+      "aucunDestinataire": "Kein aktiver Empfänger für diesen Bereich."
+    },
+    "distress": {
+      "banni": "Ihr Zugang zum Notsignal wurde von der Verwaltung gesperrt.",
+      "pasLeVotre": "Dieses Signal ist nicht Ihres.",
+      "dejaResolu": "Signal bereits gelöst."
+    },
+    "upload": {
+      "stockageNonConfigure": "Speicher nicht verfügbar: Bitte wenden Sie sich an die Verwaltung.",
+      "genreInvalide": "Ungültige Dateiart.",
+      "fichierManquant": "Keine Datei ausgewählt.",
+      "fichierVide": "Die Datei ist leer.",
+      "fichierTropGros": "Datei zu groß (max. {maxMo} MB).",
+      "typeNonAutorise": "Dateityp nicht zulässig. Zulässig: {acceptes}.",
+      "extensionInconnue": "Dateityp nicht zulässig.",
+      "contenuIncoherent": "Der Dateiinhalt entspricht nicht dem angegebenen Typ.",
+      "echec": "Hochladen fehlgeschlagen."
+    },
+    "calcul": {
+      "aucunLocataire": "Der Rechnung ist kein Mieter zugeordnet.",
+      "montantTotalInvalide": "Der Gesamtbetrag muss eine positive ganze Zahl sein (XAF, ohne Cent).",
+      "sommeCoeffInvalide": "Die Summe der Koeffizienten muss strikt positiv sein."
+    },
+    "validation": {
+      "telephoneInvalide": "Ungültige Telefonnummer (6 bis 20 Zeichen, Ziffern und Trennzeichen).",
+      "moisFormat": "Monat im Format JJJJ-MM erwartet (01 bis 12).",
+      "heureFormat": "Uhrzeit im Format HH:mm erwartet.",
+      "aucuneModification": "Keine Änderung übermittelt.",
+      "montantXor": "Geben Sie entweder den Gesamtbetrag oder den Betrag je Mieter an.",
+      "dateLimiteHorsPeriode": "Die Fälligkeit muss zwischen dem ersten Tag des abgerechneten Monats und {mois} Monaten danach liegen.",
+      "dateLimiteLoyer": "Mietrechnung: Der Pauschalbetrag deckt ein Jahr ab, die Fälligkeit muss daher mindestens {mois} Monate nach Beginn des Zeitraums liegen (zum Beispiel der 31. Dezember)."
+    },
+    "generic": {
+      "tropDeRequetes": "Zu viele Anfragen. Versuchen Sie es in {secondes} s erneut.",
+      "doublon": "Dieser Datensatz besteht bereits.",
+      "referenceInexistante": "Die Anfrage verweist auf etwas, das nicht existiert.",
+      "introuvable": "Datensatz nicht gefunden.",
+      "entreeInvalide": "Ungültige Eingabe: Prüfen Sie die Formularfelder.",
+      "serveur": "Serverfehler. Bitte versuchen Sie es gleich erneut."
+    }
   }
 }

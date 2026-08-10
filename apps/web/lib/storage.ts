@@ -117,7 +117,12 @@ export function resolveExtension(kind: UploadKind, contentType: string): string 
   const ext = ALLOWED[kind]?.mimes[contentType];
   if (!ext) {
     const accepted = Object.keys(ALLOWED[kind].mimes).join(", ");
-    throw new ServiceError(400, `Type de fichier non autorisé. Acceptés : ${accepted}.`);
+    throw new ServiceError(
+      400,
+      `Type de fichier non autorisé. Acceptés : ${accepted}.`,
+      "upload.typeNonAutorise",
+      { acceptes: accepted },
+    );
   }
   return ext;
 }
@@ -145,13 +150,17 @@ const SIGNATURES: Record<string, { offset: number; bytes: number[] }[]> = {
  */
 export function assertMagicBytes(contentType: string, buffer: Buffer): void {
   const expected = SIGNATURES[contentType];
-  if (!expected) throw new ServiceError(400, "Type de fichier non autorisé.");
+  if (!expected) throw new ServiceError(400, "Type de fichier non autorisé.", "upload.extensionInconnue");
 
   const matches = expected.every(({ offset, bytes }) =>
     bytes.every((b, i) => buffer[offset + i] === b),
   );
   if (!matches) {
-    throw new ServiceError(400, "Le contenu du fichier ne correspond pas à son type déclaré.");
+    throw new ServiceError(
+      400,
+      "Le contenu du fichier ne correspond pas à son type déclaré.",
+      "upload.contenuIncoherent",
+    );
   }
 }
 

@@ -7,6 +7,7 @@ import { apiFetch } from "@/lib/client/session";
 import { formatXAF, formatDate, formatMois } from "@/lib/format";
 import { Card, PageTitle, Spinner, EmptyState } from "@/components/ui";
 import { FinanceChart } from "@/components/FinanceChart";
+import { LoyerCard, type LoyerAnnuel } from "@/components/LoyerCard";
 
 interface AdminDashboard {
   kpis: {
@@ -17,6 +18,7 @@ interface AdminDashboard {
     ticketsOuverts: number;
   };
   serie: { mois: string; facture: number; encaisse: number }[];
+  loyer: LoyerAnnuel | null;
   modes: { mode: string; total: number }[];
   activite: { action: string; resource: string; user: string | null; createdAt: string }[];
   impayes: {
@@ -27,6 +29,7 @@ interface AdminDashboard {
     reste: number;
     joursRetard: number;
     statut: string;
+    loyer: boolean;
   }[];
 }
 
@@ -69,9 +72,12 @@ export default function AdminHomePage() {
         ))}
       </div>
 
+      <LoyerCard loyer={d.loyer} />
+
       <div className="mb-6 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <Card className="lg:col-span-2">
-          <h2 className="mb-3 font-semibold text-navy">{t("chartTitle")}</h2>
+          <h2 className="font-semibold text-navy">{t("chartTitle")}</h2>
+          <p className="mb-3 text-xs text-slate-500">{t("chargesOnly")}</p>
           <FinanceChart serie={d.serie} />
         </Card>
         <Card>

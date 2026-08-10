@@ -2,10 +2,11 @@
 
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch, uploadFile } from "@/lib/client/session";
 import { DOCUMENT_CATEGORIES, ROLES, type DocumentCategorie, type Role } from "@campusgest/shared";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
-import { useToast, useConfirm } from "@/components/Toast";
+import { useConfirmAction } from "@/components/Toast";
 
 const PAGE_SIZE = 20;
 
@@ -25,8 +26,8 @@ interface Doc {
  */
 export function DocumentsList({ admin }: { admin: boolean }) {
   const t = useTranslations("documents");
-  const toast = useToast();
-  const confirm = useConfirm();
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const [items, setItems] = useState<Doc[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -83,7 +84,7 @@ export function DocumentsList({ admin }: { admin: boolean }) {
       });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setTitre("");
@@ -92,22 +93,22 @@ export function DocumentsList({ admin }: { admin: boolean }) {
       if (page === 1) await load();
       else setPage(1);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t("failed"));
+      setError(apiError(err, t("failed")));
     } finally {
       setBusy(false);
     }
   }
 
-  async function remove(id: string) {
-    const ok = await confirm({ message: t("confirmDelete"), confirmLabel: t("supprimer"), danger: true });
-    if (!ok) return;
-    const res = await apiFetch(`/api/documents/${id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success(t("deleted"));
-      await load();
-    } else {
-      toast.error(t("failed"));
-    }
+  function remove(id: string) {
+    return confirmAction({
+      level: "danger",
+      message: t("confirmDelete"),
+      confirmLabel: t("supprimer"),
+      success: t("deleted"),
+      failure: t("deleteFailed"),
+      run: () => apiFetch(`/api/documents/${id}`, { method: "DELETE" }),
+      onDone: load,
+    });
   }
 
   return (

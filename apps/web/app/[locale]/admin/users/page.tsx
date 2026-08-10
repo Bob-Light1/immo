@@ -2,7 +2,10 @@
 
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
-import { apiFetch } from "@/lib/client/session";
+import { usePathname, useRouter } from "next/navigation";
+import { useApiError } from "@/lib/client/api-error";
+import { apiFetch, getSession, updateSessionUser } from "@/lib/client/session";
+import { DEFAULT_LOCALE, LOCALES, type Locale } from "@campusgest/shared";
 import {
   Card,
   PageTitle,
@@ -15,7 +18,7 @@ import {
   btnPrimary,
   btnSecondary,
 } from "@/components/ui";
-import { useToast, useConfirm } from "@/components/Toast";
+import { useToast, useConfirmAction } from "@/components/Toast";
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +29,7 @@ interface UserRow {
   role: "admin" | "bailleur" | "locataire";
   email: string | null;
   phone: string | null;
+  language: string;
   isActive: boolean;
   firstLogin: boolean;
 }
@@ -37,10 +41,15 @@ interface Created {
 
 export default function AdminUsersPage() {
   const t = useTranslations("admin.users");
+  const apiError = useApiError();
   const tRole = useTranslations("nav.role");
+  const tLang = useTranslations("language");
   const toast = useToast();
-  const confirm = useConfirm();
+  const confirmAction = useConfirmAction();
+  const router = useRouter();
+  const pathname = usePathname();
   const [users, setUsers] = useState<UserRow[] | null>(null);
+  const [savingLang, setSavingLang] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -58,7 +67,7 @@ export default function AdminUsersPage() {
     role: "locataire",
     email: "",
     phone: "",
-    language: "fr",
+    language: DEFAULT_LOCALE as string,
   });
 
   const load = useCallback(async () => {
@@ -98,12 +107,12 @@ export default function AdminUsersPage() {
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? t("createFailed"));
+        setError(apiError(data, t("createFailed")));
         return;
       }
       setCreated(data);
       setShowForm(false);
-      setForm({ username: "", fullName: "", role: "locataire", email: "", phone: "", language: "fr" });
+      setForm({ username: "", fullName: "", role: "locataire", email: "", phone: "", language: DEFAULT_LOCALE as string });
       if (page === 1) load();
       else setPage(1);
     } catch {
@@ -113,19 +122,53 @@ export default function AdminUsersPage() {
     }
   }
 
-  async function onDeactivate(u: UserRow) {
-    const ok = await confirm({
+  function onDeactivate(u: UserRow) {
+    return confirmAction({
+      level: "danger",
       message: t("confirmDeactivate", { name: u.fullName }),
       confirmLabel: t("deactivate"),
-      danger: true,
+      success: t("deactivated"),
+      failure: t("deactivateFailed"),
+      run: () => apiFetch(`/api/users/${u.id}`, { method: "DELETE" }),
+      onDone: load,
     });
-    if (!ok) return;
-    const res = await apiFetch(`/api/users/${u.id}`, { method: "DELETE" });
-    if (res.ok) {
-      toast.success(t("deactivated"));
-      load();
-    } else {
-      toast.error(t("createFailed"));
+  }
+
+  /**
+   * Corrects the language of an existing account. The preference is otherwise
+   * only reachable from the switcher, which someone handed an account created
+   * in a language they do not read has to find first — in that language.
+   *
+   * The owner's own browser holds the old value in its stored session until its
+   * next token rotation rewrites it from the server (15 minutes at most), at
+   * which point `useAuth` moves them onto the corrected locale.
+   */
+  async function onLanguageChange(u: UserRow, language: string) {
+    const previous = u.language;
+    setUsers((rows) => rows?.map((r) => (r.id === u.id ? { ...r, language } : r)) ?? rows);
+    setSavingLang(u.id);
+    try {
+      const res = await apiFetch(`/api/users/${u.id}/profile`, {
+        method: "PUT",
+        body: JSON.stringify({ language }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => null);
+        setUsers((rows) => rows?.map((r) => (r.id === u.id ? { ...r, language: previous } : r)) ?? rows);
+        toast.error(apiError(data, t("saveFailed")));
+        return;
+      }
+      toast.success(t("languageSaved", { name: u.fullName }));
+      // Editing one's own row is the one case the interface has to follow. The
+      // session is rewritten only now: an expired token makes the request above
+      // rotate the refresh cookie first, and the rotation restores the whole
+      // stored user — with the language the account had a moment ago.
+      if (getSession()?.user.id === u.id) {
+        updateSessionUser({ language });
+        router.replace(`/${language}${pathname.replace(/^\/[^/]+/, "")}`);
+      }
+    } finally {
+      setSavingLang(null);
     }
   }
 
@@ -195,9 +238,14 @@ export default function AdminUsersPage() {
                 value={form.language}
                 onChange={(e) => set("language", e.target.value)}
               >
-                <option value="fr">Français</option>
-                <option value="en">English</option>
-                <option value="de">Deutsch</option>
+                {/* Endonyms, so the admin reads each option as its own
+                    speakers would — and a fourth locale never has to be
+                    remembered here on top of LOCALES. */}
+                {LOCALES.map((l) => (
+                  <option key={l} value={l}>
+                    {tLang(l)}
+                  </option>
+                ))}
               </select>
             </Field>
             <Field label={t("email")}>
@@ -262,6 +310,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3">{t("fullName")}</th>
                 <th className="px-4 py-3">{t("username")}</th>
                 <th className="px-4 py-3">{t("role")}</th>
+                <th className="px-4 py-3">{t("language")}</th>
                 <th className="px-4 py-3">{t("contact")}</th>
                 <th className="px-4 py-3">{t("status")}</th>
                 <th className="px-4 py-3" />
@@ -273,6 +322,21 @@ export default function AdminUsersPage() {
                   <td className="px-4 py-3 font-medium">{u.fullName}</td>
                   <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
                   <td className="px-4 py-3">{tRole(u.role)}</td>
+                  <td className="px-4 py-3">
+                    <select
+                      className={`${inputCls} w-auto py-1 text-xs`}
+                      value={LOCALES.includes(u.language as Locale) ? u.language : DEFAULT_LOCALE}
+                      disabled={savingLang === u.id}
+                      aria-label={t("language")}
+                      onChange={(e) => void onLanguageChange(u, e.target.value)}
+                    >
+                      {LOCALES.map((l) => (
+                        <option key={l} value={l}>
+                          {tLang(l)}
+                        </option>
+                      ))}
+                    </select>
+                  </td>
                   <td className="px-4 py-3 text-slate-500">{u.email ?? u.phone ?? "—"}</td>
                   <td className="px-4 py-3">
                     {u.isActive ? (

@@ -179,8 +179,20 @@ const MODE_LABELS: Record<string, string> = {
   virement: "Virement",
 };
 
+/**
+ * PDFs are issued in French whatever the reader's interface language, and that
+ * is a decision rather than an oversight: invoices and receipts are accounting
+ * records of a Cameroonian residence, filed and audited in the administration's
+ * own language. A receipt whose wording changed with whoever downloaded it
+ * would no longer match the copy kept on file.
+ *
+ * Every locale-dependent rendering in this module goes through this constant,
+ * so the decision can be revisited in one place.
+ */
+const PDF_LOCALE = "fr-FR";
+
 function xaf(n: number): string {
-  return `${n.toLocaleString("fr-FR").replace(/ | /g, " ")} XAF`;
+  return `${n.toLocaleString(PDF_LOCALE).replace(/ | /g, " ")} XAF`;
 }
 
 // ─────────────────────────── Monthly summary statement ───────────────────────────
@@ -200,10 +212,17 @@ export interface RecapData {
   totalFacture: number;
   totalEncaisse: number;
   lignes: RecapLigne[];
+  /**
+   * Line cap the export stopped at, or `null` when the period fits whole. The
+   * totals below are computed over the lines actually read, so a capped
+   * statement must say so on its face: it leaves the application and is read as
+   * the period's accounts.
+   */
+  tronqueA: number | null;
 }
 
 function num(n: number): string {
-  return n.toLocaleString("fr-FR").replace(/ | /g, " ");
+  return n.toLocaleString(PDF_LOCALE).replace(/ | /g, " ");
 }
 
 /** Invoice summary statement (billed vs collected) — Admin / Bailleur (§6). */
@@ -217,7 +236,7 @@ export function recapFacturesPdf(d: RecapData): Buffer {
 
   const lines: Line[] = [
     { kind: "title", text: "KingCity — Relevé des factures" },
-    { kind: "subtitle", text: `Période : ${periode} · généré le ${d.genereLe.toLocaleString("fr-FR")}` },
+    { kind: "subtitle", text: `Période : ${periode} · généré le ${d.genereLe.toLocaleString(PDF_LOCALE)}` },
     { kind: "rule" },
     { kind: "gap", h: 4 },
     { kind: "row", label: "Total facturé", value: `${num(d.totalFacture)} XAF` },
@@ -225,6 +244,26 @@ export function recapFacturesPdf(d: RecapData): Buffer {
     { kind: "row", label: "Reste à encaisser", value: `${num(reste)} XAF` },
     { kind: "row", label: "Taux de recouvrement", value: `${taux} %` },
     { kind: "gap", h: 8 },
+  ];
+
+  if (d.tronqueA !== null) {
+    lines.push(
+      {
+        kind: "text",
+        text: `RELEVÉ PARTIEL — export limité à ${num(d.tronqueA)} lignes.`,
+        bold: true,
+        size: 11,
+      },
+      {
+        kind: "text",
+        text: "Les totaux ci-dessus ne portent que sur les lignes listées. Filtrez par mois pour obtenir un relevé complet.",
+        size: 9,
+      },
+      { kind: "gap", h: 8 },
+    );
+  }
+
+  lines.push(
     { kind: "text", text: `Détail (${d.lignes.length} ligne(s)) — montants en XAF`, bold: true, size: 11 },
     { kind: "gap", h: 2 },
     {
@@ -240,7 +279,7 @@ export function recapFacturesPdf(d: RecapData): Buffer {
       ],
     },
     { kind: "rule" },
-  ];
+  );
 
   for (const l of d.lignes) {
     const r = Math.max(0, l.montantDu - l.montantPaye);
@@ -298,13 +337,13 @@ export function factureLocatairePdf(d: FactureLigneData): Buffer {
 
   const lines: Line[] = [
     { kind: "title", text: `KingCity — Facture ${d.loyer ? "de loyer" : d.type}` },
-    { kind: "subtitle", text: `Facture N° ${ref} · éditée le ${d.genereLe.toLocaleString("fr-FR")}` },
+    { kind: "subtitle", text: `Facture N° ${ref} · éditée le ${d.genereLe.toLocaleString(PDF_LOCALE)}` },
     { kind: "rule" },
     { kind: "gap", h: 4 },
     { kind: "row", label: "Locataire", value: d.locataire },
     { kind: "row", label: "Type", value: d.type },
     { kind: "row", label: d.loyer ? "Année couverte" : "Mois concerné", value: d.loyer ? annee : d.mois },
-    { kind: "row", label: "Date limite de paiement", value: d.dateLimite.toLocaleDateString("fr-FR") },
+    { kind: "row", label: "Date limite de paiement", value: d.dateLimite.toLocaleDateString(PDF_LOCALE) },
     { kind: "gap", h: 6 },
     { kind: "rule" },
   ];
@@ -349,7 +388,7 @@ export function factureLocatairePdf(d: FactureLigneData): Buffer {
       lines.push({
         kind: "cols",
         cells: [
-          { text: p.date.toLocaleDateString("fr-FR"), x: COLS.date },
+          { text: p.date.toLocaleDateString(PDF_LOCALE), x: COLS.date },
           { text: num(p.montant), x: COLS.montant },
           { text: MODE_LABELS[p.mode] ?? p.mode, x: COLS.mode },
           { text: (p.reference ?? "—").slice(0, 18), x: COLS.ref },
@@ -379,7 +418,7 @@ export function paiementRecuPdf(d: RecuData): Buffer {
   const num = d.paiementId.slice(0, 8).toUpperCase();
   return renderTextPdf([
     { kind: "title", text: "KingCity — Reçu de paiement" },
-    { kind: "subtitle", text: `Reçu N° ${num} · émis le ${d.date.toLocaleString("fr-FR")}` },
+    { kind: "subtitle", text: `Reçu N° ${num} · émis le ${d.date.toLocaleString(PDF_LOCALE)}` },
     { kind: "rule" },
     { kind: "gap", h: 4 },
     { kind: "row", label: "Locataire", value: d.locataire },

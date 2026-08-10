@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useTranslations } from "next-intl";
 import { apiFetch, getSession } from "@/lib/client/session";
 import { Card, PageTitle, Spinner, EmptyState, inputCls, btnSecondary } from "@/components/ui";
-import { useConfirm } from "@/components/Toast";
+import { useConfirmAction } from "@/components/Toast";
 
 interface Resident {
   userId: string;
@@ -22,7 +22,7 @@ interface Resident {
 export function AnnuaireSearch() {
   const t = useTranslations("annuaire");
   const tP = useTranslations("portfolio");
-  const confirm = useConfirm();
+  const confirmAction = useConfirmAction();
   const [skill, setSkill] = useState("");
   const [dispo, setDispo] = useState(false);
   const [items, setItems] = useState<Resident[] | null>(null);
@@ -32,14 +32,16 @@ export function AnnuaireSearch() {
     setAdmin(getSession()?.user.role === "admin");
   }, []);
 
-  async function removePortfolio(r: Resident) {
-    const ok = await confirm({
+  function removePortfolio(r: Resident) {
+    return confirmAction({
+      level: "danger",
       message: tP("confirmDeleteOther", { name: r.fullName }),
       confirmLabel: tP("delete"),
+      success: tP("deleted"),
+      failure: tP("deleteFailed"),
+      run: () => apiFetch(`/api/portfolios/${r.userId}`, { method: "DELETE" }),
+      onDone: () => setItems((list) => (list ?? []).filter((x) => x.userId !== r.userId)),
     });
-    if (!ok) return;
-    const res = await apiFetch(`/api/portfolios/${r.userId}`, { method: "DELETE" });
-    if (res.ok) setItems((list) => (list ?? []).filter((x) => x.userId !== r.userId));
   }
 
   async function search() {

@@ -2,7 +2,9 @@
 
 import { useEffect, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
+import { useConfirmAction } from "@/components/Toast";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary, btnSecondary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -20,6 +22,8 @@ interface Sondage {
 /** Polls: creation (Admin) + vote + real-time results + closing (§5.13). */
 export function SondagesList({ admin }: { admin: boolean }) {
   const t = useTranslations("sondages");
+  const apiError = useApiError();
+  const confirmAction = useConfirmAction();
   const [items, setItems] = useState<Sondage[] | null>(null);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
@@ -55,7 +59,7 @@ export function SondagesList({ admin }: { admin: boolean }) {
       const res = await apiFetch("/api/sondages", { method: "POST", body: JSON.stringify({ question, options }) });
       if (!res.ok) {
         const d = await res.json().catch(() => null);
-        setError(d?.error ?? t("failed"));
+        setError(apiError(d, t("failed")));
         return;
       }
       setQuestion("");
@@ -67,24 +71,45 @@ export function SondagesList({ admin }: { admin: boolean }) {
     }
   }
 
-  async function vote(id: string, choix: number) {
-    setItems((prev) =>
-      prev?.map((s) => {
-        if (s.id !== id || !s.isOpen) return s;
-        const counts = [...s.counts];
-        let totalVotes = s.totalVotes;
-        if (s.myVote != null) counts[s.myVote] = Math.max(0, counts[s.myVote]! - 1);
-        else totalVotes += 1;
-        counts[choix] = (counts[choix] ?? 0) + 1;
-        return { ...s, counts, totalVotes, myVote: choix };
-      }) ?? prev,
-    );
-    await apiFetch(`/api/sondages/${id}/vote`, { method: "POST", body: JSON.stringify({ choix }) });
+  /**
+   * The tally is moved locally rather than reloaded — a full reload would blank
+   * the list for a single vote — but only once the server has taken it. It used
+   * to move first and never look at the answer, so a refused vote still showed
+   * up as counted until the next visit.
+   */
+  function vote(id: string, choix: number) {
+    const sondage = items?.find((s) => s.id === id);
+    if (!sondage) return;
+    return confirmAction({
+      message: t("confirmVote", { option: sondage.options[choix] ?? "" }),
+      success: t("voted"),
+      failure: t("voteFailed"),
+      run: () => apiFetch(`/api/sondages/${id}/vote`, { method: "POST", body: JSON.stringify({ choix }) }),
+      onDone: () =>
+        setItems((prev) =>
+          prev?.map((s) => {
+            if (s.id !== id || !s.isOpen) return s;
+            const counts = [...s.counts];
+            let totalVotes = s.totalVotes;
+            if (s.myVote != null) counts[s.myVote] = Math.max(0, counts[s.myVote]! - 1);
+            else totalVotes += 1;
+            counts[choix] = (counts[choix] ?? 0) + 1;
+            return { ...s, counts, totalVotes, myVote: choix };
+          }) ?? prev,
+        ),
+    });
   }
 
-  async function close(id: string) {
-    setItems((prev) => prev?.map((s) => (s.id === id ? { ...s, isOpen: false } : s)) ?? prev);
-    await apiFetch(`/api/sondages/${id}/close`, { method: "PATCH" });
+  function close(id: string) {
+    return confirmAction({
+      level: "danger",
+      message: t("confirmClose"),
+      confirmLabel: t("close"),
+      success: t("closeDone"),
+      failure: t("closeFailed"),
+      run: () => apiFetch(`/api/sondages/${id}/close`, { method: "PATCH" }),
+      onDone: () => setItems((prev) => prev?.map((s) => (s.id === id ? { ...s, isOpen: false } : s)) ?? prev),
+    });
   }
 
   return (

@@ -3,10 +3,14 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
+import { useApiError } from "@/lib/client/api-error";
 import { apiFetch } from "@/lib/client/session";
 import { moisCourant } from "@/lib/format";
 import { FACTURE_TYPES, isLoyer } from "@campusgest/shared";
+import { useConfirm } from "@/components/Toast";
 import { Card, PageTitle, Field, ErrorText, inputCls, btnPrimary } from "@/components/ui";
+import { LocatairesPicker } from "@/components/LocatairesPicker";
+import { CompteurSelect } from "@/components/CompteurSelect";
 
 /**
  * Invoice creation (draft). Every active tenant is attached with a coefficient
@@ -18,35 +22,63 @@ import { Card, PageTitle, Field, ErrorText, inputCls, btnPrimary } from "@/compo
  */
 export default function NewFacturePage() {
   const t = useTranslations("factures.new");
+  const apiError = useApiError();
+  const confirm = useConfirm();
   const locale = useLocale();
   const router = useRouter();
   const [type, setType] = useState("Eau");
-  const [montantTotal, setMontantTotal] = useState("");
+  // Holds either the total to split or the flat annual amount per tenant,
+  // depending on the regime — hence the neutral name.
+  const [montant, setMontant] = useState("");
   const [mois, setMois] = useState(moisCourant());
   const [dateLimite, setDateLimite] = useState("");
+  // null = every active tenant, the ordinary case; an explicit list covers a
+  // charge shared by only part of the residence.
+  const [locataireIds, setLocataireIds] = useState<string[] | null>(null);
+  // Meter the charge was read on — water and electricity only, and optional
+  // even there (a flat-rate bill from the utility measures nothing here).
+  const [compteurId, setCompteurId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const loyer = isLoyer(type);
 
+  // Rent covers a year, so its deadline has to span that year: pre-fill the end
+  // of the covered year rather than let the natural "end of this month" reflex
+  // be rejected by the server.
+  function onTypeChange(valeur: string) {
+    setType(valeur);
+    if (isLoyer(valeur)) {
+      // Rent is a flat annual amount: no meter reading stands behind it.
+      setCompteurId(null);
+      if (!dateLimite) setDateLimite(`${mois.slice(0, 4)}-12-31`);
+    }
+  }
+
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
+    // Only one invoice may exist per type and month, so a mistaken creation has
+    // to be deleted before the right one can take its place.
+    const { ok } = await confirm({ message: t("confirmCreate"), confirmLabel: t("submit") });
+    if (!ok) return;
     setSaving(true);
     setError(null);
     try {
-      const montant = Number(montantTotal);
+      const valeur = Number(montant);
       const res = await apiFetch("/api/factures", {
         method: "POST",
         body: JSON.stringify({
           type,
-          ...(loyer ? { montantParLocataire: montant } : { montantTotal: montant }),
+          ...(loyer ? { montantParLocataire: valeur } : { montantTotal: valeur }),
           mois,
           dateLimite,
+          ...(locataireIds ? { locataireIds } : {}),
+          ...(compteurId ? { compteurId } : {}),
         }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? t("failed"));
+        setError(apiError(data, t("failed")));
         return;
       }
       router.replace(`/${locale}/admin/factures/${data.id}`);
@@ -67,7 +99,7 @@ export default function NewFacturePage() {
               className={inputCls}
               list="types-factures"
               value={type}
-              onChange={(e) => setType(e.target.value)}
+              onChange={(e) => onTypeChange(e.target.value)}
               required
               minLength={2}
               maxLength={60}
@@ -84,8 +116,8 @@ export default function NewFacturePage() {
               type="number"
               min={1}
               step={1}
-              value={montantTotal}
-              onChange={(e) => setMontantTotal(e.target.value)}
+              value={montant}
+              onChange={(e) => setMontant(e.target.value)}
               required
               placeholder={loyer ? "240000" : "60000"}
             />
@@ -108,9 +140,21 @@ export default function NewFacturePage() {
               required
             />
           </Field>
+          {!loyer && (
+            <Field label={t("compteur")}>
+              <CompteurSelect value={compteurId} onChange={setCompteurId} />
+            </Field>
+          )}
+          <Field label={t("locataires")}>
+            <LocatairesPicker value={locataireIds} onChange={setLocataireIds} />
+          </Field>
           <ErrorText>{error}</ErrorText>
           <p className="text-xs text-slate-500">{loyer ? t("hintLoyer") : t("hint")}</p>
-          <button type="submit" disabled={saving} className={btnPrimary}>
+          <button
+            type="submit"
+            disabled={saving || locataireIds?.length === 0}
+            className={btnPrimary}
+          >
             {saving ? "…" : t("submit")}
           </button>
         </form>

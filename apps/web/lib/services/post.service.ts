@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
 import type { PostInput } from "@campusgest/shared";
-import { notifyAllActive } from "./notification.service";
+import { notifyAllActiveText } from "./notification.service";
 
 /**
  * News feed / posts (design §5.9). The Admin and the Bailleur publish an item
@@ -41,8 +41,9 @@ export async function createPost(authorId: string, input: PostInput) {
     },
     include: { author: { select: { fullName: true } } },
   });
-  // Broadcast the item to the rest of the community (in-app + push).
-  await notifyAllActive("annonce", input.titre, input.description);
+  // Broadcast the item to the rest of the community (in-app + push). Free text
+  // written by a resident: no catalogue key, so it reaches everyone as authored.
+  await notifyAllActiveText("annonce", input.titre, input.description);
   return toDto(post);
 }
 
@@ -66,7 +67,7 @@ export async function listPosts(
 
 export async function setPostHidden(id: string, isHidden: boolean) {
   const existing = await prisma.postInfo.findUnique({ where: { id } });
-  if (!existing) throw new ServiceError(404, "Post introuvable.");
+  if (!existing) throw new ServiceError(404, "Post introuvable.", "introuvable.post");
   const post = await prisma.postInfo.update({
     where: { id },
     data: { isHidden },

@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
-import { apiFetch, downloadAuthed } from "@/lib/client/session";
-import { formatXAF, formatDate, formatMois } from "@/lib/format";
-import { Card, PubBadge, Spinner, EmptyState, Pager, btnSecondary, inputCls } from "@/components/ui";
+import { apiFetch } from "@/lib/client/session";
+import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
+import { Card, PubBadge, Spinner, EmptyState, Pager, inputCls } from "@/components/ui";
+import { ExportFactures } from "@/components/ExportFactures";
 
 const PAGE_SIZE = 20;
 
@@ -56,28 +57,7 @@ export default function BailleurFacturesPage() {
             className={`${inputCls} w-auto`}
             aria-label={t("mois")}
           />
-          <button
-            onClick={() =>
-              downloadAuthed(
-                `/api/export/factures${mois ? `?mois=${mois}` : ""}`,
-                `factures${mois ? "-" + mois : ""}.csv`,
-              )
-            }
-            className={btnSecondary}
-          >
-            {t("export")}
-          </button>
-          <button
-            onClick={() =>
-              downloadAuthed(
-                `/api/export/recap${mois ? `?mois=${mois}` : ""}`,
-                `releve${mois ? "-" + mois : ""}.pdf`,
-              )
-            }
-            className={btnSecondary}
-          >
-            {t("exportPdf")}
-          </button>
+          <ExportFactures mois={mois} />
         </div>
       </div>
 
@@ -109,7 +89,7 @@ export default function BailleurFacturesPage() {
                       {f.type}
                     </Link>
                   </td>
-                  <td className="px-4 py-3">{formatMois(f.mois, locale)}</td>
+                  <td className="px-4 py-3">{formatPeriodeFacture(f.type, f.mois, locale)}</td>
                   <td className="px-4 py-3 text-right font-mono">{formatXAF(f.montantTotal, locale)}</td>
                   <td className="px-4 py-3">{formatDate(f.dateLimite, locale)}</td>
                   <td className="px-4 py-3 text-center">{f._count.lignes}</td>

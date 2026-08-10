@@ -20,7 +20,11 @@ export async function POST(req: NextRequest) {
     const user = requireAuth(req);
 
     if (!storage().isConfigured()) {
-      throw new ServiceError(503, "Stockage non configuré (variables S3_* manquantes).");
+      throw new ServiceError(
+        503,
+        "Stockage non configuré (variables S3_* manquantes).",
+        "upload.stockageNonConfigure",
+      );
     }
 
     const form = await req.formData();
@@ -28,16 +32,21 @@ export async function POST(req: NextRequest) {
     const file = form.get("file");
 
     if (!isUploadKind(kind)) {
-      throw new ServiceError(400, "Genre d'upload invalide (image | document).");
+      throw new ServiceError(400, "Genre d'upload invalide (image | document).", "upload.genreInvalide");
     }
     if (!(file instanceof File)) {
-      throw new ServiceError(400, "Champ `file` manquant.");
+      throw new ServiceError(400, "Champ `file` manquant.", "upload.fichierManquant");
     }
     if (file.size === 0) {
-      throw new ServiceError(400, "Fichier vide.");
+      throw new ServiceError(400, "Fichier vide.", "upload.fichierVide");
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      throw new ServiceError(400, `Fichier trop volumineux (max ${MAX_UPLOAD_BYTES / 1024 / 1024} Mo).`);
+      throw new ServiceError(
+        400,
+        `Fichier trop volumineux (max ${MAX_UPLOAD_BYTES / 1024 / 1024} Mo).`,
+        "upload.fichierTropGros",
+        { maxMo: MAX_UPLOAD_BYTES / 1024 / 1024 },
+      );
     }
 
     const ext = resolveExtension(kind, file.type);
