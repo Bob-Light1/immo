@@ -2,7 +2,7 @@
 // the refresh token stays in an HttpOnly cookie and is consumed by
 // /api/auth/refresh (rotation, design §4).
 
-import type { ApiErrorBody } from "@campusgest/shared";
+import { ACCEPTED_UPLOAD_MIMES, MAX_UPLOAD_BYTES, type ApiErrorBody } from "@campusgest/shared";
 import { ApiError } from "./api-error";
 
 export interface SessionUser {
@@ -162,12 +162,39 @@ export function downloadFactureLigne(ligneId: string, libelle: string): Promise<
   return downloadAuthed(`/api/factures/lignes/${ligneId}/pdf`, `facture-${slug}.pdf`);
 }
 
+export interface UploadResult {
+  /** Origin-relative path to store alongside the record. */
+  url: string;
+  /** Object key — pass it to `deleteUpload` if the record never gets created. */
+  key: string;
+}
+
 /**
  * Uploads a file to /api/uploads (multipart). Does not set Content-Type: the
  * browser adds the boundary. Replays once on 401 after a refresh rotation.
- * Returns the public URL, or throws.
+ * Returns the stored path and key, or throws.
+ *
+ * Size and type are checked here as well as on the server: on the mobile
+ * connections this runs on, pushing five megabytes up only to be told the type
+ * was never accepted is the slowest possible way to say no. The server check
+ * remains the authoritative one.
  */
-export async function uploadFile(file: File, kind: "image" | "document"): Promise<string> {
+export async function uploadFile(file: File, kind: "image" | "document"): Promise<UploadResult> {
+  const accepted: readonly string[] = ACCEPTED_UPLOAD_MIMES[kind];
+  if (file.size === 0) {
+    throw new ApiError("Fichier vide.", "upload.fichierVide");
+  }
+  if (!accepted.includes(file.type)) {
+    throw new ApiError("Type de fichier non autorisé.", "upload.typeNonAutorise", {
+      acceptes: accepted.join(", "),
+    });
+  }
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new ApiError("Fichier trop volumineux.", "upload.fichierTropGros", {
+      maxMo: MAX_UPLOAD_BYTES / 1024 / 1024,
+    });
+  }
+
   async function send(): Promise<Response> {
     const s = getSession();
     const fd = new FormData();
@@ -190,8 +217,17 @@ export async function uploadFile(file: File, kind: "image" | "document"): Promis
     const data = (await res.json().catch(() => ({}))) as Partial<ApiErrorBody>;
     throw new ApiError(data.error ?? "Échec du téléversement.", data.code ?? "upload.echec", data.params);
   }
-  const data = (await res.json()) as { url: string };
-  return data.url;
+  return (await res.json()) as UploadResult;
+}
+
+/**
+ * Deletes an object that was uploaded but never attached to a record — the
+ * screen failed between the two requests, or the author gave up. Best effort:
+ * the orphan is a wasted object, not a failure worth reporting over the one the
+ * caller is already handling.
+ */
+export async function deleteUpload(key: string): Promise<void> {
+  await apiFetch("/api/uploads", { method: "DELETE", body: JSON.stringify({ key }) }).catch(() => undefined);
 }
 
 // No automatic refresh on the auth routes themselves.

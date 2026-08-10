@@ -8,6 +8,7 @@ export default createMiddleware({
 });
 
 export const config = {
-  // Everything except /api, Next internals and static files.
-  matcher: ["/((?!api|_next|_vercel|.*\\..*).*)"],
+  // Everything except /api, /storage (object passthrough), Next internals and
+  // static files. Locale negotiation has no business rewriting a binary URL.
+  matcher: ["/((?!api|storage|_next|_vercel|.*\\..*).*)"],
 };

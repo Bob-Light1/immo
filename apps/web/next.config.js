@@ -31,8 +31,9 @@ const withPWA = require("@ducanh2912/next-pwa").default({
 
 const isDev = process.env.NODE_ENV !== "production";
 
-// Object storage origin (MinIO / S3) serving images & documents — derived
-// from S3_PUBLIC_URL so the CSP allows <img src> and downloads.
+// Legacy object-storage origin. Stored assets are now addressed by an
+// origin-relative /storage path, which `'self'` already covers; this only keeps
+// allowing rows written as absolute URLs before that change. Empty by default.
 let storageOrigin = "";
 try {
   if (process.env.S3_PUBLIC_URL) storageOrigin = new URL(process.env.S3_PUBLIC_URL).origin;

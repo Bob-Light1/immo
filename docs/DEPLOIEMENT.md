@@ -167,8 +167,9 @@ S3_ACCESS_KEY=campusgest
 S3_SECRET_KEY=__secret_minio_fort__
 S3_BUCKET=campusgest
 S3_REGION=us-east-1
-# URL PUBLIQUE servie par le proxy (voir §6). Sans / final.
-S3_PUBLIC_URL=https://campus.votre-domaine.cm/storage/campusgest
+# Optionnel : uniquement pour les fichiers enregistrés en URL absolue avant le
+# passage aux chemins relatifs (voir §6). Vide sur une installation neuve.
+S3_PUBLIC_URL=
 
 # ─── Email / SMS / MoMo : optionnels (P1 : push seul actif) ────
 SMTP_HOST=
@@ -204,18 +205,24 @@ Copier les deux clés dans `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` du `.env`.
 
 ## 6. Stockage objet : exposer MinIO publiquement
 
-Les URLs d'images et de documents (`S3_PUBLIC_URL`) doivent être **accessibles
-depuis les navigateurs**. Le `minio-init` du compose ouvre déjà le bucket en
-lecture anonyme ; il reste à le router via le proxy.
+Les images et documents doivent être **accessibles depuis les navigateurs**. Le
+`minio-init` du compose ouvre déjà le bucket en lecture anonyme ; il reste à le
+router via le proxy.
 
-**Option retenue (chemin `/storage`)** — simple, un seul domaine :
-le proxy renvoie `https://campus.votre-domaine.cm/storage/*` vers `minio:9000`.
-C'est ce que reflète `S3_PUBLIC_URL` ci-dessus. La CSP de `next.config.js`
-autorise automatiquement l'origine de `S3_PUBLIC_URL` (`img-src`/`connect-src`).
+L'application enregistre et affiche un **chemin relatif à son propre domaine**,
+`/storage/<bucket>/<clé>` — jamais une URL absolue. Un changement de domaine, de
+tunnel ou d'hébergeur ne peut donc pas invalider les fichiers déjà publiés, et
+la CSP se limite à `img-src 'self'`.
 
-> Alternative : sous-domaine `storage.votre-domaine.cm` (A record dédié) →
-> `S3_PUBLIC_URL=https://storage.votre-domaine.cm/campusgest`. Plus propre pour
-> un CDN futur, mais demande un second bloc TLS.
+**Routage (chemin `/storage`)** — un seul domaine : le proxy renvoie
+`https://campus.votre-domaine.cm/storage/*` vers `minio:9000` en retirant le
+préfixe (`handle_path`, voir le `Caddyfile` au §7.4). En développement, aucun
+proxy n'est nécessaire : la route `app/storage/[...path]` sert les objets
+directement, sur la même URL.
+
+> `S3_PUBLIC_URL` n'intervient plus dans la construction des URLs. Ne le
+> renseigner que pour continuer à servir des fichiers enregistrés en absolu
+> avant ce changement : son origine reste alors autorisée par la CSP.
 
 ---
 
@@ -529,7 +536,7 @@ durée** :
 - **PostgreSQL** → Neon / Supabase / Railway (fournit `DATABASE_URL`).
 - **Redis** → Upstash / Railway (fournit `REDIS_URL`).
 - **Stockage** → un vrai S3 (AWS S3, Cloudflare R2, Backblaze B2) : renseigner
-  les `S3_*` et pointer `S3_PUBLIC_URL` sur le bucket/CDN public.
+  les `S3_*` ; le préfixe public `/storage` reste servi par le proxy.
 
 Conclusion : pour CampusGest (workers planifiés + SSE + PWA + stockage), **le VPS
 Docker (corps du guide) reste l'option la plus cohérente et économique.**

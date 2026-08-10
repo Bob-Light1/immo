@@ -197,8 +197,14 @@ Vérifier la santé : `curl http://localhost:3000/api/health`.
   reste branchable plus tard sans toucher aux appelants (conception §6).
 - **Téléversement** `POST /api/uploads` (multipart, authentifié) : validation
   genre `image` (JPEG/PNG/WebP) ou `document` (PDF/JPEG/PNG), taille ≤ 5 Mo,
-  renvoie l'URL publique. Helper client `uploadFile()` (multipart + rotation
-  refresh). CSP étendue à l'origine du stockage (`img-src` / `connect-src`).
+  renvoie un chemin `/storage/<bucket>/<clé>` **relatif au domaine de l'app**
+  (servi par Caddy en prod, par `app/storage/[...path]` en dev) : un changement
+  de domaine n'invalide donc aucun fichier déjà publié, et la CSP se limite à
+  `img-src 'self'`. Helper client `uploadFile()` (multipart + rotation refresh,
+  pré-validation taille/type), `deleteUpload()` pour ramasser un objet
+  téléversé qu'aucun enregistrement n'a fini par référencer.
+  Rendu via `StoredImage` : image manquante ou illisible affichée comme telle
+  plutôt qu'en cadre vide.
 - **Fil d'infos / posts** (§5.9) : `POST /api/posts` (Admin / Bailleur, **image
   obligatoire**), `GET /api/posts` (tous ; posts masqués réservés Admin),
   `PATCH /api/posts/:id/hidden` (modération Admin). Diffusion in-app + push.

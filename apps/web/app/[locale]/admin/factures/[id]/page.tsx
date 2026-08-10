@@ -281,7 +281,7 @@ export default function AdminFactureDetailPage() {
       // The receipt is uploaded inside the guarded run, so a cancelled dialog
       // leaves nothing behind in the object store.
       run: async () => {
-        const justificatifUrl = payJustif ? await uploadFile(payJustif, "document") : undefined;
+        const justificatifUrl = payJustif ? (await uploadFile(payJustif, "document")).url : undefined;
         return apiFetch("/api/paiements", {
           method: "POST",
           body: JSON.stringify({

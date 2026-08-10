@@ -8,7 +8,8 @@
 
 	# Object storage (images, documents, receipts) → MinIO.
 	# handle_path strips the /storage prefix: /storage/campusgest/<key>
-	# becomes /campusgest/<key> on MinIO. Must match S3_PUBLIC_URL.
+	# becomes /campusgest/<key> on MinIO. The prefix is STORAGE_PATH_PREFIX
+	# (packages/shared) — the path the application stores and renders.
 	handle_path /storage/* {
 		reverse_proxy minio:9000
 	}

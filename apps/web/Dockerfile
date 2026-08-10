@@ -23,9 +23,11 @@ RUN npm ci
 COPY . .
 
 # NEXT_PUBLIC_* is frozen into the client bundle AT BUILD TIME → known here.
-# So must S3_PUBLIC_URL be: Next resolves `headers()` at build and bakes the CSP
-# into routes-manifest.json; missing here, the storage origin would never be
-# allowed and images/documents would be blocked in production.
+# S3_PUBLIC_URL rides along for the same reason — Next resolves `headers()` at
+# build and bakes the CSP into routes-manifest.json — but is now optional:
+# objects are served from the application's own origin, so `img-src 'self'`
+# covers them. Set it only to keep serving assets recorded as absolute URLs
+# before the switch.
 # A .env is materialized for the build script's `dotenv -e ../../.env` wrapper
 # to read (dummy DATABASE_URL: not needed at build, a safety net in case a module
 # instantiates the Prisma client while "collecting page data").

@@ -660,7 +660,8 @@
     "tooShort": "Please give more detail.",
     "preparing": "Preparing the document…",
     "downloadFailed": "The document could not be produced.",
-    "print": "Print"
+    "print": "Print",
+    "imageUnavailable": "Image unavailable"
   },
   "errors": {
     "auth": {
@@ -759,6 +760,9 @@
       "typeNonAutorise": "File type not allowed. Accepted: {acceptes}.",
       "extensionInconnue": "File type not allowed.",
       "contenuIncoherent": "The file content does not match its declared type.",
+      "objetIntrouvable": "File not found.",
+      "suppressionRefusee": "This file cannot be deleted.",
+      "cheminInvalide": "Invalid file path.",
       "echec": "Upload failed."
     },
     "calcul": {

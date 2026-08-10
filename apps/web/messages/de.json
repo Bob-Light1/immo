@@ -660,7 +660,8 @@
     "tooShort": "Bitte machen Sie genauere Angaben.",
     "preparing": "Dokument wird erstellt …",
     "downloadFailed": "Das Dokument konnte nicht erstellt werden.",
-    "print": "Drucken"
+    "print": "Drucken",
+    "imageUnavailable": "Bild nicht verfügbar"
   },
   "errors": {
     "auth": {
@@ -759,6 +760,9 @@
       "typeNonAutorise": "Dateityp nicht zulässig. Zulässig: {acceptes}.",
       "extensionInconnue": "Dateityp nicht zulässig.",
       "contenuIncoherent": "Der Dateiinhalt entspricht nicht dem angegebenen Typ.",
+      "objetIntrouvable": "Datei nicht gefunden.",
+      "suppressionRefusee": "Diese Datei kann nicht gelöscht werden.",
+      "cheminInvalide": "Ungültiger Dateipfad.",
       "echec": "Hochladen fehlgeschlagen."
     },
     "calcul": {

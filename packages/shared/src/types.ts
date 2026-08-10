@@ -118,3 +118,15 @@ export const BIRTHDAY_NOTICE_DAYS = 7;
 export const FACTURE_ALERT_DAYS_BEFORE = 2;
 export const MAX_RECONDUCTION_STREAK = 2;
 export const MAX_UPLOAD_BYTES = 5 * 1024 * 1024;
+
+/**
+ * Prefix every stored object is served under, as an origin-relative path.
+ * Shared so the client, the Zod schemas and the Caddy rule agree on one string.
+ */
+export const STORAGE_PATH_PREFIX = "/storage";
+
+/** MIME types accepted per upload kind — mirrored server-side in `lib/storage.ts`. */
+export const ACCEPTED_UPLOAD_MIMES = {
+  image: ["image/jpeg", "image/png", "image/webp"],
+  document: ["application/pdf", "image/jpeg", "image/png"],
+} as const satisfies Record<string, readonly string[]>;

@@ -3,8 +3,9 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useApiError } from "@/lib/client/api-error";
-import { apiFetch, uploadFile } from "@/lib/client/session";
+import { apiFetch, deleteUpload, uploadFile } from "@/lib/client/session";
 import { useConfirmAction } from "@/components/Toast";
+import { StoredImage } from "@/components/StoredImage";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 
 const PAGE_SIZE = 20;
@@ -60,8 +61,12 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
     }
     setBusy(true);
     setError(null);
+    // The image is stored before the post that will reference it exists. Held
+    // here until the post is created so an abandoned object can be collected.
+    let orphanKey: string | null = null;
     try {
-      const imageUrl = await uploadFile(file, "image");
+      const { url: imageUrl, key } = await uploadFile(file, "image");
+      orphanKey = key;
       const res = await apiFetch("/api/posts", {
         method: "POST",
         body: JSON.stringify({ titre, description, imageUrl }),
@@ -71,6 +76,7 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
         setError(apiError(d, t("failed")));
         return;
       }
+      orphanKey = null;
       setTitre("");
       setDescription("");
       setFile(null);
@@ -80,6 +86,7 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
     } catch (err) {
       setError(apiError(err, t("failed")));
     } finally {
+      if (orphanKey) await deleteUpload(orphanKey);
       setBusy(false);
     }
   }
@@ -158,8 +165,12 @@ export function PostsFeed({ canPublish, admin }: { canPublish: boolean; admin: b
         <div className="space-y-4">
           {visibleItems.map((p) => (
             <Card key={p.id} className={`overflow-hidden p-0 ${p.isHidden ? "opacity-60" : ""}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={p.imageUrl} alt={p.titre} className="max-h-80 w-full object-cover" />
+              <StoredImage
+                src={p.imageUrl}
+                alt={p.titre}
+                className="max-h-80 w-full object-cover"
+                wrapperClassName="h-40 w-full"
+              />
               <div className="p-4">
                 <div className="flex items-start justify-between gap-3">
                   <h3 className="font-semibold text-navy">{p.titre}</h3>

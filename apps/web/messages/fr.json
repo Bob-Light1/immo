@@ -660,7 +660,8 @@
     "tooShort": "Merci de préciser davantage.",
     "preparing": "Préparation du document…",
     "downloadFailed": "Le document n'a pas pu être produit.",
-    "print": "Imprimer"
+    "print": "Imprimer",
+    "imageUnavailable": "Image indisponible"
   },
   "errors": {
     "auth": {
@@ -759,6 +760,9 @@
       "typeNonAutorise": "Type de fichier non autorisé. Acceptés : {acceptes}.",
       "extensionInconnue": "Type de fichier non autorisé.",
       "contenuIncoherent": "Le contenu du fichier ne correspond pas à son type déclaré.",
+      "objetIntrouvable": "Fichier introuvable.",
+      "suppressionRefusee": "Ce fichier ne peut pas être supprimé.",
+      "cheminInvalide": "Chemin de fichier invalide.",
       "echec": "Échec du téléversement."
     },
     "calcul": {

@@ -102,6 +102,9 @@ export const ERROR_CODES = [
   "upload.typeNonAutorise",
   "upload.extensionInconnue",
   "upload.contenuIncoherent",
+  "upload.objetIntrouvable",
+  "upload.suppressionRefusee",
+  "upload.cheminInvalide",
   "upload.echec",
 
   // ── Pure calculation layer ──

@@ -1,9 +1,10 @@
 import { NextRequest } from "next/server";
-import { MAX_UPLOAD_BYTES } from "@campusgest/shared";
+import { MAX_UPLOAD_BYTES, STORAGE_PATH_PREFIX, uploadKeySchema } from "@campusgest/shared";
 import { handle, json, ServiceError } from "@/lib/api";
 import { requireAuth } from "@/lib/rbac";
 import { audit } from "@/lib/audit";
 import { storage, resolveExtension, isUploadKind, assertMagicBytes } from "@/lib/storage";
+import { deleteOwnUpload } from "@/lib/services/upload.service";
 
 export const runtime = "nodejs";
 
@@ -65,6 +66,21 @@ export async function POST(req: NextRequest) {
       key: stored.key,
       size: file.size,
     });
-    return json({ url: stored.url }, { status: 201 });
+    return json({ url: stored.url, key: stored.key }, { status: 201 });
+  });
+}
+
+/**
+ * Deletes an object the caller uploaded and never attached to anything — the
+ * form failed after the upload, or was abandoned. Ownership and orphan status
+ * are both enforced in the service.
+ */
+export async function DELETE(req: NextRequest) {
+  return handle(async () => {
+    const user = requireAuth(req);
+    const { key } = uploadKeySchema.parse(await req.json());
+    await deleteOwnUpload(user.sub, key, `${STORAGE_PATH_PREFIX}/${storage().bucketName()}/${key}`);
+    await audit(req, user.sub, "upload.delete", "upload", undefined, { key });
+    return json({ ok: true });
   });
 }

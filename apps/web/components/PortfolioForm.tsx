@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useApiError } from "@/lib/client/api-error";
-import { apiFetch, uploadFile } from "@/lib/client/session";
+import { apiFetch, deleteUpload, uploadFile } from "@/lib/client/session";
 import { Card, Field, Spinner, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 import { useConfirm } from "@/components/Toast";
+import { StoredImage } from "@/components/StoredImage";
 
 interface Portfolio {
   bio: string | null;
@@ -33,6 +34,9 @@ export function PortfolioForm() {
   const [photoUrl, setPhotoUrl] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  // Key of a photo uploaded but not yet saved: nothing references it until the
+  // portfolio is written, so it is this form's job to collect it.
+  const pendingKey = useRef<string | null>(null);
   const [bio, setBio] = useState("");
   const [competences, setCompetences] = useState("");
   const [diplomes, setDiplomes] = useState("");
@@ -72,7 +76,11 @@ export function PortfolioForm() {
     setUploading(true);
     setError(null);
     try {
-      const url = await uploadFile(file, "image");
+      const { url, key } = await uploadFile(file, "image");
+      // Picking twice before saving leaves the first image referenced by
+      // nothing; drop it rather than let every hesitation cost an object.
+      if (pendingKey.current) await deleteUpload(pendingKey.current);
+      pendingKey.current = key;
       setPhotoUrl(url);
     } catch (err) {
       setError(apiError(err, t("failed")));
@@ -106,6 +114,7 @@ export function PortfolioForm() {
         setError(apiError(d, t("failed")));
         return;
       }
+      pendingKey.current = null;
       setSaved(true);
       setExists(true);
     } finally {
@@ -152,14 +161,16 @@ export function PortfolioForm() {
       <form onSubmit={save} className="space-y-4">
         <div className="flex items-center gap-4">
           <div className="h-20 w-20 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-            {photoUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={photoUrl} alt="" className="h-full w-full object-cover" />
-            ) : (
-              <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full p-4 text-slate-300" aria-hidden="true">
-                <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.7-9 6v2h18v-2c0-3.3-4-6-9-6Z" />
-              </svg>
-            )}
+            <StoredImage
+              src={photoUrl}
+              alt=""
+              className="h-full w-full object-cover"
+              fallback={
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full p-4 text-slate-300" aria-hidden="true">
+                  <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.7-9 6v2h18v-2c0-3.3-4-6-9-6Z" />
+                </svg>
+              }
+            />
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-slate-700">{t("photo")}</label>

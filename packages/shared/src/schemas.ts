@@ -11,6 +11,7 @@ import {
   TICKET_STATUTS,
   DOCUMENT_CATEGORIES,
   MIN_PASSWORD_LENGTH,
+  STORAGE_PATH_PREFIX,
 } from "./types";
 import {
   MOIS_REGEX,
@@ -20,6 +21,39 @@ import {
   LOYER_ECHEANCE_MIN_MOIS,
 } from "./dates";
 import { isLoyer } from "./types";
+
+/**
+ * A stored asset, as returned by `POST /api/uploads`: an origin-relative
+ * `/storage/<bucket>/<key>` path, never an absolute URL — see `lib/storage.ts`
+ * for why persisting an origin is what broke images across environments.
+ *
+ * Absolute http(s) values are still accepted so rows written before the switch
+ * keep validating when their owner edits them; everything new is relative.
+ */
+export const storageUrlSchema = z
+  .string()
+  .max(500)
+  .refine(
+    (v) =>
+      (v.startsWith(`${STORAGE_PATH_PREFIX}/`) && !v.includes("..")) || /^https?:\/\/\S+$/.test(v),
+    issueCode("upload.cheminInvalide", "Chemin de fichier invalide."),
+  );
+
+/**
+ * Object key targeted by a cleanup deletion. Traversal segments are refused
+ * here rather than at the storage client: the key is caller-supplied and only
+ * ever names an object this application wrote.
+ */
+export const uploadKeySchema = z.object({
+  key: z
+    .string()
+    .min(1)
+    .max(400)
+    .refine(
+      (v) => !v.startsWith("/") && !v.split("/").some((s) => s === "." || s === ".."),
+      issueCode("upload.cheminInvalide", "Chemin de fichier invalide."),
+    ),
+});
 
 // ─── Auth ───
 export const loginSchema = z.object({
@@ -216,7 +250,7 @@ export const paiementSchema = z.object({
   montant: montantXAF,
   mode: z.enum(PAIEMENT_MODES),
   reference: z.string().max(80).optional(),
-  justificatifUrl: z.string().url().optional(),
+  justificatifUrl: storageUrlSchema.optional(),
 });
 export type PaiementInput = z.infer<typeof paiementSchema>;
 
@@ -281,7 +315,7 @@ export type EvenementDecisionInput = z.infer<typeof evenementDecisionSchema>;
 export const postSchema = z.object({
   titre: z.string().min(1).max(100),
   description: z.string().min(1).max(300),
-  imageUrl: z.string().url(),
+  imageUrl: storageUrlSchema,
 });
 export type PostInput = z.infer<typeof postSchema>;
 
@@ -292,7 +326,7 @@ export const postHiddenSchema = z.object({
 // ─── Shared documents (§5.15 — file required) ───
 export const documentSchema = z.object({
   titre: z.string().min(1).max(200),
-  fichierUrl: z.string().url(),
+  fichierUrl: storageUrlSchema,
   categorie: z.enum(DOCUMENT_CATEGORIES),
   visibleRoles: z.array(z.enum(ROLES)).optional(),
 });
@@ -301,7 +335,7 @@ export type DocumentInput = z.infer<typeof documentSchema>;
 export const ticketSchema = z.object({
   categorie: z.enum(TICKET_CATEGORIES),
   description: z.string().min(3).max(2000),
-  imageUrl: z.string().url().optional(),
+  imageUrl: storageUrlSchema.optional(),
   roomId: z.string().uuid().optional(),
 });
 export type TicketInput = z.infer<typeof ticketSchema>;
@@ -346,7 +380,7 @@ export const voteSchema = z.object({
 // ─── Portfolio & directory (§5.7 / §5.14) ───
 export const portfolioSchema = z.object({
   bio: z.string().max(2000).optional(),
-  photoUrl: z.string().url().max(500).optional().or(z.literal("")),
+  photoUrl: storageUrlSchema.optional().or(z.literal("")),
   competences: z.array(z.string().min(1).max(60)).max(30).optional(),
   diplomes: z.array(z.string().min(1).max(120)).max(20).optional(),
   realisations: z.array(z.string().min(1).max(200)).max(20).optional(),
@@ -364,7 +398,7 @@ export const projetSchema = z.object({
   vision: z.string().max(2000).optional(),
   besoinsFinanciers: z.coerce.number().int().nonnegative().optional(),
   montantContribution: z.coerce.number().int().nonnegative().optional(),
-  imageUrl: z.string().url().optional(),
+  imageUrl: storageUrlSchema.optional(),
   visibleRoles: z.array(z.enum(ROLES)).optional(),
 });
 export type ProjetInput = z.infer<typeof projetSchema>;

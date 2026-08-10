@@ -114,8 +114,10 @@ services:
       args:
         # NEXT_PUBLIC_APP_URL is frozen at build time (client bundle) and S3_PUBLIC_URL
         # in the CSP (Next resolves `headers()` at build) → passed as build args.
+        # S3_PUBLIC_URL is optional: stored objects are served from this app's own
+        # origin under /storage, and only pre-existing absolute URLs still need it.
         NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:?NEXT_PUBLIC_APP_URL manquant dans .env}
-        S3_PUBLIC_URL: ${S3_PUBLIC_URL:?S3_PUBLIC_URL manquant dans .env}
+        S3_PUBLIC_URL: ${S3_PUBLIC_URL:-}
     container_name: campusgest-web
     restart: unless-stopped
     env_file: .env

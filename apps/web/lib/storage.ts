@@ -1,5 +1,7 @@
 import { randomUUID } from "crypto";
+import type { Readable } from "stream";
 import { Client as MinioClient } from "minio";
+import { STORAGE_PATH_PREFIX } from "@campusgest/shared";
 import { ServiceError } from "./api";
 
 /**
@@ -8,23 +10,45 @@ import { ServiceError } from "./api";
  * `STORAGE_DRIVER`. Dev and self-hosted setups use an S3-compatible backend
  * (MinIO); a Cloudinary implementation can be plugged in later without
  * touching any caller.
+ *
+ * Objects are addressed by an **origin-relative** path (`/storage/<bucket>/<key>`),
+ * never by an absolute URL. What lands in the database therefore survives a
+ * change of domain — a tunnel that gets a new name between two dev sessions, a
+ * migration to another host — whereas a persisted absolute URL dies with it.
+ * In production Caddy answers that prefix straight from the bucket; in dev the
+ * route handler below it does, since nothing sits in front of MinIO.
  */
 
 export type UploadKind = "image" | "document";
 
 export interface StoredObject {
+  /** Origin-relative path to serve the object from. */
   url: string;
   key: string;
 }
 
+export interface StoredContent {
+  stream: Readable;
+  contentType: string;
+  size: number;
+  etag: string;
+  lastModified: Date;
+}
+
 export interface StorageProvider {
-  /** Uploads an object and returns its public URL. */
+  /** Uploads an object and returns its origin-relative path. */
   upload(input: {
     buffer: Buffer;
     contentType: string;
     ext: string;
     prefix: string;
   }): Promise<StoredObject>;
+  /** Reads an object back. Throws ServiceError 404 when the key is unknown. */
+  read(key: string): Promise<StoredContent>;
+  /** Deletes an object. Idempotent: an already-absent key is not an error. */
+  remove(key: string): Promise<void>;
+  /** Bucket segment the public path is built on. */
+  bucketName(): string;
   /** Whether the backend is configured (routes answer 503 otherwise). */
   isConfigured(): boolean;
 }
@@ -34,15 +58,17 @@ export interface StorageProvider {
 class S3Storage implements StorageProvider {
   private client: MinioClient | null = null;
   private bucket = process.env.S3_BUCKET ?? "";
-  private publicUrl = (process.env.S3_PUBLIC_URL ?? "").replace(/\/$/, "");
+
+  bucketName(): string {
+    return this.bucket;
+  }
 
   isConfigured(): boolean {
     return Boolean(
       process.env.S3_ENDPOINT &&
         process.env.S3_ACCESS_KEY &&
         process.env.S3_SECRET_KEY &&
-        this.bucket &&
-        this.publicUrl,
+        this.bucket,
     );
   }
 
@@ -70,8 +96,36 @@ class S3Storage implements StorageProvider {
     await this.getClient().putObject(this.bucket, key, input.buffer, input.buffer.length, {
       "Content-Type": input.contentType,
     });
-    return { url: `${this.publicUrl}/${key}`, key };
+    return { url: publicPath(this.bucket, key), key };
   }
+
+  async read(key: string): Promise<StoredContent> {
+    const client = this.getClient();
+    try {
+      const stat = await client.statObject(this.bucket, key);
+      return {
+        stream: await client.getObject(this.bucket, key),
+        contentType: stat.metaData?.["content-type"] ?? "application/octet-stream",
+        size: stat.size,
+        etag: stat.etag,
+        lastModified: stat.lastModified,
+      };
+    } catch {
+      // statObject/getObject fail the same way for an unknown key and for a
+      // bucket the credentials cannot reach; neither is worth distinguishing to
+      // the reader, and doing so would confirm which keys exist.
+      throw new ServiceError(404, "Objet introuvable.", "upload.objetIntrouvable");
+    }
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.getClient().removeObject(this.bucket, key);
+  }
+}
+
+/** `/storage/<bucket>/<key>` — matches the `handle_path /storage/*` Caddy rule. */
+function publicPath(bucket: string, key: string): string {
+  return `${STORAGE_PATH_PREFIX}/${bucket}/${key}`;
 }
 
 // ─────────────────────────── Backend selection ───────────────────────────

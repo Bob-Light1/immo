@@ -5,6 +5,7 @@ import { useTranslations } from "next-intl";
 import { apiFetch, getSession } from "@/lib/client/session";
 import { Card, PageTitle, Spinner, EmptyState, inputCls, btnSecondary } from "@/components/ui";
 import { useConfirmAction } from "@/components/Toast";
+import { StoredImage } from "@/components/StoredImage";
 
 interface Resident {
   userId: string;
@@ -88,14 +89,16 @@ export function AnnuaireSearch() {
               <div className="flex items-center justify-between gap-3">
                 <div className="flex min-w-0 items-center gap-3">
                   <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full border border-slate-200 bg-slate-100">
-                    {r.photoUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img src={r.photoUrl} alt="" className="h-full w-full object-cover" />
-                    ) : (
-                      <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full p-2 text-slate-300" aria-hidden="true">
-                        <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.7-9 6v2h18v-2c0-3.3-4-6-9-6Z" />
-                      </svg>
-                    )}
+                    <StoredImage
+                      src={r.photoUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                      fallback={
+                        <svg viewBox="0 0 24 24" fill="currentColor" className="h-full w-full p-2 text-slate-300" aria-hidden="true">
+                          <path d="M12 12a5 5 0 1 0 0-10 5 5 0 0 0 0 10Zm0 2c-5 0-9 2.7-9 6v2h18v-2c0-3.3-4-6-9-6Z" />
+                        </svg>
+                      }
+                    />
                   </div>
                   <span className="truncate font-semibold text-navy">{r.fullName}</span>
                 </div>

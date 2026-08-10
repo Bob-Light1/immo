@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useTranslations } from "next-intl";
 import { useApiError } from "@/lib/client/api-error";
-import { apiFetch, uploadFile } from "@/lib/client/session";
+import { apiFetch, deleteUpload, uploadFile } from "@/lib/client/session";
 import { DOCUMENT_CATEGORIES, ROLES, type DocumentCategorie, type Role } from "@campusgest/shared";
 import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
 import { useConfirmAction } from "@/components/Toast";
@@ -76,8 +76,12 @@ export function DocumentsList({ admin }: { admin: boolean }) {
     }
     setBusy(true);
     setError(null);
+    // Stored before the document row that will reference it: collected below if
+    // the row is never created.
+    let orphanKey: string | null = null;
     try {
-      const fichierUrl = await uploadFile(file, "document");
+      const { url: fichierUrl, key } = await uploadFile(file, "document");
+      orphanKey = key;
       const res = await apiFetch("/api/documents", {
         method: "POST",
         body: JSON.stringify({ titre, fichierUrl, categorie, visibleRoles: roles }),
@@ -87,6 +91,7 @@ export function DocumentsList({ admin }: { admin: boolean }) {
         setError(apiError(d, t("failed")));
         return;
       }
+      orphanKey = null;
       setTitre("");
       setFile(null);
       if (fileRef.current) fileRef.current.value = "";
@@ -95,6 +100,7 @@ export function DocumentsList({ admin }: { admin: boolean }) {
     } catch (err) {
       setError(apiError(err, t("failed")));
     } finally {
+      if (orphanKey) await deleteUpload(orphanKey);
       setBusy(false);
     }
   }
