@@ -25,6 +25,10 @@ const CHAMBRE_INCLUDE = {
     orderBy: { fullName: "asc" as const },
     select: { id: true, fullName: true },
   },
+  // Every account still pointing here, deactivated ones included. They are what
+  // holds the room against deletion, and they are absent from `occupants`, so
+  // without this the interface would offer a delete the server refuses.
+  _count: { select: { occupants: true } },
 } as const;
 
 /**

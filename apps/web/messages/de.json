@@ -57,7 +57,8 @@
       "maintenance": "Wartung",
       "profil": "Profil",
       "plus": "Mehr"
-    }
+    },
+    "chambres": "Zimmer"
   },
   "statut": {
     "en_attente": "Ausstehend",
@@ -120,7 +121,11 @@
       "filterAllStatus": "Alle Status",
       "deactivated": "Konto deaktiviert.",
       "saveFailed": "Speichern fehlgeschlagen.",
-      "deactivateFailed": "Das Konto konnte nicht deaktiviert werden."
+      "deactivateFailed": "Das Konto konnte nicht deaktiviert werden.",
+      "chambre": "Zimmer",
+      "roomSaved": "{name} ist jetzt im Zimmer {chambre}.",
+      "roomCleared": "{name} ist keinem Zimmer mehr zugewiesen.",
+      "roomFailed": "Die Zimmerzuweisung ist fehlgeschlagen."
     }
   },
   "factures": {
@@ -145,13 +150,14 @@
       "hint": "Die Rechnung wird als Entwurf erstellt: alle aktiven Mieter werden mit Koeffizient 1 zugeordnet, vor der Veröffentlichung anpassbar.",
       "failed": "Erstellung der Rechnung fehlgeschlagen.",
       "submit": "Entwurf erstellen",
-      "loyerReference": "Jährliche Referenzmiete (XAF)",
       "moisLoyer": "Startmonat (abgedecktes Jahr)",
       "locataires": "Betroffene Mieter",
-      "hintLoyer": "Miete: keine Aufteilung. Jeder Mieter startet mit der hier eingegebenen Referenzmiete; die eigene Jahresmiete wird anschließend im Entwurf angepasst (unterschiedlich bepreiste Zimmer, jährliche Erhöhung). Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag.",
+      "hintLoyer": "Miete: keine Aufteilung. Jeder Mieter wird mit der Jahresmiete seines Zimmers belastet (Seite Zimmer). Dieses Feld dient nur als Rückfalloption für einen Mieter, dessen Zimmer noch keinen Tarif hat; ohne sie bricht die Erstellung ab und nennt die betroffenen Mieter. Alle Beträge bleiben im Entwurf einzeln korrigierbar. Bei jeder erfassten Zahlung sehen Mieter, Admin und Vermieter das im Monat Gezahlte, die Jahressumme und den Restbetrag.",
       "compteur": "Zähler (optional)",
       "confirmCreate": "Diese Rechnung erstellen? Sie beginnt als Entwurf: Beträge und Frist bleiben bis zur Veröffentlichung korrigierbar.",
-      "created": "Rechnung als Entwurf erstellt."
+      "created": "Rechnung als Entwurf erstellt.",
+      "loyerRepli": "Ausweich-Jahresmiete (XAF, optional)",
+      "loyerRepliPlaceholder": "Zimmertarife"
     },
     "detail": {
       "type": "Typ",
@@ -175,7 +181,7 @@
       "payeCeMois": "Diesen Monat gezahlt",
       "payeAnnee": "Gezahlt in {annee}",
       "restantAnnee": "Rest {annee}",
-      "loyerParLocataire": "Miete: Jeder Mieter hat seinen eigenen Jahresbetrag (Tarif seines Zimmers), änderbar solange die Rechnung ein Entwurf ist.",
+      "loyerParLocataire": "Miete: Jeder Mieter schuldet die Jahresmiete seines Zimmers, übernommen von der Seite Zimmer. Solange die Rechnung ein Entwurf ist, bleiben die Beträge hier korrigierbar.",
       "loyerVariable": "Unterschiedlich",
       "loyerDe": "Jahresmiete von {name}",
       "saveLoyers": "Mieten speichern",
@@ -203,7 +209,10 @@
       "published": "Rechnung veröffentlicht: Die Mieter können sie nun sehen.",
       "deleteHint": "Geben Sie zur Bestätigung den Monat der Rechnung ein ({mois}).",
       "deleted": "Rechnung gelöscht.",
-      "confirmPrint": "Die Rechnung von {name} erstellen? Das Dokument enthält personenbezogene Daten."
+      "confirmPrint": "Die Rechnung von {name} erstellen? Das Dokument enthält personenbezogene Daten.",
+      "appliquerTarifs": "Zimmertarife übernehmen",
+      "confirmTarifs": "Die Jahresmiete des Zimmers jedes Mieters übernehmen? Die hier eingetragenen Beträge werden ersetzt; ein Mieter, dessen Zimmer keinen Tarif hat, behält seinen.",
+      "tarifsApplies": "Zimmertarife übernommen."
     },
     "exportPdf": "PDF-Export",
     "exportFailed": "Export fehlgeschlagen.",
@@ -818,5 +827,46 @@
       "entreeInvalide": "Ungültige Eingabe: Prüfen Sie die Formularfelder.",
       "serveur": "Serverfehler. Bitte versuchen Sie es gleich erneut."
     }
+  },
+  "chambres": {
+    "title": "Zimmer",
+    "purpose": "Jedes Zimmer trägt seine eigene Jahresmiete: Genau diesen Betrag fordert die Mietrechnung von seinen Bewohnern. Passen Sie ihn hier zum Jahreswechsel an — bereits veröffentlichte Rechnungen behalten den Betrag, auf den sie ausgestellt wurden.",
+    "chambre": "Zimmer",
+    "bloc": "Block",
+    "blocPlaceholder": "A",
+    "numero": "Nummer",
+    "numeroPlaceholder": "12",
+    "capacite": "Kapazität",
+    "loyerAnnuel": "Jahresmiete (XAF)",
+    "loyerDe": "Jahresmiete des Zimmers {chambre}",
+    "compteurElec": "Stromzähler",
+    "occupants": "Bewohner",
+    "aucunOccupant": "Keine Bewohner",
+    "places": "{occupants} / {capacite} Platz/Plätze",
+    "sansTarif": "Tarif fehlt",
+    "complete": "belegt",
+    "retiree": "Außer Betrieb",
+    "nonAffectee": "Kein Zimmer",
+    "aucuneChambre": "Keine Zimmer erfasst: Legen Sie eines auf der Seite Zimmer an.",
+    "create": "Zimmer hinzufügen",
+    "created": "Zimmer angelegt.",
+    "createFailed": "Das Zimmer konnte nicht angelegt werden.",
+    "save": "Speichern",
+    "saved": "Zimmer gespeichert.",
+    "saveFailed": "Speichern fehlgeschlagen.",
+    "confirmSave": "Änderungen am Zimmer {chambre} speichern?",
+    "confirmLoyer": "Jahresmiete des Zimmers {chambre} auf {montant} festlegen? {count, plural, one {# Mieter bewohnt es} other {# Mieter bewohnen es}}: Der neue Tarif gilt für die nächsten Mietrechnungen, nie für bereits veröffentlichte.",
+    "retirer": "Außer Betrieb nehmen",
+    "retireeDone": "Zimmer außer Betrieb genommen.",
+    "confirmRetirer": "Zimmer {chambre} außer Betrieb nehmen? Es wird nicht mehr zur Zuweisung angeboten; seine Daten bleiben erhalten.",
+    "reactiver": "Wieder in Betrieb nehmen",
+    "reactiveeDone": "Zimmer wieder in Betrieb.",
+    "confirmReactiver": "Zimmer {chambre} wieder in Betrieb nehmen?",
+    "delete": "Löschen",
+    "deleted": "Zimmer gelöscht.",
+    "deleteFailed": "Löschen fehlgeschlagen.",
+    "deleteBloque": "Zimmer belegt: Verlegen Sie die Mieter, bevor Sie es löschen.",
+    "confirmDelete": "Zimmer {chambre} endgültig löschen? Dies kann nicht rückgängig gemacht werden.",
+    "empty": "Keine Zimmer erfasst."
   }
 }

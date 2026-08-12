@@ -17,9 +17,10 @@ import { CompteurSelect } from "@/components/CompteurSelect";
  * of 1; the coefficients are then adjusted on the detail page, before
  * publication.
  *
- * "Loyer" exception: no split. The amount entered here is the reference rent
- * every line starts on; each tenant's own annual rent — the tariff of the room
- * they occupy — is then set on the draft, before publication.
+ * "Loyer" exception: no split, and no amount to type — each line is filled from
+ * the annual tariff of the room its tenant occupies. The field is only the
+ * fallback for a tenant whose room carries no tariff yet; every amount stays
+ * correctable on the draft, before publication.
  */
 export default function NewFacturePage() {
   const t = useTranslations("factures.new");
@@ -70,7 +71,13 @@ export default function NewFacturePage() {
         method: "POST",
         body: JSON.stringify({
           type,
-          ...(loyer ? { montantParLocataire: valeur } : { montantTotal: valeur }),
+          // Rent: the rooms carry the tariffs, so the amount only travels when
+          // the Admin typed one — as the fallback for an unpriced room.
+          ...(loyer
+            ? montant
+              ? { montantParLocataire: valeur }
+              : {}
+            : { montantTotal: valeur }),
           mois,
           dateLimite,
           ...(locataireIds ? { locataireIds } : {}),
@@ -111,7 +118,7 @@ export default function NewFacturePage() {
               ))}
             </datalist>
           </Field>
-          <Field label={loyer ? t("loyerReference") : t("montantTotal")}>
+          <Field label={loyer ? t("loyerRepli") : t("montantTotal")}>
             <input
               className={inputCls}
               type="number"
@@ -119,8 +126,10 @@ export default function NewFacturePage() {
               step={1}
               value={montant}
               onChange={(e) => setMontant(e.target.value)}
-              required
-              placeholder={loyer ? "240000" : "60000"}
+              // Rent needs no amount: the rooms are priced. Left blank, a tenant
+              // without a tariff is reported by name rather than billed at zero.
+              required={!loyer}
+              placeholder={loyer ? t("loyerRepliPlaceholder") : "60000"}
             />
           </Field>
           <Field label={loyer ? t("moisLoyer") : t("mois")}>

@@ -36,6 +36,8 @@ interface Chambre {
   isActive: boolean;
   compteurElec: { id: string; libelle: string } | null;
   occupants: { id: string; fullName: string }[];
+  /** Every account attached, deactivated ones included — what blocks a delete. */
+  _count: { occupants: number };
 }
 
 /** Row being edited. The rent is the field that actually moves, year to year. */
@@ -182,7 +184,7 @@ export default function AdminChambresPage() {
         ? t("confirmRetirer", { chambre: nomChambre(c) })
         : t("confirmReactiver", { chambre: nomChambre(c) }),
       confirmLabel: c.isActive ? t("retirer") : t("reactiver"),
-      success: c.isActive ? t("retiree") : t("reactivee"),
+      success: c.isActive ? t("retireeDone") : t("reactiveeDone"),
       failure: t("saveFailed"),
       run: () =>
         apiFetch(`/api/chambres/${c.id}`, {
@@ -376,8 +378,8 @@ export default function AdminChambresPage() {
                       </button>
                       <button
                         onClick={() => remove(c)}
-                        disabled={busy || c.occupants.length > 0}
-                        title={c.occupants.length > 0 ? t("deleteBloque") : undefined}
+                        disabled={busy || c._count.occupants > 0}
+                        title={c._count.occupants > 0 ? t("deleteBloque") : undefined}
                         className={`${linkDanger} disabled:text-slate-300 disabled:no-underline`}
                       >
                         {t("delete")}

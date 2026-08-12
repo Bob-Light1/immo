@@ -177,6 +177,26 @@ export default function AdminFactureDetailPage() {
     });
   }
 
+  /**
+   * Re-reads the tariff of each tenant's room. This is the yearly
+   * revalorisation: the new rents are entered once on the rooms, then pulled
+   * into the draft here. A tenant whose room carries no tariff keeps the amount
+   * already on their line.
+   */
+  function appliquerTarifs() {
+    return guarded({
+      message: t("confirmTarifs"),
+      confirmLabel: t("appliquerTarifs"),
+      success: t("tarifsApplies"),
+      failure: t("loyersFailed"),
+      run: () =>
+        apiFetch(`/api/factures/${id}/loyers`, {
+          method: "POST",
+          body: JSON.stringify({ depuisChambres: true }),
+        }),
+    });
+  }
+
   function publish() {
     return guarded({
       level: "danger",
@@ -700,9 +720,14 @@ export default function AdminFactureDetailPage() {
         {brouillon && (
           <div className="flex flex-wrap items-center gap-3">
             {loyer ? (
-              <button className={btnSecondary} onClick={saveLoyers} disabled={busy}>
-                {t("saveLoyers")}
-              </button>
+              <>
+                <button className={btnSecondary} onClick={saveLoyers} disabled={busy}>
+                  {t("saveLoyers")}
+                </button>
+                <button className={btnSecondary} onClick={appliquerTarifs} disabled={busy}>
+                  {t("appliquerTarifs")}
+                </button>
+              </>
             ) : (
               <button className={btnSecondary} onClick={saveCoefficients} disabled={busy}>
                 {t("saveCoeffs")}

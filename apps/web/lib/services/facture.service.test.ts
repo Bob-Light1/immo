@@ -54,6 +54,19 @@ function locataires(...ids: string[]) {
   return ids.map((id) => ({ id }));
 }
 
+/**
+ * Tenants with the room they occupy: `null` is a tenant housed nowhere, and a
+ * tariff of 0 a room nobody has priced yet — the two cases the rent regime has
+ * no amount to bill.
+ */
+function chambres(...tarifs: [string, number | null][]) {
+  return tarifs.map(([id, loyerAnnuel]) => ({
+    id,
+    fullName: id.toUpperCase(),
+    room: loyerAnnuel === null ? null : { loyerAnnuel: BigInt(loyerAnnuel) },
+  }));
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
   prisma.facture.findFirst.mockResolvedValue(null);
@@ -127,6 +140,62 @@ describe("createFacture", () => {
     for (const l of data.lignes.create) expect(l.montantDu).toBe(240_000n);
     // The total is merely the sum of the flat amounts.
     expect(data.montantTotal).toBe(720_000n);
+  });
+
+  it("facture chaque locataire au tarif annuel de sa chambre", async () => {
+    prisma.user.findMany.mockResolvedValue(
+      chambres(["a", 300_000], ["b", 240_000], ["c", 180_000]),
+    );
+
+    await createFacture(ADMIN, {
+      type: "Loyer",
+      mois: "2026-01",
+      dateLimite: new Date("2026-12-31"),
+    });
+
+    const [{ data }] = prisma.facture.create.mock.calls[0]!;
+    expect(data.lignes.create.map((l: { montantDu: bigint }) => l.montantDu)).toEqual([
+      300_000n,
+      240_000n,
+      180_000n,
+    ]);
+    expect(data.montantTotal).toBe(720_000n);
+    // Rooms priced apart: the invoice has no single reference amount.
+    expect(data.baseUnitaire).toBe(0n);
+  });
+
+  it("refuse d'émettre un loyer si une chambre n'a pas de tarif", async () => {
+    // Billing an unpriced room at nothing is not a default anyone would want
+    // applied silently: the tenants concerned are named instead.
+    prisma.user.findMany.mockResolvedValue(chambres(["a", 300_000], ["b", 0], ["c", null]));
+
+    await expect(
+      createFacture(ADMIN, {
+        type: "Loyer",
+        mois: "2026-01",
+        dateLimite: new Date("2026-12-31"),
+      }),
+    ).rejects.toMatchObject({ status: 400, code: "facture.loyerTarifManquant" });
+    expect(prisma.facture.create).not.toHaveBeenCalled();
+  });
+
+  it("retombe sur le montant saisi pour une chambre sans tarif", async () => {
+    prisma.user.findMany.mockResolvedValue(chambres(["a", 300_000], ["b", null]));
+
+    await createFacture(ADMIN, {
+      type: "Loyer",
+      montantParLocataire: 200_000,
+      mois: "2026-01",
+      dateLimite: new Date("2026-12-31"),
+    });
+
+    const [{ data }] = prisma.facture.create.mock.calls[0]!;
+    // The room's own tariff wins wherever there is one; the typed amount only
+    // covers the tenant it could not answer for.
+    expect(data.lignes.create.map((l: { montantDu: bigint }) => l.montantDu)).toEqual([
+      300_000n,
+      200_000n,
+    ]);
   });
 });
 
@@ -259,7 +328,7 @@ describe("updateFacture", () => {
     expect(lignes.map((l) => l.update.montantDu)).toEqual([240_000n, 240_000n]);
   });
 
-  it("exige le loyer d'un locataire rattaché à des loyers différenciés", async () => {
+  it("exige le loyer d'un locataire rattaché sans chambre tarifée", async () => {
     // Nothing to infer from: guessing would bill a room at another's tariff.
     prisma.facture.findUnique.mockResolvedValue(loyerDifferencie);
     prisma.user.findMany.mockResolvedValue(locataires("a", "b", "c"));
@@ -268,6 +337,20 @@ describe("updateFacture", () => {
       status: 400,
     });
     expect(prisma.facture.update).not.toHaveBeenCalled();
+  });
+
+  it("facture un locataire rattaché au tarif de sa chambre", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyerDifferencie);
+    prisma.user.findMany.mockResolvedValue(
+      chambres(["a", 999_000], ["b", 999_000], ["c", 180_000]),
+    );
+
+    await updateFacture("f-1", { locataireIds: ["a", "b", "c"] });
+
+    const lignes = prisma.factureLocataire.upsert.mock.calls.map(([c]) => c);
+    // The newcomer is billed their room; the tenants already on the invoice
+    // keep what it charges them, whatever their room says today.
+    expect(lignes.map((l) => l.update.montantDu)).toEqual([300_000n, 240_000n, 180_000n]);
   });
 
   it("rattache un locataire arrivé après la rédaction du brouillon", async () => {
@@ -409,6 +492,48 @@ describe("setLoyers", () => {
     await expect(
       setLoyers("f-1", { loyers: [{ locataireId: "a", montant: 300_000 }] }),
     ).rejects.toMatchObject({ status: 409 });
+  });
+
+  it("reprend le loyer annuel de la chambre de chaque locataire", async () => {
+    // The yearly revalorisation: the new tariffs are entered once on the rooms,
+    // then pulled into the draft.
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+    prisma.user.findMany.mockResolvedValue(
+      chambres(["a", 320_000], ["b", 260_000], ["c", 200_000]),
+    );
+
+    await setLoyers("f-1", { depuisChambres: true });
+
+    const montants = prisma.factureLocataire.update.mock.calls.map(([c]) => c.data.montantDu);
+    expect(montants).toEqual([320_000n, 260_000n, 200_000n]);
+    const [{ data }] = prisma.facture.update.mock.calls[0]!;
+    expect(data.montantTotal).toBe(780_000n);
+  });
+
+  it("laisse son montant au locataire dont la chambre n'a pas de tarif", async () => {
+    // Applying the tariffs on record must not zero out whoever has none.
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+    prisma.user.findMany.mockResolvedValue(chambres(["a", 320_000], ["b", 0], ["c", null]));
+
+    await setLoyers("f-1", { depuisChambres: true });
+
+    const montants = prisma.factureLocataire.update.mock.calls.map(([c]) => c.data.montantDu);
+    expect(montants).toEqual([320_000n, 240_000n, 240_000n]);
+  });
+
+  it("applique les loyers saisis par-dessus les tarifs repris", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+    prisma.user.findMany.mockResolvedValue(
+      chambres(["a", 320_000], ["b", 260_000], ["c", 200_000]),
+    );
+
+    await setLoyers("f-1", {
+      depuisChambres: true,
+      loyers: [{ locataireId: "b", montant: 250_000 }],
+    });
+
+    const montants = prisma.factureLocataire.update.mock.calls.map(([c]) => c.data.montantDu);
+    expect(montants).toEqual([320_000n, 250_000n, 200_000n]);
   });
 });
 

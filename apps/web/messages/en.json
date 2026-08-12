@@ -57,7 +57,8 @@
       "maintenance": "Upkeep",
       "profil": "Profile",
       "plus": "More"
-    }
+    },
+    "chambres": "Rooms"
   },
   "statut": {
     "en_attente": "Pending",
@@ -120,7 +121,11 @@
       "filterAllStatus": "All statuses",
       "deactivated": "Account deactivated.",
       "saveFailed": "Save failed.",
-      "deactivateFailed": "The account could not be deactivated."
+      "deactivateFailed": "The account could not be deactivated.",
+      "chambre": "Room",
+      "roomSaved": "{name} is now in room {chambre}.",
+      "roomCleared": "{name} is no longer assigned to a room.",
+      "roomFailed": "Could not assign the room."
     }
   },
   "factures": {
@@ -145,13 +150,14 @@
       "hint": "The bill is created as a draft: all active tenants are attached with a coefficient of 1, adjustable before publishing.",
       "failed": "Failed to create the bill.",
       "submit": "Create draft",
-      "loyerReference": "Reference annual rent (XAF)",
       "moisLoyer": "Starting month (year covered)",
       "locataires": "Tenants concerned",
-      "hintLoyer": "Rent: no split. Every tenant starts on the reference rent entered here; each one's own annual rent is then adjusted on the draft (rooms priced differently, yearly increase). After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance.",
+      "hintLoyer": "Rent: no split. Each tenant is billed the annual rent of their room (Rooms page). This field is only the fallback for a tenant whose room has no tariff yet; without it, creation stops and names the tenants concerned. Every amount stays correctable one by one on the draft. On each recorded payment, the tenant, the Admin and the Landlord see what was paid this month, the year's total and what is left.",
       "compteur": "Meter (optional)",
       "confirmCreate": "Create this invoice? It starts as a draft: amounts and deadline stay correctable until it is published.",
-      "created": "Invoice created as a draft."
+      "created": "Invoice created as a draft.",
+      "loyerRepli": "Fallback annual rent (XAF, optional)",
+      "loyerRepliPlaceholder": "Room tariffs"
     },
     "detail": {
       "type": "Type",
@@ -175,7 +181,7 @@
       "payeCeMois": "Paid this month",
       "payeAnnee": "Paid in {annee}",
       "restantAnnee": "Remaining {annee}",
-      "loyerParLocataire": "Rent: each tenant has their own annual amount (their room's tariff), editable while the invoice is a draft.",
+      "loyerParLocataire": "Rent: each tenant owes the annual rent of their room, pulled in from the Rooms page. The amounts stay correctable here while the bill is a draft.",
       "loyerVariable": "Varies",
       "loyerDe": "Annual rent of {name}",
       "saveLoyers": "Save rents",
@@ -203,7 +209,10 @@
       "published": "Invoice published: the tenants can now see it.",
       "deleteHint": "To confirm, type the invoice's month ({mois}).",
       "deleted": "Invoice deleted.",
-      "confirmPrint": "Produce {name}'s invoice? The document carries their personal data."
+      "confirmPrint": "Produce {name}'s invoice? The document carries their personal data.",
+      "appliquerTarifs": "Apply the room tariffs",
+      "confirmTarifs": "Pull in the annual rent of each tenant's room? The amounts entered here will be replaced; a tenant whose room has no tariff keeps theirs.",
+      "tarifsApplies": "Room tariffs applied."
     },
     "exportPdf": "Export PDF",
     "exportFailed": "Export failed.",
@@ -818,5 +827,46 @@
       "entreeInvalide": "Invalid input: check the form fields.",
       "serveur": "Server error. Please try again shortly."
     }
+  },
+  "chambres": {
+    "title": "Rooms",
+    "purpose": "Each room carries its own annual rent: that is the amount a rent bill charges its occupants. Restate it here at the turn of the year — bills already published keep the amount they were raised on.",
+    "chambre": "Room",
+    "bloc": "Block",
+    "blocPlaceholder": "A",
+    "numero": "Number",
+    "numeroPlaceholder": "12",
+    "capacite": "Capacity",
+    "loyerAnnuel": "Annual rent (XAF)",
+    "loyerDe": "Annual rent of room {chambre}",
+    "compteurElec": "Electricity meter",
+    "occupants": "Occupants",
+    "aucunOccupant": "No occupant",
+    "places": "{occupants} / {capacite} bed(s)",
+    "sansTarif": "Tariff not set",
+    "complete": "full",
+    "retiree": "Retired from service",
+    "nonAffectee": "No room",
+    "aucuneChambre": "No room on record: add one from the Rooms page.",
+    "create": "Add the room",
+    "created": "Room created.",
+    "createFailed": "Could not create the room.",
+    "save": "Save",
+    "saved": "Room saved.",
+    "saveFailed": "Could not save.",
+    "confirmSave": "Save the changes to room {chambre}?",
+    "confirmLoyer": "Set the annual rent of room {chambre} to {montant}? {count, plural, one {# tenant occupies it} other {# tenants occupy it}}: the new tariff applies to the next rent bills, never to those already published.",
+    "retirer": "Retire from service",
+    "retireeDone": "Room retired from service.",
+    "confirmRetirer": "Retire room {chambre} from service? It will no longer be offered for assignment; its data is kept.",
+    "reactiver": "Put back in service",
+    "reactiveeDone": "Room back in service.",
+    "confirmReactiver": "Put room {chambre} back in service?",
+    "delete": "Delete",
+    "deleted": "Room deleted.",
+    "deleteFailed": "Could not delete.",
+    "deleteBloque": "Room occupied: move its tenants out before deleting it.",
+    "confirmDelete": "Permanently delete room {chambre}? This cannot be undone.",
+    "empty": "No room on record."
   }
 }

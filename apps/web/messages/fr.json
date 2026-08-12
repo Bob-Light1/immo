@@ -57,7 +57,8 @@
       "maintenance": "Maintenance",
       "profil": "Profil",
       "plus": "Plus"
-    }
+    },
+    "chambres": "Chambres"
   },
   "statut": {
     "en_attente": "En attente",
@@ -120,7 +121,11 @@
       "filterAllStatus": "Tous les statuts",
       "deactivated": "Compte désactivé.",
       "saveFailed": "Échec de l'enregistrement.",
-      "deactivateFailed": "Le compte n'a pas pu être désactivé."
+      "deactivateFailed": "Le compte n'a pas pu être désactivé.",
+      "chambre": "Chambre",
+      "roomSaved": "{name} est affecté(e) à la chambre {chambre}.",
+      "roomCleared": "{name} n'est plus affecté(e) à une chambre.",
+      "roomFailed": "Échec de l'affectation de chambre."
     }
   },
   "factures": {
@@ -145,13 +150,14 @@
       "hint": "La facture est créée en brouillon : tous les locataires actifs sont rattachés avec un coefficient 1, ajustable avant publication.",
       "failed": "Échec de la création de la facture.",
       "submit": "Créer le brouillon",
-      "loyerReference": "Loyer annuel de référence (XAF)",
       "moisLoyer": "Mois de départ (année couverte)",
       "locataires": "Locataires concernés",
-      "hintLoyer": "Loyer : aucune division. Chaque locataire démarre au loyer de référence saisi ici ; ajustez ensuite, dans le brouillon, le loyer annuel propre à chacun (chambres de tarifs différents, revalorisation). À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant.",
+      "hintLoyer": "Loyer : aucune division. Chaque locataire est facturé le loyer annuel de sa chambre (page Chambres). Ce champ ne sert que de repli pour un locataire dont la chambre n'a pas encore de tarif ; sans lui, la création s'arrête en nommant les locataires concernés. Les montants restent corrigeables un par un dans le brouillon. À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant.",
       "compteur": "Compteur (facultatif)",
       "confirmCreate": "Créer cette facture ? Elle sera créée en brouillon : montants et échéance restent corrigeables jusqu'à sa publication.",
-      "created": "Facture créée en brouillon."
+      "created": "Facture créée en brouillon.",
+      "loyerRepli": "Loyer annuel de repli (XAF, facultatif)",
+      "loyerRepliPlaceholder": "Tarif des chambres"
     },
     "detail": {
       "type": "Type",
@@ -175,7 +181,7 @@
       "payeCeMois": "Payé ce mois",
       "payeAnnee": "Payé en {annee}",
       "restantAnnee": "Restant {annee}",
-      "loyerParLocataire": "Loyer : chaque locataire a son propre montant annuel (tarif de sa chambre), modifiable tant que la facture est en brouillon.",
+      "loyerParLocataire": "Loyer : chaque locataire doit le loyer annuel de sa chambre, repris depuis la page Chambres. Les montants restent corrigeables ici tant que la facture est en brouillon.",
       "loyerVariable": "Variable",
       "loyerDe": "Loyer annuel de {name}",
       "saveLoyers": "Enregistrer les loyers",
@@ -203,7 +209,10 @@
       "published": "Facture publiée : elle est désormais visible des locataires.",
       "deleteHint": "Pour confirmer, saisissez le mois de la facture ({mois}).",
       "deleted": "Facture supprimée.",
-      "confirmPrint": "Éditer la facture de {name} ? Le document porte ses données personnelles."
+      "confirmPrint": "Éditer la facture de {name} ? Le document porte ses données personnelles.",
+      "appliquerTarifs": "Appliquer les tarifs des chambres",
+      "confirmTarifs": "Reprendre le loyer annuel de la chambre de chaque locataire ? Les montants saisis ici seront remplacés ; un locataire dont la chambre n'a pas de tarif garde le sien.",
+      "tarifsApplies": "Tarifs des chambres appliqués."
     },
     "exportPdf": "Export PDF",
     "exportFailed": "Échec de l'export.",
@@ -818,5 +827,46 @@
       "entreeInvalide": "Saisie invalide : vérifiez les champs du formulaire.",
       "serveur": "Erreur serveur. Réessayez dans un instant."
     }
+  },
+  "chambres": {
+    "title": "Chambres",
+    "purpose": "Chaque chambre porte son loyer annuel : c'est ce montant que la facture de loyer réclame à ses occupants. Modifiez-le ici en fin d'année (revalorisation) — les factures déjà publiées gardent le montant sur lequel elles ont été émises.",
+    "chambre": "Chambre",
+    "bloc": "Bloc",
+    "blocPlaceholder": "A",
+    "numero": "Numéro",
+    "numeroPlaceholder": "12",
+    "capacite": "Capacité",
+    "loyerAnnuel": "Loyer annuel (XAF)",
+    "loyerDe": "Loyer annuel de la chambre {chambre}",
+    "compteurElec": "Compteur électricité",
+    "occupants": "Occupants",
+    "aucunOccupant": "Aucun occupant",
+    "places": "{occupants} / {capacite} place(s)",
+    "sansTarif": "Tarif à renseigner",
+    "complete": "complète",
+    "retiree": "Retirée du service",
+    "nonAffectee": "Aucune chambre",
+    "aucuneChambre": "Aucune chambre enregistrée : créez-en depuis la page Chambres.",
+    "create": "Ajouter la chambre",
+    "created": "Chambre créée.",
+    "createFailed": "Échec de la création de la chambre.",
+    "save": "Enregistrer",
+    "saved": "Chambre enregistrée.",
+    "saveFailed": "Échec de l'enregistrement.",
+    "confirmSave": "Enregistrer les modifications de la chambre {chambre} ?",
+    "confirmLoyer": "Fixer le loyer annuel de la chambre {chambre} à {montant} ? {count, plural, one {# locataire l'occupe} other {# locataires l'occupent}} : le nouveau tarif s'appliquera aux prochaines factures de loyer, jamais à celles déjà publiées.",
+    "retirer": "Retirer du service",
+    "retireeDone": "Chambre retirée du service.",
+    "confirmRetirer": "Retirer la chambre {chambre} du service ? Elle ne sera plus proposée à l'affectation ; ses données sont conservées.",
+    "reactiver": "Remettre en service",
+    "reactiveeDone": "Chambre remise en service.",
+    "confirmReactiver": "Remettre la chambre {chambre} en service ?",
+    "delete": "Supprimer",
+    "deleted": "Chambre supprimée.",
+    "deleteFailed": "Échec de la suppression.",
+    "deleteBloque": "Chambre occupée : déplacez ses locataires avant de la supprimer.",
+    "confirmDelete": "Supprimer définitivement la chambre {chambre} ? Cette action est irréversible.",
+    "empty": "Aucune chambre enregistrée."
   }
 }

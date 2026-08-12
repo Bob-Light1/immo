@@ -23,7 +23,7 @@ import {
   btnSecondary,
 } from "@/components/ui";
 import { useToast, useConfirmAction } from "@/components/Toast";
-import { ChambreSelect } from "@/components/ChambreSelect";
+import { ChambreSelect, nomChambre } from "@/components/ChambreSelect";
 
 const PAGE_SIZE = 20;
 
@@ -58,6 +58,10 @@ export default function AdminUsersPage() {
   const pathname = usePathname();
   const [users, setUsers] = useState<UserRow[] | null>(null);
   const [savingLang, setSavingLang] = useState<string | null>(null);
+  const [savingRoom, setSavingRoom] = useState<string | null>(null);
+  // Bumped after every assignment: the room pickers hold the occupancy they
+  // were mounted with, and a freed or filled bed has to reach the other rows.
+  const [chambresVersion, setChambresVersion] = useState(0);
   const [page, setPage] = useState(1);
   const [total, setTotal] = useState(0);
   const [q, setQ] = useState("");
@@ -77,6 +81,9 @@ export default function AdminUsersPage() {
     phone: "",
     language: DEFAULT_LOCALE as string,
   });
+  // Housed at creation: the room is what a tenant's rent is read from, so the
+  // account is not left to be assigned one in a second pass.
+  const [formRoomId, setFormRoomId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const params = new URLSearchParams({ page: String(page), limit: String(PAGE_SIZE) });
@@ -111,7 +118,13 @@ export default function AdminUsersPage() {
     try {
       const res = await apiFetch("/api/users", {
         method: "POST",
-        body: JSON.stringify({ ...form, email: form.email || undefined, phone: form.phone || undefined }),
+        body: JSON.stringify({
+          ...form,
+          email: form.email || undefined,
+          phone: form.phone || undefined,
+          // Only a tenant occupies a room; the server refuses it for anyone else.
+          roomId: form.role === "locataire" && formRoomId ? formRoomId : undefined,
+        }),
       });
       const data = await res.json();
       if (!res.ok) {
@@ -121,6 +134,8 @@ export default function AdminUsersPage() {
       setCreated(data);
       setShowForm(false);
       setForm({ username: "", fullName: "", role: "locataire", email: "", phone: "", language: DEFAULT_LOCALE as string });
+      setFormRoomId(null);
+      setChambresVersion((v) => v + 1);
       if (page === 1) load();
       else setPage(1);
     } catch {
@@ -177,6 +192,38 @@ export default function AdminUsersPage() {
       }
     } finally {
       setSavingLang(null);
+    }
+  }
+
+  /**
+   * Moves a tenant into a room, or out of it. Not merely an address: the room
+   * carries the annual rent the next invoice will bill them, so the toast names
+   * the tariff that now applies to them.
+   */
+  async function onRoomChange(u: UserRow, roomId: string | null) {
+    const previous = u.roomId;
+    setUsers((rows) => rows?.map((r) => (r.id === u.id ? { ...r, roomId } : r)) ?? rows);
+    setSavingRoom(u.id);
+    try {
+      const res = await apiFetch(`/api/users/${u.id}/chambre`, {
+        method: "PUT",
+        body: JSON.stringify({ roomId }),
+      });
+      const data = await res.json().catch(() => null);
+      if (!res.ok) {
+        setUsers((rows) => rows?.map((r) => (r.id === u.id ? { ...r, roomId: previous } : r)) ?? rows);
+        toast.error(apiError(data, t("roomFailed")));
+        return;
+      }
+      toast.success(
+        roomId
+          ? t("roomSaved", { name: u.fullName, chambre: nomChambre(data.room) })
+          : t("roomCleared", { name: u.fullName }),
+      );
+      setChambresVersion((v) => v + 1);
+      await load();
+    } finally {
+      setSavingRoom(null);
     }
   }
 
@@ -275,6 +322,16 @@ export default function AdminUsersPage() {
                 maxLength={20}
               />
             </Field>
+            {form.role === "locataire" && (
+              <Field label={t("chambre")}>
+                <ChambreSelect
+                  key={chambresVersion}
+                  value={formRoomId}
+                  onChange={setFormRoomId}
+                  ariaLabel={t("chambre")}
+                />
+              </Field>
+            )}
             <div className="sm:col-span-2">
               <ErrorText>{error}</ErrorText>
               <button type="submit" disabled={saving} className={btnPrimary}>
@@ -311,12 +368,13 @@ export default function AdminUsersPage() {
       ) : users.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <TableCard minWidth="min-w-[56rem]">
+        <TableCard minWidth="min-w-[68rem]">
           <Thead>
             <Th>{t("fullName")}</Th>
             <Th>{t("username")}</Th>
             <Th>{t("role")}</Th>
             <Th>{t("language")}</Th>
+            <Th>{t("chambre")}</Th>
             <Th>{t("contact")}</Th>
             <Th>{t("status")}</Th>
             <Th align="right" srOnly>
@@ -343,6 +401,22 @@ export default function AdminUsersPage() {
                       </option>
                     ))}
                   </select>
+                </Td>
+                {/* Only a tenant occupies a room, and the tariff it carries is
+                    what their rent invoice will bill. */}
+                <Td>
+                  {u.role !== "locataire" ? (
+                    <span className="text-slate-400">—</span>
+                  ) : (
+                    <ChambreSelect
+                      key={`${u.id}-${chambresVersion}`}
+                      value={u.roomId}
+                      onChange={(roomId) => void onRoomChange(u, roomId)}
+                      disabled={savingRoom === u.id || !u.isActive}
+                      ariaLabel={t("chambre")}
+                      className="w-auto py-1 text-xs"
+                    />
+                  )}
                 </Td>
                 {/* An address long enough to widen the table is cut rather than
                     left to push every other column off-screen. */}
