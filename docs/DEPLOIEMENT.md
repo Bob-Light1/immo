@@ -541,6 +541,8 @@ gunzip -c db-2026-07-07.sql.gz | \
       **jamais** publiés directement.
 - [ ] Console MinIO (`:9001`) **non exposée** publiquement (pas de route proxy).
 - [ ] Clés VAPID stables et sauvegardées.
+- [ ] Fuseau des conteneurs = celui de la cité :
+      `docker compose -f docker-compose.prod.yml exec web date` (§11).
 - [ ] Sauvegardes automatiques vérifiées (dump + restauration testée).
 - [ ] `.env` de prod hors du dépôt Git.
 
