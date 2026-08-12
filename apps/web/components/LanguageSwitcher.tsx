@@ -62,15 +62,29 @@ export function LanguageSwitcher() {
   }
 
   return (
-    <label className="relative inline-flex items-center">
+    // The chrome is drawn by the label and the native <select> lies over it,
+    // invisible: below `sm` the control is the globe alone, so it costs ~36px in
+    // a top bar that has no room for the endonym. The globe carries the meaning
+    // on its own — better, for a reader of German, than the word "Français".
+    // It is borderless there too, reading as one icon among the bar's others;
+    // the border comes back with the endonym beside it.
+    <label
+      className={`relative inline-flex items-center rounded-lg border border-transparent text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus-within:ring-2 focus-within:ring-brand sm:border-slate-300 ${
+        pending ? "opacity-60" : ""
+      }`}
+    >
       <span className="sr-only">{t("label")}</span>
+      <span aria-hidden className="pointer-events-none px-2 py-1.5 text-base leading-none">
+        🌐
+      </span>
+      <span aria-hidden className="pointer-events-none hidden pr-2 sm:inline">{t(locale)}</span>
       <select
         value={locale}
         onChange={(e) => void change(e.target.value)}
         disabled={pending}
         aria-label={t("label")}
         title={t("label")}
-        className="appearance-none rounded-lg border border-slate-300 py-1.5 pl-7 pr-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 disabled:opacity-60"
+        className="absolute inset-0 h-full w-full cursor-pointer appearance-none opacity-0"
       >
         {LOCALES.map((l) => (
           <option key={l} value={l}>
@@ -78,9 +92,6 @@ export function LanguageSwitcher() {
           </option>
         ))}
       </select>
-      <span aria-hidden className="pointer-events-none absolute left-2 text-base leading-none">
-        🌐
-      </span>
     </label>
   );
 }

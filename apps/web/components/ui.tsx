@@ -33,8 +33,17 @@ export function PubBadge({ statut }: { statut: "brouillon" | "publiee" }) {
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
+  /* The default padding is dropped, not layered, when the caller states its
+     own. Tailwind emits the `p-*` utilities in scale order, so `p-6` is written
+     after `p-0` and `p-4` and — at equal specificity — silently wins over
+     both: every `<Card className="p-0">` around a table was in fact inset by
+     24px. Axis utilities (`px-*`, `pt-*`) are emitted after `p-*` and already
+     override it, so only a whole-padding class has to displace the default. */
+  const padding = /(?:^|\s)p-(?:\d|\[)/.test(className) ? "" : "p-6";
   return (
-    <div className={`rounded-2xl border border-slate-200 bg-white p-6 shadow-sm ${className}`}>
+    <div
+      className={`rounded-2xl border border-slate-200 bg-white ${padding} shadow-sm ${className}`}
+    >
       {children}
     </div>
   );
@@ -70,6 +79,133 @@ export const btnSecondary =
 
 export const btnBrand =
   "rounded-lg bg-brand px-4 py-2 font-semibold text-white transition hover:bg-brand-soft disabled:opacity-60";
+
+/* ───────────────────────────── Tables ─────────────────────────────
+   Every list in the app is a wide table read on a phone. A `w-full` table
+   inside an `overflow-x-auto` box never scrolls — it shrinks to the box and the
+   browser compresses the columns instead, wrapping amounts mid-number and
+   pushing fixed-width inputs and badges past their cell. The shell below gives
+   the table a real minimum width so the box scrolls, and the cells default to
+   `whitespace-nowrap` so a column grows rather than folding onto itself. */
+
+type CellAlign = "left" | "right" | "center";
+
+const alignCls: Record<CellAlign, string> = {
+  left: "text-left",
+  right: "text-right",
+  center: "text-center",
+};
+
+/**
+ * Card + horizontal scroller + table. `minWidth` must be a literal Tailwind
+ * class (`min-w-[52rem]`), never an interpolated value — the JIT compiler only
+ * sees what is written in the source.
+ */
+export function TableCard({
+  children,
+  minWidth = "min-w-[48rem]",
+  className = "",
+}: {
+  children: ReactNode;
+  minWidth?: string;
+  className?: string;
+}) {
+  return (
+    <Card className={`overflow-hidden p-0 ${className}`}>
+      {/* Focusable: a scroll region that only responds to a pointer is
+          unreachable for anyone navigating with a keyboard. */}
+      <div className="overflow-x-auto" tabIndex={0}>
+        <table className={`w-full ${minWidth} border-collapse text-sm`}>{children}</table>
+      </div>
+    </Card>
+  );
+}
+
+export function Thead({ children }: { children: ReactNode }) {
+  return (
+    <thead>
+      <tr className="border-b border-slate-200 text-xs uppercase text-slate-500">{children}</tr>
+    </thead>
+  );
+}
+
+/**
+ * A header cell. Action columns still need a name — `srOnly` keeps it out of
+ * the layout without leaving the column unlabelled for a screen reader.
+ */
+export function Th({
+  children,
+  align = "left",
+  srOnly = false,
+  className = "",
+}: {
+  children: ReactNode;
+  align?: CellAlign;
+  srOnly?: boolean;
+  className?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      className={`whitespace-nowrap px-4 py-3 font-semibold ${alignCls[align]} ${className}`}
+    >
+      {srOnly ? <span className="sr-only">{children}</span> : children}
+    </th>
+  );
+}
+
+export function Tr({ children, className = "" }: { children: ReactNode; className?: string }) {
+  return <tr className={`border-b border-slate-100 last:border-0 ${className}`}>{children}</tr>;
+}
+
+/**
+ * A body cell. `wrap` opts a column out of the nowrap default — for free text
+ * that would otherwise stretch the table far past the viewport.
+ */
+export function Td({
+  children,
+  align = "left",
+  wrap = false,
+  className = "",
+  colSpan,
+}: {
+  children: ReactNode;
+  align?: CellAlign;
+  wrap?: boolean;
+  className?: string;
+  colSpan?: number;
+}) {
+  return (
+    <td
+      colSpan={colSpan}
+      className={`px-4 py-3 align-middle ${wrap ? "" : "whitespace-nowrap"} ${alignCls[align]} ${className}`}
+    >
+      {children}
+    </td>
+  );
+}
+
+/** Row actions: wraps instead of overflowing once a row carries several. */
+export function RowActions({
+  children,
+  align = "right",
+}: {
+  children: ReactNode;
+  align?: "left" | "right";
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-x-3 gap-y-1.5 ${
+        align === "right" ? "justify-end" : ""
+      }`}
+    >
+      {children}
+    </div>
+  );
+}
+
+export const linkAction = "text-xs text-navy underline-offset-2 hover:underline";
+export const linkDanger = "text-xs text-red-600 underline-offset-2 hover:underline";
 
 export function ErrorText({ children }: { children: ReactNode }) {
   if (!children) return null;

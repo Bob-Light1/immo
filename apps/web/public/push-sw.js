@@ -22,12 +22,31 @@ self.addEventListener("push", (event) => {
   const options = {
     body: data.body || "",
     icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
+    // Android renders the badge as a silhouette in the status bar: it keeps the
+    // alpha channel and discards the colours. The full app icon came out as an
+    // opaque square, so this is the crown alone, white on transparent.
+    badge: "/icons/badge-96.png",
     tag: data.tag,
     data: { url: data.url || "/" },
   };
-  event.waitUntil(self.registration.showNotification(title, options));
+  event.waitUntil(
+    Promise.all([self.registration.showNotification(title, options), flagAppBadge()]),
+  );
 });
+
+/**
+ * Marks the installed icon as having something unread. The worker has no way to
+ * know the account's real unread count — the push payload carries one message,
+ * not the inbox — so it sets the flag form of the badge (a plain dot, no
+ * number). The exact count is written by the app itself as soon as a window is
+ * open; until then a dot is the honest signal.
+ */
+function flagAppBadge() {
+  if (!self.navigator || typeof self.navigator.setAppBadge !== "function") {
+    return Promise.resolve();
+  }
+  return self.navigator.setAppBadge().catch(() => {});
+}
 
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();

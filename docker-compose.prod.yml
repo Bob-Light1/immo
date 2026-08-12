@@ -121,6 +121,11 @@ services:
     container_name: campusgest-web
     restart: unless-stopped
     env_file: .env
+    environment:
+      # Month keys (YYYY-MM) are derived from local clock components, and a
+      # container's clock is UTC unless told otherwise — the host's time zone
+      # does not propagate. Overridable from .env.
+      TZ: ${TZ:-Africa/Douala}
     depends_on:
       postgres:
         condition: service_healthy
@@ -146,6 +151,10 @@ services:
     container_name: campusgest-workers
     restart: unless-stopped
     env_file: .env
+    environment:
+      # The BullMQ cron patterns (07:00, 08:00, 06:00 on the 1st) are read in
+      # the container's zone — UTC by default, hence the explicit setting.
+      TZ: ${TZ:-Africa/Douala}
     depends_on:
       postgres:
         condition: service_healthy

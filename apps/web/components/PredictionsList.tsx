@@ -6,7 +6,23 @@ import { useApiError } from "@/lib/client/api-error";
 import { apiFetch, getSession } from "@/lib/client/session";
 import { formatXAF, formatMois } from "@/lib/format";
 import { useConfirmAction } from "@/components/Toast";
-import { Card, PageTitle, Field, Spinner, EmptyState, Pager, ErrorText, inputCls, btnPrimary } from "@/components/ui";
+import {
+  Card,
+  PageTitle,
+  Field,
+  Spinner,
+  EmptyState,
+  Pager,
+  ErrorText,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  linkAction,
+  inputCls,
+  btnPrimary,
+} from "@/components/ui";
 
 const PAGE_SIZE = 20;
 
@@ -26,6 +42,7 @@ const empty = { mois: "", type: "", indiceDiff: "", prixUnit: "", tva: "", locCo
 /** Charge estimates per type: creation (Admin) + estimated/actual comparison (§5.11). */
 export function PredictionsList({ admin }: { admin: boolean }) {
   const t = useTranslations("predictions");
+  const tCommon = useTranslations("common");
   const apiError = useApiError();
   const confirmAction = useConfirmAction();
   const locale = useLocale();
@@ -160,80 +177,89 @@ export function PredictionsList({ admin }: { admin: boolean }) {
       ) : items.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("type")}</th>
-                <th className="px-4 py-3">{t("mois")}</th>
-                <th className="px-4 py-3 text-right">{t("estimeTotal")}</th>
-                <th className="px-4 py-3 text-right">
-                  {estLocataire ? t("maPart") : t("partLocataire")}
-                </th>
-                <th className="px-4 py-3 text-right">{t("reel")}</th>
-                <th className="px-4 py-3 text-right">{t("ecart")}</th>
-                {admin && <th className="px-4 py-3" />}
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((p) => {
-                const ecart = p.montantReel != null ? p.montantReel - p.montantCalcule : null;
-                return (
-                  <tr key={p.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3 font-medium">{p.type}</td>
-                    <td className="px-4 py-3">{formatMois(p.mois, locale)}</td>
-                    <td className="px-4 py-3 text-right font-mono">{formatXAF(p.montantCalcule, locale)}</td>
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
-                      {p.partEstimee != null ? formatXAF(p.partEstimee, locale) : "—"}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {p.montantReel != null ? (
-                        <>
-                          {formatXAF(p.montantReel, locale)}
-                          {p.partReelle != null && (
-                            <span className="block text-xs font-normal text-slate-500">
-                              {estLocataire ? t("maPart") : t("partLocataire")} :{" "}
-                              {formatXAF(p.partReelle, locale)}
-                            </span>
-                          )}
-                        </>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono">
-                      {ecart != null ? (
-                        <span className={ecart > 0 ? "text-red-600" : ecart < 0 ? "text-emerald-600" : "text-slate-500"}>
-                          {ecart > 0 ? "+" : ""}
-                          {formatXAF(ecart, locale)}
-                        </span>
-                      ) : (
-                        "—"
-                      )}
-                    </td>
-                    {admin && (
-                      <td className="px-4 py-3">
-                        <div className="flex items-center gap-1">
-                          <input
-                            type="number"
-                            min={0}
-                            value={reels[p.id] ?? ""}
-                            onChange={(e) => setReels((r) => ({ ...r, [p.id]: e.target.value }))}
-                            placeholder={t("reel")}
-                            className={`${inputCls} w-28`}
-                          />
-                          <button onClick={() => saveReel(p.id)} className="text-xs text-navy hover:underline">
-                            {t("saveReel")}
-                          </button>
-                        </div>
-                      </td>
+        <TableCard minWidth="min-w-[52rem]">
+          <Thead>
+            <Th>{t("type")}</Th>
+            <Th>{t("mois")}</Th>
+            <Th align="right">{t("estimeTotal")}</Th>
+            <Th align="right">{estLocataire ? t("maPart") : t("partLocataire")}</Th>
+            <Th align="right">{t("reel")}</Th>
+            <Th align="right">{t("ecart")}</Th>
+            {admin && (
+              <Th align="right" srOnly>
+                {tCommon("actions")}
+              </Th>
+            )}
+          </Thead>
+          <tbody>
+            {items.map((p) => {
+              const ecart = p.montantReel != null ? p.montantReel - p.montantCalcule : null;
+              return (
+                <Tr key={p.id}>
+                  <Td className="font-medium">{p.type}</Td>
+                  <Td>{formatMois(p.mois, locale)}</Td>
+                  <Td align="right" className="font-mono">
+                    {formatXAF(p.montantCalcule, locale)}
+                  </Td>
+                  <Td align="right" className="font-mono font-semibold text-navy">
+                    {p.partEstimee != null ? formatXAF(p.partEstimee, locale) : "—"}
+                  </Td>
+                  <Td align="right" className="font-mono">
+                    {p.montantReel != null ? (
+                      <>
+                        {formatXAF(p.montantReel, locale)}
+                        {p.partReelle != null && (
+                          <span className="block text-xs font-normal text-slate-500">
+                            {estLocataire ? t("maPart") : t("partLocataire")} :{" "}
+                            {formatXAF(p.partReelle, locale)}
+                          </span>
+                        )}
+                      </>
+                    ) : (
+                      "—"
                     )}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </Card>
+                  </Td>
+                  <Td align="right" className="font-mono">
+                    {ecart != null ? (
+                      <span
+                        className={
+                          ecart > 0
+                            ? "text-red-600"
+                            : ecart < 0
+                              ? "text-emerald-600"
+                              : "text-slate-500"
+                        }
+                      >
+                        {ecart > 0 ? "+" : ""}
+                        {formatXAF(ecart, locale)}
+                      </span>
+                    ) : (
+                      "—"
+                    )}
+                  </Td>
+                  {admin && (
+                    <Td align="right">
+                      <div className="flex items-center justify-end gap-2">
+                        <input
+                          type="number"
+                          min={0}
+                          value={reels[p.id] ?? ""}
+                          onChange={(e) => setReels((r) => ({ ...r, [p.id]: e.target.value }))}
+                          placeholder={t("reel")}
+                          aria-label={t("reel")}
+                          className={`${inputCls} w-28`}
+                        />
+                        <button onClick={() => saveReel(p.id)} className={linkAction}>
+                          {t("saveReel")}
+                        </button>
+                      </div>
+                    </Td>
+                  )}
+                </Tr>
+              );
+            })}
+          </tbody>
+        </TableCard>
       )}
       <Pager page={page} total={total} limit={PAGE_SIZE} onChange={setPage} />
     </>

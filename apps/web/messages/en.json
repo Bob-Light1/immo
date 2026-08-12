@@ -47,7 +47,17 @@
     },
     "openMenu": "Open menu",
     "closeMenu": "Close menu",
-    "confirmLogout": "Log out? Anything being typed will be lost."
+    "confirmLogout": "Log out? Anything being typed will be lost.",
+    "tab": {
+      "dashboard": "Dashboard",
+      "factures": "Bills",
+      "mesFactures": "My bills",
+      "users": "Users",
+      "infos": "News",
+      "maintenance": "Upkeep",
+      "profil": "Profile",
+      "plus": "More"
+    }
   },
   "statut": {
     "en_attente": "Pending",
@@ -135,10 +145,10 @@
       "hint": "The bill is created as a draft: all active tenants are attached with a coefficient of 1, adjustable before publishing.",
       "failed": "Failed to create the bill.",
       "submit": "Create draft",
-      "montantAnnuelLocataire": "Annual amount per tenant (XAF)",
+      "loyerReference": "Reference annual rent (XAF)",
       "moisLoyer": "Starting month (year covered)",
       "locataires": "Tenants concerned",
-      "hintLoyer": "Rent: no split. The amount entered is owed by each active tenant for the year. After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance.",
+      "hintLoyer": "Rent: no split. Every tenant starts on the reference rent entered here; each one's own annual rent is then adjusted on the draft (rooms priced differently, yearly increase). After every recorded payment, the tenant, the Admin and the Landlord see the amount paid this month, the yearly total and the remaining balance.",
       "compteur": "Meter (optional)",
       "confirmCreate": "Create this invoice? It starts as a draft: amounts and deadline stay correctable until it is published.",
       "created": "Invoice created as a draft."
@@ -165,7 +175,13 @@
       "payeCeMois": "Paid this month",
       "payeAnnee": "Paid in {annee}",
       "restantAnnee": "Remaining {annee}",
-      "loyerNoCoeff": "Rent: identical annual amount per tenant, no coefficient.",
+      "loyerParLocataire": "Rent: each tenant has their own annual amount (their room's tariff), editable while the invoice is a draft.",
+      "loyerVariable": "Varies",
+      "loyerDe": "Annual rent of {name}",
+      "saveLoyers": "Save rents",
+      "confirmLoyers": "Save these rents? Each tenant will owe the annual amount entered on their line.",
+      "loyersSaved": "Rents saved.",
+      "loyersFailed": "Could not save the rents.",
       "facturePdf": "Bill PDF",
       "edit": "Edit draft",
       "editTitle": "Correct the draft",
@@ -177,7 +193,8 @@
       "delete": "Delete draft",
       "confirmDelete": "Permanently delete this draft? This cannot be undone.",
       "deleteFailed": "Could not delete the draft.",
-      "montantAnnuelLocataire": "Annual amount per tenant (XAF)",
+      "loyerTous": "Annual rent applied to everyone (XAF)",
+      "loyerTousPlaceholder": "Unchanged",
       "compteur": "Meter",
       "confirmCoeffs": "Save these coefficients? The split of the total between tenants will be recomputed.",
       "coeffsSaved": "Coefficients saved.",
@@ -260,7 +277,8 @@
     "confirmEncaisser": "Take {montant}? A payment is never edited: afterwards it can only be cancelled, with a reason.",
     "encaisse": "Payment recorded.",
     "annulationDone": "Payment cancelled; the balance has been recomputed.",
-    "confirmPrintRecu": "Produce the receipt for {montant}?"
+    "confirmPrintRecu": "Produce the receipt for {montant}?",
+    "historique": "Recorded payments"
   },
   "pagination": {
     "prev": "Previous",
@@ -322,6 +340,7 @@
   },
   "notifications": {
     "title": "Notifications",
+    "unread": "Notifications, {count, plural, one {# unread} other {# unread}}",
     "markAll": "Mark all read",
     "empty": "No notifications.",
     "pushOn": "Enable push notifications",
@@ -661,7 +680,8 @@
     "preparing": "Preparing the document…",
     "downloadFailed": "The document could not be produced.",
     "print": "Print",
-    "imageUnavailable": "Image unavailable"
+    "imageUnavailable": "Image unavailable",
+    "actions": "Actions"
   },
   "errors": {
     "auth": {
@@ -682,6 +702,7 @@
       "ligneFacture": "Bill line not found.",
       "paiement": "Payment not found.",
       "compteur": "Meter not found.",
+      "chambre": "Room not found.",
       "suggestion": "Suggestion not found.",
       "sondage": "Poll not found.",
       "signal": "Signal not found.",
@@ -711,9 +732,11 @@
       "locatairesNonRattaches": "{count, plural, one {# tenant is not attached} other {# tenants are not attached}} to this bill.",
       "typeMoisOccupe": "A “{type}” bill already exists for {mois}.",
       "loyerAnneeOccupee": "A rent bill already covers {annee} ({mois}). Rent is a flat annual amount: correct the existing bill rather than creating a second one.",
-      "loyerMontantAnnuelRequis": "Rent bill: enter the annual amount owed by each tenant.",
       "loyerMontantTotalInterdit": "Rent bill: the flat amount is corrected through the annual amount per tenant, not through a total.",
-      "loyerSansCoefficient": "Rent bill: identical annual amount per tenant, with no split and no coefficient.",
+      "loyerSansCoefficient": "Rent bill: each tenant has their own annual amount, with no split and no coefficient.",
+      "loyersReserveLoyer": "Per-tenant rents only apply to rent invoices; the others are split from a total amount.",
+      "loyerNouveauLocataire": "Tenant added to a rent invoice whose amounts differ: state the annual rent owed for their room.",
+      "loyerTarifManquant": "{count, plural, one {# tenant occupies a room with no tariff} other {# tenants occupy rooms with no tariff}}: set the annual rent on their room, or a per-tenant amount for this bill.",
       "loyerEcheanceTropTot": "Rent bill: the flat amount covers a year, so the deadline must be at least {mois} months after the start of the period.",
       "loyerEntree": "Switching to rent: enter the annual amount owed by each tenant.",
       "loyerSortie": "Leaving the rent regime: enter the total amount to split.",
@@ -731,6 +754,13 @@
     "compteur": {
       "libelleDuplique": "A meter “{libelle}” already exists for this type.",
       "utilise": "Meter in use: {factures, plural, one {# bill} other {# bills}} and {chambres, plural, one {# room} other {# rooms}} are attached to it."
+    },
+    "chambre": {
+      "numeroDuplique": "A room already carries this number in this block.",
+      "occupee": "Room occupied by {count, plural, one {# tenant} other {# tenants}}: move them out before retiring it.",
+      "inactive": "This room has been retired from service.",
+      "capaciteAtteinte": "Capacity reached: the room already holds as many tenants as it has beds.",
+      "roleNonLocataire": "Only a tenant occupies a room."
     },
     "sondage": {
       "cloture": "This poll is closed.",
@@ -776,6 +806,7 @@
       "heureFormat": "Time expected in HH:mm format.",
       "aucuneModification": "No change submitted.",
       "montantXor": "Enter either the total amount or the per-tenant amount.",
+      "montantRegime": "Rent: the amount comes from the rooms' tariffs (a per-tenant amount is only a fallback). Every other bill is split from a total amount.",
       "dateLimiteHorsPeriode": "The deadline must fall between the first day of the billed month and {mois} months later.",
       "dateLimiteLoyer": "Rent bill: the flat amount covers a year, so the deadline must be at least {mois} months after the start of the period (31 December, for instance)."
     },

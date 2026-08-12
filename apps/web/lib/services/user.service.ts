@@ -1,8 +1,11 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 import { ServiceError } from "@/lib/api";
+import { assertChambreDisponible } from "@/lib/services/chambre.service";
 import {
   repartirFacture,
+  baseLoyer,
+  isLoyer,
   type CreateUserInput,
   type ChangeCredentialsInput,
 } from "@campusgest/shared";
@@ -25,6 +28,19 @@ function genTempPassword(len = 8): string {
 export async function createUser(input: CreateUserInput) {
   const existing = await prisma.user.findUnique({ where: { username: input.username } });
   if (existing) throw new ServiceError(409, "Nom d'utilisateur déjà pris.", "user.usernamePris");
+
+  // Housing the tenant right away is the ordinary case — the room is what their
+  // rent is read from — so the room's own rules apply here too.
+  if (input.roomId) {
+    if (input.role !== "locataire") {
+      throw new ServiceError(
+        400,
+        "Seul un locataire occupe une chambre.",
+        "chambre.roleNonLocataire",
+      );
+    }
+    await assertChambreDisponible(input.roomId);
+  }
 
   const tempPassword = genTempPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
@@ -80,6 +96,10 @@ export async function listUsers(
         // Exposed so the Admin can correct an account whose owner cannot read
         // the interface well enough to find the switcher themselves.
         language: true,
+        // The room a tenant occupies, with the tariff it carries: the rent
+        // invoices are raised from it, so it is assigned from this list.
+        roomId: true,
+        room: { select: { id: true, bloc: true, numero: true, loyerAnnuel: true } },
         isActive: true,
         firstLogin: true,
         createdAt: true,
@@ -124,6 +144,25 @@ export async function deactivateUser(id: string) {
       // A draft left with no recipient can neither be published nor
       // edited, so it is deleted (cascading to the line).
       await prisma.facture.delete({ where: { id: facture.id } });
+      continue;
+    }
+
+    // Rent is not a total to divide: each line carries the tariff of the room
+    // its tenant occupies. Redistributing it would raise everyone else's rent
+    // because one resident left — only the invoice total goes down.
+    if (isLoyer(facture.type)) {
+      const montants = restantes.map((l) => Number(l.montantDu));
+      await prisma.$transaction([
+        prisma.factureLocataire.delete({ where: { id: ligne.id } }),
+        prisma.facture.update({
+          where: { id: facture.id },
+          data: {
+            montantTotal: BigInt(montants.reduce((s, m) => s + m, 0)),
+            sommeCoeff: restantes.length,
+            baseUnitaire: BigInt(baseLoyer(montants)),
+          },
+        }),
+      ]);
       continue;
     }
 

@@ -7,6 +7,7 @@ import { useLocale, useTranslations } from "next-intl";
 import { useAuth } from "@/lib/client/useAuth";
 import { logoutSession, type SessionUser } from "@/lib/client/session";
 import { disablePush } from "@/lib/client/push";
+import { clearUnreadBadge } from "@/lib/client/badge";
 import { useConfirm } from "./Toast";
 import { Spinner } from "./ui";
 import { Logo } from "./Brand";
@@ -14,67 +15,9 @@ import { NotificationBell } from "./NotificationBell";
 import { DistressButton } from "./DistressButton";
 import { ThemeToggle } from "./ThemeToggle";
 import { LanguageSwitcher } from "./LanguageSwitcher";
+import { BottomNav } from "./BottomNav";
+import { NAV, GROUPS, isActive } from "@/lib/client/nav";
 
-const NAV: Record<SessionUser["role"], { href: string; key: string }[]> = {
-  admin: [
-    { href: "/admin", key: "dashboard" },
-    { href: "/admin/factures", key: "factures" },
-    { href: "/admin/compteurs", key: "compteurs" },
-    { href: "/admin/users", key: "users" },
-    { href: "/admin/infos", key: "infos" },
-    { href: "/admin/annonces", key: "annonces" },
-    { href: "/admin/documents", key: "documents" },
-    { href: "/admin/suggestions", key: "suggestions" },
-    { href: "/admin/evenements", key: "evenements" },
-    { href: "/admin/sondages", key: "sondages" },
-    { href: "/admin/projets", key: "projets" },
-    { href: "/admin/predictions", key: "predictions" },
-    { href: "/admin/annuaire", key: "annuaire" },
-    { href: "/admin/maintenance", key: "maintenance" },
-    { href: "/admin/detresse", key: "detresse" },
-    { href: "/admin/profil", key: "profil" },
-  ],
-  bailleur: [
-    { href: "/bailleur", key: "dashboard" },
-    { href: "/bailleur/factures", key: "factures" },
-    { href: "/bailleur/infos", key: "infos" },
-    { href: "/bailleur/annonces", key: "annonces" },
-    { href: "/bailleur/documents", key: "documents" },
-    { href: "/bailleur/suggestions", key: "suggestions" },
-    { href: "/bailleur/evenements", key: "evenements" },
-    { href: "/bailleur/sondages", key: "sondages" },
-    { href: "/bailleur/projets", key: "projets" },
-    { href: "/bailleur/predictions", key: "predictions" },
-    { href: "/bailleur/annuaire", key: "annuaire" },
-    { href: "/bailleur/maintenance", key: "maintenance" },
-    { href: "/bailleur/profil", key: "profil" },
-  ],
-  locataire: [
-    { href: "/locataire", key: "mesFactures" },
-    { href: "/locataire/infos", key: "infos" },
-    { href: "/locataire/documents", key: "documents" },
-    { href: "/locataire/suggestions", key: "suggestions" },
-    { href: "/locataire/evenements", key: "evenements" },
-    { href: "/locataire/sondages", key: "sondages" },
-    { href: "/locataire/projets", key: "projets" },
-    { href: "/locataire/predictions", key: "predictions" },
-    { href: "/locataire/annuaire", key: "annuaire" },
-    { href: "/locataire/maintenance", key: "maintenance" },
-    { href: "/locataire/profil", key: "profil" },
-  ],
-};
-
-// Grouping by section (fixed order). A section only shows when the role owns
-// at least one of its links — the bar stays readable despite ~15 entries.
-const GROUPS: { label: string; keys: string[] }[] = [
-  { label: "main", keys: ["dashboard", "mesFactures", "factures", "compteurs", "users"] },
-  {
-    label: "communaute",
-    keys: ["infos", "annonces", "documents", "suggestions", "evenements", "sondages", "projets", "predictions", "annuaire"],
-  },
-  { label: "gestion", keys: ["maintenance", "detresse"] },
-  { label: "compte", keys: ["profil"] },
-];
 
 function SideNav({
   role,
@@ -102,12 +45,11 @@ function SideNav({
             </p>
             {links.map((key) => {
               const href = byKey.get(key)!;
-              const full = `/${locale}${href}`;
-              const active = pathname === full || (href !== `/${role}` && pathname.startsWith(full));
+              const active = isActive(pathname, locale, role, href);
               return (
                 <Link
                   key={href}
-                  href={full}
+                  href={`/${locale}${href}`}
                   onClick={onNavigate}
                   aria-current={active ? "page" : undefined}
                   className={`block rounded-lg px-3 py-2 text-sm font-medium transition ${
@@ -155,38 +97,41 @@ export function PortalShell({
     // subscription stays attached to the outgoing account and the next account
     // on this phone would receive its notifications.
     await disablePush().catch(() => {});
+    // Likewise for the icon: the count belongs to the outgoing account.
+    clearUnreadBadge();
     await logoutSession();
     router.replace(`/${locale}/login`);
   }
 
   return (
-    <div className="min-h-screen">
-      {/* Top bar */}
-      <header className="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
+    // `cg-screen`, not `min-h-screen`: on iOS the latter leaves every page with
+    // ~60px of phantom scroll, which alone would make the tab bar hide itself.
+    <div className="cg-screen">
+      {/*
+       * Top bar. Seven controls do not fit the ~336px a 360px phone leaves, so
+       * the bar keeps only what has to be reachable in one tap from any screen —
+       * brand, distress signal (§5.8), notifications, language — and hands the
+       * rest (theme, identity, sign-out) to the drawer footer below `lg`.
+       * Navigation itself moved to the tab bar at the bottom of the screen.
+       */}
+      <header className="cg-safe-top cg-safe-x sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur">
         <div className="flex h-14 items-center gap-2 px-3 sm:px-4">
-          <button
-            onClick={() => setOpen(true)}
-            aria-label={t("openMenu")}
-            className="rounded-lg p-2 text-slate-600 transition hover:bg-slate-100 lg:hidden"
-          >
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
-              <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
-            </svg>
-          </button>
-          <Link href={`/${locale}/${role}`} aria-label="KingCity">
+          <Link href={`/${locale}/${role}`} aria-label="KingCity" className="min-w-0 shrink">
             <Logo />
           </Link>
-          <div className="ml-auto flex items-center gap-1 sm:gap-2">
-            <LanguageSwitcher />
-            <ThemeToggle />
+          <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
             <DistressButton />
             <NotificationBell />
-            <span className="hidden text-sm text-slate-600 md:inline">
+            <LanguageSwitcher />
+            <div className="hidden sm:block">
+              <ThemeToggle />
+            </div>
+            <span className="hidden text-sm text-slate-600 xl:inline">
               {user.fullName} · <span className="font-medium">{t(`role.${user.role}`)}</span>
             </span>
             <button
               onClick={logout}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+              className="hidden rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 lg:inline-flex"
             >
               {t("logout")}
             </button>
@@ -203,25 +148,55 @@ export function PortalShell({
       {open && (
         <div className="fixed inset-0 z-40 lg:hidden">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <aside className="cg-drawer absolute bottom-0 left-0 top-0 w-72 max-w-[85%] overflow-y-auto bg-white shadow-xl">
-            <div className="flex h-14 items-center justify-between border-b border-slate-200 px-4">
+          <aside className="cg-drawer absolute bottom-0 left-0 top-0 flex w-72 max-w-[85%] flex-col bg-white shadow-xl">
+            <div className="cg-safe-top flex h-14 shrink-0 items-center justify-between border-b border-slate-200 px-4">
               <Logo size="sm" />
               <button
                 onClick={() => setOpen(false)}
                 aria-label={t("closeMenu")}
-                className="rounded-lg p-2 text-slate-500 transition hover:bg-slate-100"
+                className="-mr-1 rounded-lg p-2.5 text-slate-500 transition hover:bg-slate-100"
               >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-5 w-5">
                   <path d="M6 6l12 12M18 6 6 18" strokeLinecap="round" />
                 </svg>
               </button>
             </div>
-            <SideNav role={role} locale={locale} pathname={pathname} onNavigate={() => setOpen(false)} />
+            {/* Only the links scroll: the account block stays reachable however
+                long the role's menu is. */}
+            <div className="flex-1 overflow-y-auto overscroll-contain">
+              <SideNav role={role} locale={locale} pathname={pathname} onNavigate={() => setOpen(false)} />
+            </div>
+            <div className="cg-safe-bottom shrink-0 border-t border-slate-200 p-3">
+              <p className="truncate px-1 text-sm font-medium text-slate-700">{user.fullName}</p>
+              <p className="px-1 pb-2 text-xs text-slate-500">{t(`role.${user.role}`)}</p>
+              <div className="flex items-center gap-2">
+                {/* From `sm` the theme toggle is back in the top bar. */}
+                <div className="sm:hidden">
+                  <ThemeToggle />
+                </div>
+                <button
+                  onClick={logout}
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100"
+                >
+                  {t("logout")}
+                </button>
+              </div>
+            </div>
           </aside>
         </div>
       )}
 
-      <main className="lg:pl-64">
+      <BottomNav
+        role={role}
+        locale={locale}
+        pathname={pathname}
+        menuOpen={open}
+        onOpenMenu={() => setOpen(true)}
+      />
+
+      {/* The tab bar is fixed, so the last rows of a long page would sit under
+          it without this clearance (its height plus the home indicator). */}
+      <main className="pb-[calc(4.25rem+env(safe-area-inset-bottom))] lg:pb-0 lg:pl-64">
         <div className="mx-auto max-w-5xl px-4 py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
     </div>

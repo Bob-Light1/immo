@@ -13,7 +13,20 @@ import { formatXAF, formatDate, formatMois } from "@/lib/format";
 import type { LigneStatut, PaiementMode } from "@campusgest/shared";
 import { suiviLoyer } from "@campusgest/shared";
 import { useDownload } from "@/components/Toast";
-import { Card, StatutBadge, Spinner, EmptyState, Pager } from "@/components/ui";
+import {
+  Card,
+  StatutBadge,
+  Spinner,
+  EmptyState,
+  Pager,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  RowActions,
+  linkAction,
+} from "@/components/ui";
 
 interface MaLigne {
   id: string;
@@ -143,61 +156,65 @@ export default function LocataireHomePage() {
       {lignes.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{tF("type")}</th>
-                <th className="px-4 py-3">{tF("mois")}</th>
-                <th className="px-4 py-3 text-right">{t("montantDu")}</th>
-                <th className="px-4 py-3 text-right">{t("montantPaye")}</th>
-                <th className="px-4 py-3">{tF("dateLimite")}</th>
-                <th className="px-4 py-3">{tF("statut")}</th>
-                <th className="px-4 py-3">{t("facture")}</th>
-                <th className="px-4 py-3">{t("recus")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {lignes.map((l) => (
-                <tr key={l.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium">{l.facture.type}</td>
-                  <td className="px-4 py-3">{formatMois(l.facture.mois, locale)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
-                  <td className="px-4 py-3">{formatDate(l.facture.dateLimite, locale)}</td>
-                  <td className="px-4 py-3">
-                    <StatutBadge statut={l.statut} />
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="text-left text-xs text-navy underline-offset-2 hover:underline"
-                      title={t("documentFr")}
-                      onClick={() =>
-                        print(() => downloadFactureLigne(l.id, `${l.facture.type}-${l.facture.mois}`))
-                      }
-                    >
-                      {t("facturePdf")}
-                    </button>
-                  </td>
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col gap-1">
+        <TableCard minWidth="min-w-[56rem]">
+          <Thead>
+            <Th>{tF("type")}</Th>
+            <Th>{tF("mois")}</Th>
+            <Th align="right">{t("montantDu")}</Th>
+            <Th align="right">{t("montantPaye")}</Th>
+            <Th>{tF("dateLimite")}</Th>
+            <Th>{tF("statut")}</Th>
+            <Th>{t("facture")}</Th>
+            <Th>{t("recus")}</Th>
+          </Thead>
+          <tbody>
+            {lignes.map((l) => (
+              <Tr key={l.id}>
+                <Td className="font-medium">{l.facture.type}</Td>
+                <Td>{formatMois(l.facture.mois, locale)}</Td>
+                <Td align="right" className="font-mono">
+                  {formatXAF(l.montantDu, locale)}
+                </Td>
+                <Td align="right" className="font-mono">
+                  {formatXAF(l.montantPaye, locale)}
+                </Td>
+                <Td>{formatDate(l.facture.dateLimite, locale)}</Td>
+                <Td>
+                  <StatutBadge statut={l.statut} />
+                </Td>
+                <Td>
+                  <button
+                    className={linkAction}
+                    title={t("documentFr")}
+                    onClick={() =>
+                      print(() => downloadFactureLigne(l.id, `${l.facture.type}-${l.facture.mois}`))
+                    }
+                  >
+                    {t("facturePdf")}
+                  </button>
+                </Td>
+                <Td>
+                  {l.paiements.length === 0 ? (
+                    <span className="text-slate-400">—</span>
+                  ) : (
+                    <RowActions align="left">
                       {l.paiements.map((p) => (
                         <button
                           key={p.id}
-                          className="text-left text-xs text-navy underline-offset-2 hover:underline"
+                          className={linkAction}
                           title={t("documentFr")}
                           onClick={() => print(() => downloadRecu(p.id))}
                         >
                           {tP("recu", { montant: formatXAF(p.montant, locale) })}
                         </button>
                       ))}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                    </RowActions>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </TableCard>
       )}
       <Pager page={page} total={data.total} limit={PAGE_SIZE} onChange={setPage} />
     </>

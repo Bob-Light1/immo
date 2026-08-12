@@ -47,7 +47,17 @@
     },
     "openMenu": "Ouvrir le menu",
     "closeMenu": "Fermer le menu",
-    "confirmLogout": "Vous déconnecter ? Toute saisie en cours sera perdue."
+    "confirmLogout": "Vous déconnecter ? Toute saisie en cours sera perdue.",
+    "tab": {
+      "dashboard": "Tableau",
+      "factures": "Factures",
+      "mesFactures": "Factures",
+      "users": "Utilisateurs",
+      "infos": "Infos",
+      "maintenance": "Maintenance",
+      "profil": "Profil",
+      "plus": "Plus"
+    }
   },
   "statut": {
     "en_attente": "En attente",
@@ -135,10 +145,10 @@
       "hint": "La facture est créée en brouillon : tous les locataires actifs sont rattachés avec un coefficient 1, ajustable avant publication.",
       "failed": "Échec de la création de la facture.",
       "submit": "Créer le brouillon",
-      "montantAnnuelLocataire": "Montant annuel par locataire (XAF)",
+      "loyerReference": "Loyer annuel de référence (XAF)",
       "moisLoyer": "Mois de départ (année couverte)",
       "locataires": "Locataires concernés",
-      "hintLoyer": "Loyer : aucune division. Le montant saisi est dû par chaque locataire actif pour l'année. À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant.",
+      "hintLoyer": "Loyer : aucune division. Chaque locataire démarre au loyer de référence saisi ici ; ajustez ensuite, dans le brouillon, le loyer annuel propre à chacun (chambres de tarifs différents, revalorisation). À chaque versement enregistré, le locataire, l'Admin et le Bailleur voient le payé du mois, le cumul de l'année et le restant.",
       "compteur": "Compteur (facultatif)",
       "confirmCreate": "Créer cette facture ? Elle sera créée en brouillon : montants et échéance restent corrigeables jusqu'à sa publication.",
       "created": "Facture créée en brouillon."
@@ -165,7 +175,13 @@
       "payeCeMois": "Payé ce mois",
       "payeAnnee": "Payé en {annee}",
       "restantAnnee": "Restant {annee}",
-      "loyerNoCoeff": "Loyer : forfait annuel identique par locataire, sans coefficient.",
+      "loyerParLocataire": "Loyer : chaque locataire a son propre montant annuel (tarif de sa chambre), modifiable tant que la facture est en brouillon.",
+      "loyerVariable": "Variable",
+      "loyerDe": "Loyer annuel de {name}",
+      "saveLoyers": "Enregistrer les loyers",
+      "confirmLoyers": "Enregistrer ces loyers ? Chaque locataire devra le montant annuel saisi sur sa ligne.",
+      "loyersSaved": "Loyers enregistrés.",
+      "loyersFailed": "Échec de l'enregistrement des loyers.",
       "facturePdf": "Facture PDF",
       "edit": "Modifier le brouillon",
       "editTitle": "Corriger le brouillon",
@@ -177,7 +193,8 @@
       "delete": "Supprimer le brouillon",
       "confirmDelete": "Supprimer définitivement ce brouillon ? Cette action est irréversible.",
       "deleteFailed": "Échec de la suppression.",
-      "montantAnnuelLocataire": "Montant annuel par locataire (XAF)",
+      "loyerTous": "Loyer annuel appliqué à tous (XAF)",
+      "loyerTousPlaceholder": "Inchangé",
       "compteur": "Compteur",
       "confirmCoeffs": "Enregistrer ces coefficients ? La répartition du montant entre les locataires sera recalculée.",
       "coeffsSaved": "Coefficients enregistrés.",
@@ -260,7 +277,8 @@
     "confirmEncaisser": "Encaisser {montant} ? Un paiement ne se modifie pas : il ne peut ensuite qu'être annulé, avec un motif.",
     "encaisse": "Paiement enregistré.",
     "annulationDone": "Paiement annulé ; le solde a été recalculé.",
-    "confirmPrintRecu": "Éditer le reçu de {montant} ?"
+    "confirmPrintRecu": "Éditer le reçu de {montant} ?",
+    "historique": "Paiements enregistrés"
   },
   "pagination": {
     "prev": "Précédent",
@@ -322,6 +340,7 @@
   },
   "notifications": {
     "title": "Notifications",
+    "unread": "Notifications, {count, plural, one {# non lue} other {# non lues}}",
     "markAll": "Tout marquer lu",
     "empty": "Aucune notification.",
     "pushOn": "Activer les notifications push",
@@ -661,7 +680,8 @@
     "preparing": "Préparation du document…",
     "downloadFailed": "Le document n'a pas pu être produit.",
     "print": "Imprimer",
-    "imageUnavailable": "Image indisponible"
+    "imageUnavailable": "Image indisponible",
+    "actions": "Actions"
   },
   "errors": {
     "auth": {
@@ -682,6 +702,7 @@
       "ligneFacture": "Ligne de facture introuvable.",
       "paiement": "Paiement introuvable.",
       "compteur": "Compteur introuvable.",
+      "chambre": "Chambre introuvable.",
       "suggestion": "Suggestion introuvable.",
       "sondage": "Sondage introuvable.",
       "signal": "Signal introuvable.",
@@ -711,9 +732,11 @@
       "locatairesNonRattaches": "{count, plural, one {# locataire n'est pas rattaché} other {# locataires ne sont pas rattachés}} à cette facture.",
       "typeMoisOccupe": "Une facture « {type} » existe déjà pour {mois}.",
       "loyerAnneeOccupee": "Une facture de loyer couvre déjà l'année {annee} ({mois}). Le loyer est un forfait annuel : corrigez la facture existante plutôt que d'en créer une seconde.",
-      "loyerMontantAnnuelRequis": "Facture de loyer : renseignez le montant annuel dû par chaque locataire.",
       "loyerMontantTotalInterdit": "Facture de loyer : le forfait se corrige par le montant annuel dû par chaque locataire, pas par un montant total.",
-      "loyerSansCoefficient": "Facture de loyer : forfait annuel identique par locataire, sans division ni coefficient.",
+      "loyerSansCoefficient": "Facture de loyer : montant annuel propre à chaque locataire, sans division ni coefficient.",
+      "loyersReserveLoyer": "Les loyers par locataire sont réservés aux factures de loyer ; les autres se répartissent à partir d'un montant total.",
+      "loyerNouveauLocataire": "Locataire ajouté à une facture de loyer aux montants différenciés : indiquez le loyer annuel qui lui revient.",
+      "loyerTarifManquant": "{count, plural, one {# locataire occupe une chambre sans tarif} other {# locataires occupent une chambre sans tarif}} : renseignez le loyer annuel de leur chambre, ou un montant par locataire pour cette facture.",
       "loyerEcheanceTropTot": "Facture de loyer : le forfait couvre une année, l'échéance doit être au moins {mois} mois après le début de la période.",
       "loyerEntree": "Passage en loyer : indiquez le montant annuel dû par chaque locataire.",
       "loyerSortie": "Sortie du régime loyer : indiquez le montant total à répartir.",
@@ -731,6 +754,13 @@
     "compteur": {
       "libelleDuplique": "Un compteur « {libelle} » existe déjà pour ce type.",
       "utilise": "Compteur utilisé : {factures, plural, one {# facture} other {# factures}} et {chambres, plural, one {# chambre} other {# chambres}} y sont rattachées."
+    },
+    "chambre": {
+      "numeroDuplique": "Une chambre porte déjà ce numéro dans ce bloc.",
+      "occupee": "Chambre occupée par {count, plural, one {# locataire} other {# locataires}} : déplacez-les avant de la retirer.",
+      "inactive": "Cette chambre est retirée du service.",
+      "capaciteAtteinte": "Capacité atteinte : la chambre accueille déjà autant de locataires qu'elle a de places.",
+      "roleNonLocataire": "Seul un locataire occupe une chambre."
     },
     "sondage": {
       "cloture": "Ce sondage est clôturé.",
@@ -776,6 +806,7 @@
       "heureFormat": "Heure attendue au format HH:mm.",
       "aucuneModification": "Aucune modification fournie.",
       "montantXor": "Renseignez soit le montant total, soit le montant par locataire.",
+      "montantRegime": "Loyer : le montant vient du tarif des chambres (un montant par locataire ne sert que de repli). Toute autre facture se répartit à partir d'un montant total.",
       "dateLimiteHorsPeriode": "L'échéance doit tomber entre le premier jour du mois facturé et {mois} mois plus tard.",
       "dateLimiteLoyer": "Facture de loyer : le forfait couvre une année, l'échéance doit donc être au moins {mois} mois après le début de la période (par exemple le 31 décembre)."
     },

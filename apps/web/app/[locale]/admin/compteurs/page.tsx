@@ -13,6 +13,14 @@ import {
   Spinner,
   EmptyState,
   ErrorText,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  RowActions,
+  linkAction,
+  linkDanger,
   inputCls,
   btnPrimary,
 } from "@/components/ui";
@@ -48,6 +56,7 @@ const emptyForm = {
  */
 export default function AdminCompteursPage() {
   const t = useTranslations("compteurs");
+  const tCommon = useTranslations("common");
   const apiError = useApiError();
   const locale = useLocale();
   const toast = useToast();
@@ -223,20 +232,19 @@ export default function AdminCompteursPage() {
       ) : items.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <Card className="mt-3 overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("libelle")}</th>
-                <th className="px-4 py-3">{t("type")}</th>
-                <th className="px-4 py-3">{t("scope")}</th>
-                <th className="px-4 py-3">{t("dernierIndex")}</th>
-                <th className="px-4 py-3">{t("usage")}</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {items.map((c) => {
+        <TableCard className="mt-3" minWidth="min-w-[52rem]">
+          <Thead>
+            <Th>{t("libelle")}</Th>
+            <Th>{t("type")}</Th>
+            <Th>{t("scope")}</Th>
+            <Th>{t("dernierIndex")}</Th>
+            <Th>{t("usage")}</Th>
+            <Th align="right" srOnly>
+              {tCommon("actions")}
+            </Th>
+          </Thead>
+          <tbody>
+            {items.map((c) => {
                 const draft = drafts[c.id];
                 // Consumption the new reading would record: shown before saving,
                 // since that difference is the figure an estimate is built on.
@@ -244,22 +252,24 @@ export default function AdminCompteursPage() {
                 const delta = Number.isFinite(saisi) ? saisi - c.dernierIndex : 0;
                 const utilise = c._count.factures > 0 || c._count.chambres > 0;
                 return (
-                  <tr key={c.id} className="border-b border-slate-100 last:border-0">
-                    <td className="px-4 py-3">
+                  <Tr key={c.id}>
+                    <Td>
                       <input
                         value={draft?.libelle ?? ""}
                         onChange={(e) => patchDraft(c.id, { libelle: e.target.value })}
                         minLength={2}
                         maxLength={60}
+                        aria-label={t("libelle")}
                         className={`${inputCls} w-44`}
                       />
-                    </td>
-                    <td className="px-4 py-3">{t(`types.${c.type}`)}</td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td>{t(`types.${c.type}`)}</Td>
+                    <Td>
                       <select
                         value={draft?.scope ?? c.scope}
                         onChange={(e) => patchDraft(c.id, { scope: e.target.value as CompteurScope })}
-                        className={inputCls}
+                        aria-label={t("scope")}
+                        className={`${inputCls} w-auto`}
                       >
                         {COMPTEUR_SCOPES.map((v) => (
                           <option key={v} value={v}>
@@ -267,14 +277,15 @@ export default function AdminCompteursPage() {
                           </option>
                         ))}
                       </select>
-                    </td>
-                    <td className="px-4 py-3">
+                    </Td>
+                    <Td>
                       <input
                         type="number"
                         min={0}
                         step={1}
                         value={draft?.dernierIndex ?? ""}
                         onChange={(e) => patchDraft(c.id, { dernierIndex: e.target.value })}
+                        aria-label={t("dernierIndex")}
                         className={`${inputCls} w-32 font-mono`}
                       />
                       {delta !== 0 && (
@@ -284,38 +295,33 @@ export default function AdminCompteursPage() {
                           })}
                         </span>
                       )}
-                    </td>
-                    <td className="px-4 py-3 text-xs text-slate-500">
+                    </Td>
+                    <Td wrap className="max-w-[14rem] text-xs text-slate-500">
                       {t("usageDetail", {
                         factures: c._count.factures,
                         chambres: c._count.chambres,
                       })}
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <button
-                          onClick={() => save(c)}
-                          disabled={busy}
-                          className="text-xs text-navy underline-offset-2 hover:underline"
-                        >
+                    </Td>
+                    <Td align="right">
+                      <RowActions>
+                        <button onClick={() => save(c)} disabled={busy} className={linkAction}>
                           {t("save")}
                         </button>
                         <button
                           onClick={() => remove(c)}
                           disabled={busy || utilise}
                           title={utilise ? t("deleteBloque") : undefined}
-                          className="text-xs text-red-600 underline-offset-2 hover:underline disabled:text-slate-300 disabled:no-underline"
+                          className={`${linkDanger} disabled:text-slate-300 disabled:no-underline`}
                         >
                           {t("delete")}
                         </button>
-                      </div>
-                    </td>
-                  </tr>
+                      </RowActions>
+                    </Td>
+                  </Tr>
                 );
               })}
-            </tbody>
-          </table>
-        </Card>
+          </tbody>
+        </TableCard>
       )}
     </>
   );

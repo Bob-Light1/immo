@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { pushSupported, pushPermission, pushSubscribed, enablePush, disablePush } from "@/lib/client/push";
+import { setUnreadBadge } from "@/lib/client/badge";
 import { formatDate } from "@/lib/format";
 
 interface Notif {
@@ -18,6 +19,8 @@ interface Notif {
 /**
  * Notification bell: initial load + real-time stream (SSE).
  * The badge shows the unread count; a click opens the panel and marks as read.
+ * The same count is mirrored onto the installed app's icon, so a resident who
+ * has the PWA closed still sees that something is waiting.
  */
 export function NotificationBell() {
   const t = useTranslations("notifications");
@@ -80,6 +83,11 @@ export function NotificationBell() {
     };
   }, [locale]);
 
+  // The app icon follows the bell, including the optimistic read markers below:
+  // the badge is a summary, and a count that lags a tap behind is worse than one
+  // that is occasionally put back a second later.
+  useEffect(() => setUnreadBadge(unread), [unread]);
+
   useEffect(() => {
     function onClick(e: MouseEvent) {
       if (boxRef.current && !boxRef.current.contains(e.target as Node)) setOpen(false);
@@ -118,14 +126,23 @@ export function NotificationBell() {
       <button
         onClick={() => setOpen((o) => !o)}
         className="relative rounded-lg p-2 text-slate-600 transition hover:bg-slate-100"
-        aria-label={t("title")}
+        // The count is on the button rather than in a live region: it changes on
+        // every read marker, and announcing each one would talk over the user.
+        aria-label={unread > 0 ? t("unread", { count: unread }) : t("title")}
+        aria-expanded={open}
       >
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
           <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round" strokeLinejoin="round" />
           <path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         {unread > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
+          // The ring cuts the badge out of whatever it overlaps — the bell
+          // strokes, the top bar — so it stays legible without a drop shadow.
+          // Labelled by the button, hence hidden from assistive technology.
+          <span
+            aria-hidden
+            className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-alert px-1 text-[10px] font-bold text-white ring-2 ring-white"
+          >
             {unread > 9 ? "9+" : unread}
           </span>
         )}
@@ -150,11 +167,15 @@ export function NotificationBell() {
                   key={n.id}
                   onClick={() => !n.isRead && markRead(n.id)}
                   className={`block w-full border-b border-slate-50 px-4 py-3 text-left last:border-0 hover:bg-slate-50 ${
-                    n.isRead ? "" : "bg-brand/5"
+                    n.isRead ? "" : "bg-alert/5"
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    {!n.isRead && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-brand" />}
+                    {/* Same colour as the count on the bell: one signal for
+                        "unread", carried from the icon down to the row. */}
+                    {!n.isRead && (
+                      <span aria-hidden className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-alert" />
+                    )}
                     <div className="min-w-0">
                       <div className="truncate text-sm font-medium text-navy">{n.title}</div>
                       <div className="mt-0.5 text-xs text-slate-500">{n.body}</div>

@@ -140,6 +140,13 @@ model Chambre {
   compteurElecId String?   @map("compteur_elec_id") @db.Uuid
   compteurElec   Compteur? @relation(fields: [compteurElecId], references: [id])
   capacite       Int       @default(1)
+  /// Annual rent of the room, in XAF — the tariff its occupants are billed.
+  /// Rooms are not priced alike, and the figure is restated as rents follow
+  /// inflation, so it lives here rather than on the invoice: a rent invoice
+  /// reads it to fill each line, and the amounts it froze stay on the lines.
+  /// `0` means "not priced yet"; the invoice then asks for the amount instead
+  /// of billing a room at nothing.
+  loyerAnnuel    BigInt    @default(0) @map("loyer_annuel")
   isActive       Boolean   @default(true) @map("is_active")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
 

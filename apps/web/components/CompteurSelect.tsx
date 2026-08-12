@@ -22,10 +22,13 @@ export function CompteurSelect({
   value,
   onChange,
   className = "",
+  filterType,
 }: {
   value: string | null;
   onChange: (compteurId: string | null) => void;
   className?: string;
+  /** Restricts the list to one kind of meter — a room's is electricity only. */
+  filterType?: CompteurType;
 }) {
   const t = useTranslations("compteurs");
   const [compteurs, setCompteurs] = useState<CompteurOption[] | null>(null);
@@ -34,9 +37,9 @@ export function CompteurSelect({
     apiFetch("/api/compteurs").then(async (res) => {
       if (!res.ok) return;
       const data = (await res.json()) as { items: CompteurOption[] };
-      setCompteurs(data.items);
+      setCompteurs(filterType ? data.items.filter((c) => c.type === filterType) : data.items);
     });
-  }, []);
+  }, [filterType]);
 
   // Nothing to pick from until the Admin has declared a meter: the field would
   // be an empty dropdown, so it says where meters come from instead.

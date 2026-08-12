@@ -97,7 +97,7 @@ export default function ChangeCredentialsPage() {
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center p-4">
+    <main className="cg-screen flex items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <h1 className="mb-1 text-xl font-bold text-navy">{t("title")}</h1>
         <p className="mb-6 text-sm text-slate-500">{t("subtitle")}</p>

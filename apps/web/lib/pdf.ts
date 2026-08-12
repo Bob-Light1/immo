@@ -31,10 +31,19 @@ const WINANSI: Record<number, number> = {
   0x2014: 0x97, // —
 };
 
+/**
+ * No-break spaces that WinAnsi cannot render, folded to a plain space before
+ * encoding. `toLocaleString("fr-FR")` groups thousands with U+202F, which has
+ * no WinAnsi byte and would otherwise reach the reader as "15?000".
+ * Written as escapes so an ASCII-normalising pass over the file cannot quietly
+ * turn them into ordinary spaces and make this a no-op.
+ */
+const NBSP = /[\u202f\u2009\u00a0]/g;
+
 /** Encodes a string for the WinAnsi font (one byte per character). */
 function toLatin1(s: string): string {
   let out = "";
-  for (const ch of s) {
+  for (const ch of s.replace(NBSP, " ")) {
     const c = ch.codePointAt(0)!;
     if (WINANSI[c] !== undefined) out += String.fromCharCode(WINANSI[c]);
     else if (c >= 0x20 && c <= 0xff && !(c >= 0x80 && c <= 0x9f)) out += ch;
@@ -192,7 +201,7 @@ const MODE_LABELS: Record<string, string> = {
 const PDF_LOCALE = "fr-FR";
 
 function xaf(n: number): string {
-  return `${n.toLocaleString(PDF_LOCALE).replace(/ | /g, " ")} XAF`;
+  return `${n.toLocaleString(PDF_LOCALE)} XAF`;
 }
 
 // ─────────────────────────── Monthly summary statement ───────────────────────────
@@ -222,7 +231,7 @@ export interface RecapData {
 }
 
 function num(n: number): string {
-  return n.toLocaleString(PDF_LOCALE).replace(/ | /g, " ");
+  return n.toLocaleString(PDF_LOCALE);
 }
 
 /** Invoice summary statement (billed vs collected) — Admin / Bailleur (§6). */
@@ -377,7 +386,7 @@ export function factureLocatairePdf(d: FactureLigneData): Buffer {
         bold: true,
         cells: [
           { text: "Date", x: COLS.date },
-          { text: "Montant", x: COLS.montant },
+          { text: "Montant (XAF)", x: COLS.montant },
           { text: "Mode", x: COLS.mode },
           { text: "Référence", x: COLS.ref },
         ],

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, type FormEvent } from "react";
+import { Fragment, useCallback, useEffect, useState, type FormEvent } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch, downloadFactureLigne, downloadRecu, uploadFile } from "@/lib/client/session";
@@ -12,6 +12,14 @@ import {
   StatutBadge,
   PubBadge,
   Spinner,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  RowActions,
+  linkAction,
+  linkDanger,
   inputCls,
   btnPrimary,
   btnSecondary,
@@ -66,6 +74,9 @@ export default function AdminFactureDetailPage() {
   const router = useRouter();
   const [facture, setFacture] = useState<FactureDetail | null>(null);
   const [coeffs, setCoeffs] = useState<Record<string, string>>({});
+  // Rent regime: the editable figure is the amount itself, one per tenant —
+  // rooms are not priced alike and their tariff is restated every year.
+  const [loyers, setLoyers] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
   // Draft correction form (closed by default)
   const [editing, setEditing] = useState(false);
@@ -92,6 +103,7 @@ export default function AdminFactureDetailPage() {
     const data = (await res.json()) as FactureDetail;
     setFacture(data);
     setCoeffs(Object.fromEntries(data.lignes.map((l) => [l.locataireId, String(l.coefficient)])));
+    setLoyers(Object.fromEntries(data.lignes.map((l) => [l.locataireId, String(l.montantDu)])));
   }, [id]);
 
   useEffect(() => {
@@ -105,6 +117,9 @@ export default function AdminFactureDetailPage() {
   // tracked instead is how far the year's payments have progressed.
   const loyer = isLoyer(facture.type);
   const annee = facture.mois.slice(0, 4);
+  // Kept next to the header it mirrors: the payment sub-row spans the table,
+  // and a column added above without updating this would leave a ragged edge.
+  const colCount = 4 + (loyer ? 2 : 1) + (brouillon ? 0 : 1);
 
   /**
    * Every write on this screen is guarded: the amounts here are what the
@@ -139,6 +154,29 @@ export default function AdminFactureDetailPage() {
     });
   }
 
+  /**
+   * Rent counterpart of the coefficients: what is corrected is each tenant's
+   * own annual amount, the tariff of the room they occupy.
+   */
+  function saveLoyers() {
+    return guarded({
+      message: t("confirmLoyers"),
+      confirmLabel: t("saveLoyers"),
+      success: t("loyersSaved"),
+      failure: t("loyersFailed"),
+      run: () =>
+        apiFetch(`/api/factures/${id}/loyers`, {
+          method: "POST",
+          body: JSON.stringify({
+            loyers: Object.entries(loyers).map(([locataireId, montant]) => ({
+              locataireId,
+              montant: Number(montant),
+            })),
+          }),
+        }),
+    });
+  }
+
   function publish() {
     return guarded({
       level: "danger",
@@ -153,9 +191,16 @@ export default function AdminFactureDetailPage() {
   function openEdit() {
     if (!facture) return;
     setEditType(facture.type);
-    // For rent the editable figure is the flat annual amount, which the invoice
-    // carries as its base unit, not the total.
-    setEditMontant(String(loyer ? facture.baseUnitaire : facture.montantTotal));
+    // Rent has no total to correct: the field restates every tenant's rent at
+    // once, and starts empty when they differ — there is no single figure to
+    // show, and prefilling one would silently realign the whole residence.
+    setEditMontant(
+      loyer
+        ? facture.baseUnitaire > 0
+          ? String(facture.baseUnitaire)
+          : ""
+        : String(facture.montantTotal),
+    );
     setEditMois(facture.mois);
     setEditDateLimite(facture.dateLimite.slice(0, 10));
     setEditLocataires(facture.lignes.map((l) => l.locataireId));
@@ -176,8 +221,11 @@ export default function AdminFactureDetailPage() {
           method: "PATCH",
           body: JSON.stringify({
             type: editType,
+            // Left blank on a rent invoice: every tenant keeps their own rent.
             ...(isLoyer(editType)
-              ? { montantParLocataire: montant }
+              ? editMontant
+                ? { montantParLocataire: montant }
+                : {}
               : { montantTotal: montant }),
             mois: editMois,
             dateLimite: editDateLimite,
@@ -319,7 +367,12 @@ export default function AdminFactureDetailPage() {
           { label: t("montantTotal"), value: formatXAF(facture.montantTotal, locale) },
           {
             label: loyer ? t("loyerAnnuel") : t("baseUnitaire"),
-            value: formatXAF(facture.baseUnitaire, locale),
+            // Rent: a single reference only exists while every room is priced
+            // alike, which the service reports as a base of 0.
+            value:
+              loyer && facture.baseUnitaire === 0
+                ? t("loyerVariable")
+                : formatXAF(facture.baseUnitaire, locale),
           },
           { label: t("encaisse"), value: formatXAF(totalPaye, locale) },
           { label: t("dateLimite"), value: formatDate(facture.dateLimite, locale) },
@@ -331,123 +384,161 @@ export default function AdminFactureDetailPage() {
         ))}
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-              <th className="px-4 py-3">{t("locataire")}</th>
-              {!loyer && <th className="px-4 py-3">{t("coefficient")}</th>}
-              <th className="px-4 py-3 text-right">{loyer ? t("loyerAnnuel") : t("montantDu")}</th>
-              {loyer && <th className="px-4 py-3 text-right">{t("payeCeMois")}</th>}
-              <th className="px-4 py-3 text-right">
-                {loyer ? t("payeAnnee", { annee }) : t("montantPaye")}
-              </th>
-              {loyer && <th className="px-4 py-3 text-right">{t("restantAnnee", { annee })}</th>}
-              <th className="px-4 py-3">{t("statut")}</th>
-              {!brouillon && <th className="px-4 py-3" />}
-            </tr>
-          </thead>
-          <tbody>
-            {facture.lignes.map((l) => {
-              // Rent only: the annual tracking has no meaning on a monthly charge.
-              const suivi = loyer
-                ? suiviLoyer({
-                    montantAnnuel: l.montantDu,
-                    montantPaye: l.montantPaye,
-                    paiements: l.paiements.map((p) => ({ montant: p.montant, date: p.createdAt })),
-                  })
-                : null;
-              return (
-              <tr key={l.id} className="border-b border-slate-100 last:border-0">
-                <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
-                {!loyer && (
-                  <td className="px-4 py-3">
-                    {brouillon ? (
+      <TableCard minWidth="min-w-[52rem]">
+        <Thead>
+          <Th>{t("locataire")}</Th>
+          {!loyer && <Th>{t("coefficient")}</Th>}
+          <Th align="right">{loyer ? t("loyerAnnuel") : t("montantDu")}</Th>
+          {loyer && <Th align="right">{t("payeCeMois")}</Th>}
+          <Th align="right">{loyer ? t("payeAnnee", { annee }) : t("montantPaye")}</Th>
+          {loyer && <Th align="right">{t("restantAnnee", { annee })}</Th>}
+          <Th>{t("statut")}</Th>
+          {!brouillon && (
+            <Th align="right" srOnly>
+              {tCommon("actions")}
+            </Th>
+          )}
+        </Thead>
+        <tbody>
+          {facture.lignes.map((l) => {
+            // Rent only: the annual tracking has no meaning on a monthly charge.
+            const suivi = loyer
+              ? suiviLoyer({
+                  montantAnnuel: l.montantDu,
+                  montantPaye: l.montantPaye,
+                  paiements: l.paiements.map((p) => ({ montant: p.montant, date: p.createdAt })),
+                })
+              : null;
+            const paiements = brouillon ? [] : l.paiements;
+            return (
+              <Fragment key={l.id}>
+                {/* A line with payments keeps its bottom border on the row that
+                    carries them, so the two read as one block. */}
+                <Tr className={paiements.length > 0 ? "border-b-0" : ""}>
+                  <Td className="font-medium">{l.locataire.fullName}</Td>
+                  {!loyer && (
+                    <Td>
+                      {brouillon ? (
+                        <input
+                          type="number"
+                          step={0.01}
+                          min={0.1}
+                          max={99.99}
+                          value={coeffs[l.locataireId] ?? ""}
+                          onChange={(e) =>
+                            setCoeffs((c) => ({ ...c, [l.locataireId]: e.target.value }))
+                          }
+                          className={`${inputCls} w-24`}
+                        />
+                      ) : (
+                        l.coefficient
+                      )}
+                    </Td>
+                  )}
+                  <Td align="right" className="font-mono">
+                    {/* Rent is the one amount entered per tenant rather than
+                        derived from a coefficient, so the draft edits it here. */}
+                    {loyer && brouillon ? (
                       <input
                         type="number"
-                        step={0.01}
-                        min={0.1}
-                        max={99.99}
-                        value={coeffs[l.locataireId] ?? ""}
+                        min={1}
+                        step={1}
+                        value={loyers[l.locataireId] ?? ""}
                         onChange={(e) =>
-                          setCoeffs((c) => ({ ...c, [l.locataireId]: e.target.value }))
+                          setLoyers((v) => ({ ...v, [l.locataireId]: e.target.value }))
                         }
-                        className={`${inputCls} w-24`}
+                        className={`${inputCls} w-32 text-right`}
+                        aria-label={t("loyerDe", { name: l.locataire.fullName })}
                       />
                     ) : (
-                      l.coefficient
+                      formatXAF(l.montantDu, locale)
                     )}
-                  </td>
-                )}
-                <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
-                {loyer && (
-                  <td className="px-4 py-3 text-right font-mono">
-                    {formatXAF(suivi?.payeCeMois ?? 0, locale)}
-                  </td>
-                )}
-                <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
-                {loyer && (
-                  <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
-                    {formatXAF(suivi?.restantAnnee ?? 0, locale)}
-                  </td>
-                )}
-                <td className="px-4 py-3">
-                  <StatutBadge statut={l.statut} />
-                </td>
-                {!brouillon && (
-                  <td className="px-4 py-3">
-                    <div className="flex flex-col items-end gap-1.5">
-                      {l.statut !== "paye" && (
-                        <button
-                          className={`${btnBrand} px-3 py-1 text-xs`}
-                          onClick={() => openPay(l)}
-                          disabled={busy}
-                        >
-                          {tPay("encaisser")}
+                  </Td>
+                  {loyer && (
+                    <Td align="right" className="font-mono">
+                      {formatXAF(suivi?.payeCeMois ?? 0, locale)}
+                    </Td>
+                  )}
+                  <Td align="right" className="font-mono">
+                    {formatXAF(l.montantPaye, locale)}
+                  </Td>
+                  {loyer && (
+                    <Td align="right" className="font-mono font-semibold text-navy">
+                      {formatXAF(suivi?.restantAnnee ?? 0, locale)}
+                    </Td>
+                  )}
+                  <Td>
+                    <StatutBadge statut={l.statut} />
+                  </Td>
+                  {!brouillon && (
+                    <Td align="right">
+                      <RowActions>
+                        <button className={linkAction} onClick={() => printFactureLigne(l)}>
+                          {t("facturePdf")}
                         </button>
-                      )}
-                      <button
-                        className="text-xs text-navy underline-offset-2 hover:underline"
-                        onClick={() => printFactureLigne(l)}
-                      >
-                        {t("facturePdf")}
-                      </button>
-                      {l.paiements.map((p) => (
-                        <div key={p.id} className="flex items-center gap-2">
-                          {p.justificatifUrl && (
-                            <a
-                              href={p.justificatifUrl}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="text-xs text-brand underline-offset-2 hover:underline"
-                            >
-                              {tPay("voirJustificatif")}
-                            </a>
-                          )}
+                        {l.statut !== "paye" && (
                           <button
-                            className="text-xs text-navy underline-offset-2 hover:underline"
-                            onClick={() => printRecu(p)}
-                          >
-                            {tPay("recu", { montant: formatXAF(p.montant, locale) })}
-                          </button>
-                          <button
-                            className="text-xs text-red-600 underline-offset-2 hover:underline"
-                            onClick={() => cancelPaiement(p)}
+                            className={`${btnBrand} px-3 py-1 text-xs`}
+                            onClick={() => openPay(l)}
                             disabled={busy}
                           >
-                            {tPay("annulerPaiement")}
+                            {tPay("encaisser")}
                           </button>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
+                        )}
+                      </RowActions>
+                    </Td>
+                  )}
+                </Tr>
+                {/* The payment history used to be stacked inside the actions
+                    cell, where three links per payment overflowed the column.
+                    It gets the full width of the row instead. */}
+                {paiements.length > 0 && (
+                  <Tr>
+                    <Td colSpan={colCount} wrap className="pt-0">
+                      <div className="text-xs uppercase text-slate-400">{tPay("historique")}</div>
+                      <div className="mt-1.5 flex flex-wrap gap-2">
+                        {paiements.map((p) => (
+                          <div
+                            key={p.id}
+                            className="flex flex-wrap items-center gap-x-3 gap-y-1 rounded-lg border border-slate-200 px-3 py-1.5"
+                          >
+                            <span className="font-mono text-xs font-semibold text-navy">
+                              {formatXAF(p.montant, locale)}
+                            </span>
+                            <span className="text-xs text-slate-500">
+                              {tPay(`modes.${p.mode}`)} · {formatDate(p.createdAt, locale)}
+                            </span>
+                            {p.justificatifUrl && (
+                              <a
+                                href={p.justificatifUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-brand underline-offset-2 hover:underline"
+                              >
+                                {tPay("voirJustificatif")}
+                              </a>
+                            )}
+                            <button className={linkAction} onClick={() => printRecu(p)}>
+                              {tPay("recu", { montant: formatXAF(p.montant, locale) })}
+                            </button>
+                            <button
+                              className={linkDanger}
+                              onClick={() => cancelPaiement(p)}
+                              disabled={busy}
+                            >
+                              {tPay("annulerPaiement")}
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </Td>
+                  </Tr>
                 )}
-              </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </Card>
+              </Fragment>
+            );
+          })}
+        </tbody>
+      </TableCard>
 
       {editing && (
         <Card className="mt-6 max-w-lg border-brand">
@@ -467,7 +558,9 @@ export default function AdminFactureDetailPage() {
             </div>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-600">
-                {isLoyer(editType) ? t("montantAnnuelLocataire") : t("montantTotal")}
+                {/* Rent: this field restates every tenant's rent at once — the
+                    per-tenant amounts are edited in the table above. */}
+                {isLoyer(editType) ? t("loyerTous") : t("montantTotal")}
               </label>
               <input
                 type="number"
@@ -475,7 +568,8 @@ export default function AdminFactureDetailPage() {
                 step={1}
                 value={editMontant}
                 onChange={(e) => setEditMontant(e.target.value)}
-                required
+                required={!isLoyer(editType)}
+                placeholder={isLoyer(editType) ? t("loyerTousPlaceholder") : undefined}
                 className={`${inputCls} w-40`}
               />
             </div>
@@ -606,7 +700,9 @@ export default function AdminFactureDetailPage() {
         {brouillon && (
           <div className="flex flex-wrap items-center gap-3">
             {loyer ? (
-              <p className="text-sm text-slate-500">{t("loyerNoCoeff")}</p>
+              <button className={btnSecondary} onClick={saveLoyers} disabled={busy}>
+                {t("saveLoyers")}
+              </button>
             ) : (
               <button className={btnSecondary} onClick={saveCoefficients} disabled={busy}>
                 {t("saveCoeffs")}
@@ -627,6 +723,7 @@ export default function AdminFactureDetailPage() {
             </button>
           </div>
         )}
+        {brouillon && loyer && <p className="text-sm text-slate-500">{t("loyerParLocataire")}</p>}
       </div>
     </>
   );

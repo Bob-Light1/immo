@@ -17,8 +17,9 @@ import { CompteurSelect } from "@/components/CompteurSelect";
  * of 1; the coefficients are then adjusted on the detail page, before
  * publication.
  *
- * "Loyer" exception: no split. The Admin enters the annual amount owed by each
- * tenant, carried as-is onto every line.
+ * "Loyer" exception: no split. The amount entered here is the reference rent
+ * every line starts on; each tenant's own annual rent — the tariff of the room
+ * they occupy — is then set on the draft, before publication.
  */
 export default function NewFacturePage() {
   const t = useTranslations("factures.new");
@@ -110,7 +111,7 @@ export default function NewFacturePage() {
               ))}
             </datalist>
           </Field>
-          <Field label={loyer ? t("montantAnnuelLocataire") : t("montantTotal")}>
+          <Field label={loyer ? t("loyerReference") : t("montantTotal")}>
             <input
               className={inputCls}
               type="number"

@@ -5,7 +5,18 @@ import Link from "next/link";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
-import { Card, PubBadge, Spinner, EmptyState, Pager, inputCls } from "@/components/ui";
+import {
+  PubBadge,
+  Spinner,
+  EmptyState,
+  Pager,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  inputCls,
+} from "@/components/ui";
 import { ExportFactures } from "@/components/ExportFactures";
 
 const PAGE_SIZE = 20;
@@ -66,41 +77,39 @@ export default function BailleurFacturesPage() {
       ) : factures.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("type")}</th>
-                <th className="px-4 py-3">{t("mois")}</th>
-                <th className="px-4 py-3 text-right">{t("montantTotal")}</th>
-                <th className="px-4 py-3">{t("dateLimite")}</th>
-                <th className="px-4 py-3">{t("locataires")}</th>
-                <th className="px-4 py-3">{t("statut")}</th>
-              </tr>
-            </thead>
-            <tbody>
-              {factures.map((f) => (
-                <tr key={f.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                  <td className="px-4 py-3">
-                    <Link
-                      href={`/${locale}/bailleur/factures/${f.id}`}
-                      className="font-medium text-navy underline-offset-2 hover:underline"
-                    >
-                      {f.type}
-                    </Link>
-                  </td>
-                  <td className="px-4 py-3">{formatPeriodeFacture(f.type, f.mois, locale)}</td>
-                  <td className="px-4 py-3 text-right font-mono">{formatXAF(f.montantTotal, locale)}</td>
-                  <td className="px-4 py-3">{formatDate(f.dateLimite, locale)}</td>
-                  <td className="px-4 py-3 text-center">{f._count.lignes}</td>
-                  <td className="px-4 py-3">
-                    <PubBadge statut={f.statutPub} />
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+        <TableCard>
+          <Thead>
+            <Th>{t("type")}</Th>
+            <Th>{t("mois")}</Th>
+            <Th align="right">{t("montantTotal")}</Th>
+            <Th>{t("dateLimite")}</Th>
+            <Th align="center">{t("locataires")}</Th>
+            <Th>{t("statut")}</Th>
+          </Thead>
+          <tbody>
+            {factures.map((f) => (
+              <Tr key={f.id} className="hover:bg-slate-50">
+                <Td>
+                  <Link
+                    href={`/${locale}/bailleur/factures/${f.id}`}
+                    className="font-medium text-navy underline-offset-2 hover:underline"
+                  >
+                    {f.type}
+                  </Link>
+                </Td>
+                <Td>{formatPeriodeFacture(f.type, f.mois, locale)}</Td>
+                <Td align="right" className="font-mono">
+                  {formatXAF(f.montantTotal, locale)}
+                </Td>
+                <Td>{formatDate(f.dateLimite, locale)}</Td>
+                <Td align="center">{f._count.lignes}</Td>
+                <Td>
+                  <PubBadge statut={f.statutPub} />
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </TableCard>
       )}
       <Pager page={page} total={total} limit={PAGE_SIZE} onChange={setPage} />
     </>

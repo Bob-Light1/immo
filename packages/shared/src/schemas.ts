@@ -139,6 +139,50 @@ export const updateCompteurSchema = z
   );
 export type UpdateCompteurInput = z.infer<typeof updateCompteurSchema>;
 
+// ─── Rooms ───
+/**
+ * Annual rent of a room, in XAF. Nonnegative rather than positive: `0` is the
+ * stored "not priced yet", which is what every room starts as and what makes a
+ * rent invoice ask for the amount instead of billing the room at nothing.
+ */
+const loyerChambre = z.coerce.number().int().nonnegative().max(1_000_000_000_000);
+
+export const createChambreSchema = z.object({
+  bloc: z.string().trim().min(1).max(20),
+  numero: z.string().trim().min(1).max(20),
+  capacite: z.coerce.number().int().min(1).max(20).default(1),
+  loyerAnnuel: loyerChambre.default(0),
+  compteurElecId: z.string().uuid().nullable().optional(),
+});
+export type CreateChambreInput = z.infer<typeof createChambreSchema>;
+
+/**
+ * Correcting a room. `loyerAnnuel` is the field that moves every year, so it is
+ * editable on its own — restating the tariff must not require retyping the
+ * block and number of a room that has not otherwise changed.
+ */
+export const updateChambreSchema = z
+  .object({
+    bloc: z.string().trim().min(1).max(20).optional(),
+    numero: z.string().trim().min(1).max(20).optional(),
+    capacite: z.coerce.number().int().min(1).max(20).optional(),
+    loyerAnnuel: loyerChambre.optional(),
+    // `null` detaches the meter. Absent leaves it as it is.
+    compteurElecId: z.string().uuid().nullable().optional(),
+    isActive: z.boolean().optional(),
+  })
+  .refine(
+    (d) => Object.values(d).some((v) => v !== undefined),
+    issueCode("validation.aucuneModification", "Aucune modification fournie."),
+  );
+export type UpdateChambreInput = z.infer<typeof updateChambreSchema>;
+
+/** Moving a tenant in or out of a room. `null` leaves them unassigned. */
+export const assignChambreSchema = z.object({
+  roomId: z.string().uuid().nullable(),
+});
+export type AssignChambreInput = z.infer<typeof assignChambreSchema>;
+
 // ─── Invoices ───
 const moisSchema = z
   .string()
@@ -172,7 +216,8 @@ export const createFactureSchema = z
     type: z.string().trim().min(2).max(60),
     // Global amount to split (Eau, Électricité, Hébergement…).
     montantTotal: montantXAF.optional(),
-    // "Loyer" regime: flat annual amount owed by each tenant, never split.
+    // "Loyer" regime: each line is filled from the tariff of the room its tenant
+    // occupies, so this is only the fallback for a tenant with no priced room.
     montantParLocataire: montantXAF.optional(),
     mois: moisSchema,
     dateLimite: z.coerce.date(),
@@ -180,11 +225,17 @@ export const createFactureSchema = z
     // targeted tenants; empty -> every active tenant
     locataireIds: z.array(z.string().uuid()).optional(),
   })
+  // Which amount field the regime expects. Rent needs none — the rooms carry
+  // the tariffs — but a total to divide would be meaningless on it, and a
+  // charge cannot be raised without one.
   .refine(
-    (d) => (d.montantTotal != null) !== (d.montantParLocataire != null),
+    (d) =>
+      isLoyer(d.type)
+        ? d.montantTotal == null
+        : d.montantTotal != null && d.montantParLocataire == null,
     issueCode(
-      "validation.montantXor",
-      "Renseignez soit le montant total, soit le montant par locataire.",
+      "validation.montantRegime",
+      "Loyer : le montant vient du tarif des chambres (un montant par locataire ne sert que de repli). Toute autre facture se répartit à partir d'un montant total.",
       { path: ["montantTotal"] },
     ),
   )
@@ -244,6 +295,35 @@ export const coefficientsSchema = z.object({
     .min(1),
 });
 export type CoefficientsInput = z.infer<typeof coefficientsSchema>;
+
+/**
+ * Per-tenant annual rent on a draft. Rooms are not priced alike, and a tariff
+ * moves with inflation from one year to the next, so a rent invoice carries one
+ * amount per tenant rather than a single figure for the whole residence.
+ *
+ * Two ways in, and they compose. `depuisChambres` re-reads the tariff of the
+ * room each tenant occupies — the yearly revalorisation, done once on the room
+ * and pulled into the draft — and `loyers` restates the tenants listed, leaving
+ * the others on the amount their line already carries.
+ */
+export const loyersSchema = z
+  .object({
+    depuisChambres: z.boolean().optional(),
+    loyers: z
+      .array(
+        z.object({
+          locataireId: z.string().uuid(),
+          montant: montantXAF,
+        }),
+      )
+      .min(1)
+      .optional(),
+  })
+  .refine(
+    (d) => d.depuisChambres === true || d.loyers != null,
+    issueCode("validation.aucuneModification", "Aucune modification fournie."),
+  );
+export type LoyersInput = z.infer<typeof loyersSchema>;
 
 export const paiementSchema = z.object({
   factureLocataireId: z.string().uuid(),

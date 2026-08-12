@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useLocale, useTranslations } from "next-intl";
 import { apiFetch } from "@/lib/client/session";
 import { formatXAF, formatMois } from "@/lib/format";
-import { Card, PageTitle, Spinner, EmptyState } from "@/components/ui";
+import { Card, PageTitle, Spinner, EmptyState, Thead, Th, Tr, Td } from "@/components/ui";
 import { FinanceChart } from "@/components/FinanceChart";
 import { LoyerCard, type LoyerAnnuel } from "@/components/LoyerCard";
 
@@ -73,35 +73,39 @@ export default function BailleurHomePage() {
         <FinanceChart serie={d.serie} />
       </Card>
 
-      <Card className="p-0">
-        <h2 className="px-6 pt-5 font-semibold text-navy">{t("impayesTitle")}</h2>
+      <Card className="overflow-hidden p-0">
+        <h2 className="px-4 pt-5 font-semibold text-navy">{t("impayesTitle")}</h2>
         {d.impayes.length === 0 ? (
           <EmptyState>{t("noImpayes")}</EmptyState>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="mt-3 w-full text-sm">
-              <thead>
-                <tr className="border-y border-slate-200 text-left text-xs uppercase text-slate-500">
-                  <th className="px-6 py-2">{t("colLocataire")}</th>
-                  <th className="px-4 py-2">{t("colFacture")}</th>
-                  <th className="px-4 py-2 text-right">{t("colReste")}</th>
-                  <th className="px-4 py-2 text-right">{t("colJours")}</th>
-                </tr>
-              </thead>
+          <div className="mt-3 overflow-x-auto" tabIndex={0}>
+            <table className="w-full min-w-[36rem] border-collapse text-sm">
+              <Thead>
+                <Th>{t("colLocataire")}</Th>
+                <Th>{t("colFacture")}</Th>
+                <Th align="right">{t("colReste")}</Th>
+                <Th align="right">{t("colJours")}</Th>
+              </Thead>
               <tbody>
                 {d.impayes.map((r) => (
-                  <tr key={r.ligneId} className="border-b border-slate-100 last:border-0">
-                    <td className="px-6 py-2 font-medium">{r.locataire}</td>
-                    <td className="px-4 py-2 text-slate-500">
+                  <Tr key={r.ligneId}>
+                    <Td className="font-medium">{r.locataire}</Td>
+                    <Td className="text-slate-500">
                       {r.type} · {formatMois(r.mois, locale)}
-                    </td>
-                    <td className="px-4 py-2 text-right font-mono">{formatXAF(r.reste, locale)}</td>
-                    <td className="px-4 py-2 text-right">
-                      <span className={r.joursRetard > 0 ? "font-semibold text-red-600" : "text-slate-400"}>
+                    </Td>
+                    <Td align="right" className="font-mono">
+                      {formatXAF(r.reste, locale)}
+                    </Td>
+                    <Td align="right">
+                      <span
+                        className={
+                          r.joursRetard > 0 ? "font-semibold text-red-600" : "text-slate-400"
+                        }
+                      >
                         {r.joursRetard > 0 ? t("joursRetard", { n: r.joursRetard }) : "—"}
                       </span>
-                    </td>
-                  </tr>
+                    </Td>
+                  </Tr>
                 ))}
               </tbody>
             </table>

@@ -8,6 +8,7 @@ import {
   createUserSchema,
   evenementSchema,
   updateCompteurSchema,
+  updateFactureSchema,
 } from "@campusgest/shared";
 import fr from "../messages/fr.json";
 import en from "../messages/en.json";
@@ -101,7 +102,10 @@ describe("error catalogue", () => {
       ["validation.aucuneModification", () => updateCompteurSchema.parse({})],
       ["validation.heureFormat", () => evenementSchema.parse({ titre: "Fête", dateEvent: "2026-06-01", heure: "19h" })],
       ["validation.moisFormat", () => createFactureSchema.parse({ type: "Eau", montantTotal: 1000, mois: "2026-13", dateLimite: "2026-06-30" })],
-      ["validation.montantXor", () => createFactureSchema.parse({ type: "Eau", mois: "2026-06", dateLimite: "2026-06-30" })],
+      // Creation states which amount the regime expects; correction only refuses
+      // the two together — the two rules answer with their own code.
+      ["validation.montantRegime", () => createFactureSchema.parse({ type: "Eau", mois: "2026-06", dateLimite: "2026-06-30" })],
+      ["validation.montantXor", () => updateFactureSchema.parse({ montantTotal: 1000, montantParLocataire: 500 })],
       ["validation.dateLimiteHorsPeriode", () => createFactureSchema.parse({ type: "Eau", montantTotal: 1000, mois: "2026-06", dateLimite: "2020-01-01" })],
       ["validation.dateLimiteLoyer", () => createFactureSchema.parse({ type: "Loyer", montantParLocataire: 1000, mois: "2026-01", dateLimite: "2026-02-01" })],
     ];

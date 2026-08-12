@@ -8,7 +8,18 @@ import { formatXAF, formatDate, formatPeriodeFacture } from "@/lib/format";
 import type { LigneStatut } from "@campusgest/shared";
 import { isLoyer, suiviLoyer } from "@campusgest/shared";
 import { useDownload } from "@/components/Toast";
-import { Card, StatutBadge, PubBadge, Spinner } from "@/components/ui";
+import {
+  Card,
+  StatutBadge,
+  PubBadge,
+  Spinner,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
+  linkAction,
+} from "@/components/ui";
 
 interface Ligne {
   id: string;
@@ -76,7 +87,12 @@ export default function BailleurFactureDetailPage() {
           { label: t("montantTotal"), value: formatXAF(facture.montantTotal, locale) },
           {
             label: loyer ? t("loyerAnnuel") : t("baseUnitaire"),
-            value: formatXAF(facture.baseUnitaire, locale),
+            // Rent: a single reference only exists while every room is priced
+            // alike, which the service reports as a base of 0.
+            value:
+              loyer && facture.baseUnitaire === 0
+                ? t("loyerVariable")
+                : formatXAF(facture.baseUnitaire, locale),
           },
           { label: t("encaisse"), value: formatXAF(totalPaye, locale) },
           { label: t("dateLimite"), value: formatDate(facture.dateLimite, locale) },
@@ -88,25 +104,22 @@ export default function BailleurFactureDetailPage() {
         ))}
       </div>
 
-      <Card className="overflow-x-auto p-0">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-              <th className="px-4 py-3">{t("locataire")}</th>
-              {!loyer && <th className="px-4 py-3">{t("coefficient")}</th>}
-              <th className="px-4 py-3 text-right">{loyer ? t("loyerAnnuel") : t("montantDu")}</th>
-              {loyer && <th className="px-4 py-3 text-right">{t("payeCeMois")}</th>}
-              <th className="px-4 py-3 text-right">
-                {loyer ? t("payeAnnee", { annee }) : t("montantPaye")}
-              </th>
-              {loyer && <th className="px-4 py-3 text-right">{t("restantAnnee", { annee })}</th>}
-              <th className="px-4 py-3">{t("datePaiement")}</th>
-              <th className="px-4 py-3">{t("statut")}</th>
-              <th className="px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody>
-            {facture.lignes.map((l) => {
+      <TableCard minWidth="min-w-[52rem]">
+        <Thead>
+          <Th>{t("locataire")}</Th>
+          {!loyer && <Th>{t("coefficient")}</Th>}
+          <Th align="right">{loyer ? t("loyerAnnuel") : t("montantDu")}</Th>
+          {loyer && <Th align="right">{t("payeCeMois")}</Th>}
+          <Th align="right">{loyer ? t("payeAnnee", { annee }) : t("montantPaye")}</Th>
+          {loyer && <Th align="right">{t("restantAnnee", { annee })}</Th>}
+          <Th>{t("datePaiement")}</Th>
+          <Th>{t("statut")}</Th>
+          <Th align="right" srOnly>
+            {tCommon("actions")}
+          </Th>
+        </Thead>
+        <tbody>
+          {facture.lignes.map((l) => {
               // Rent only: the annual tracking has no meaning on a monthly charge.
               const suivi = loyer
                 ? suiviLoyer({
@@ -119,31 +132,33 @@ export default function BailleurFactureDetailPage() {
                   })
                 : null;
               return (
-                <tr key={l.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium">{l.locataire.fullName}</td>
-                  {!loyer && <td className="px-4 py-3">{l.coefficient}</td>}
-                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantDu, locale)}</td>
+                <Tr key={l.id}>
+                  <Td className="font-medium">{l.locataire.fullName}</Td>
+                  {!loyer && <Td>{l.coefficient}</Td>}
+                  <Td align="right" className="font-mono">
+                    {formatXAF(l.montantDu, locale)}
+                  </Td>
                   {loyer && (
-                    <td className="px-4 py-3 text-right font-mono">
+                    <Td align="right" className="font-mono">
                       {formatXAF(suivi?.payeCeMois ?? 0, locale)}
-                    </td>
+                    </Td>
                   )}
-                  <td className="px-4 py-3 text-right font-mono">{formatXAF(l.montantPaye, locale)}</td>
+                  <Td align="right" className="font-mono">
+                    {formatXAF(l.montantPaye, locale)}
+                  </Td>
                   {loyer && (
-                    <td className="px-4 py-3 text-right font-mono font-semibold text-navy">
+                    <Td align="right" className="font-mono font-semibold text-navy">
                       {formatXAF(suivi?.restantAnnee ?? 0, locale)}
-                    </td>
+                    </Td>
                   )}
-                  <td className="px-4 py-3">
-                    {l.datePaiement ? formatDate(l.datePaiement, locale) : "—"}
-                  </td>
-                  <td className="px-4 py-3">
+                  <Td>{l.datePaiement ? formatDate(l.datePaiement, locale) : "—"}</Td>
+                  <Td>
                     <StatutBadge statut={l.statut} />
-                  </td>
-                  <td className="px-4 py-3">
+                  </Td>
+                  <Td align="right">
                     {facture!.statutPub === "publiee" && (
                       <button
-                        className="text-xs text-navy underline-offset-2 hover:underline"
+                        className={linkAction}
                         onClick={() =>
                           download({
                             run: () =>
@@ -159,13 +174,12 @@ export default function BailleurFactureDetailPage() {
                         {t("facturePdf")}
                       </button>
                     )}
-                  </td>
-                </tr>
+                  </Td>
+                </Tr>
               );
             })}
-          </tbody>
-        </table>
-      </Card>
+        </tbody>
+      </TableCard>
     </>
   );
 }

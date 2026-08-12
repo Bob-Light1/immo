@@ -32,6 +32,7 @@ export const ERROR_CODES = [
   "introuvable.ligneFacture",
   "introuvable.paiement",
   "introuvable.compteur",
+  "introuvable.chambre",
   "introuvable.suggestion",
   "introuvable.sondage",
   "introuvable.signal",
@@ -59,9 +60,11 @@ export const ERROR_CODES = [
   "facture.locatairesNonRattaches",
   "facture.typeMoisOccupe",
   "facture.loyerAnneeOccupee",
-  "facture.loyerMontantAnnuelRequis",
   "facture.loyerMontantTotalInterdit",
   "facture.loyerSansCoefficient",
+  "facture.loyersReserveLoyer",
+  "facture.loyerNouveauLocataire",
+  "facture.loyerTarifManquant",
   "facture.loyerEcheanceTropTot",
   "facture.loyerEntree",
   "facture.loyerSortie",
@@ -79,6 +82,13 @@ export const ERROR_CODES = [
   // ── Meters ──
   "compteur.libelleDuplique",
   "compteur.utilise",
+
+  // ── Rooms ──
+  "chambre.numeroDuplique",
+  "chambre.occupee",
+  "chambre.inactive",
+  "chambre.capaciteAtteinte",
+  "chambre.roleNonLocataire",
 
   // ── Community ──
   "sondage.cloture",
@@ -118,6 +128,7 @@ export const ERROR_CODES = [
   "validation.heureFormat",
   "validation.aucuneModification",
   "validation.montantXor",
+  "validation.montantRegime",
   "validation.dateLimiteHorsPeriode",
   "validation.dateLimiteLoyer",
 

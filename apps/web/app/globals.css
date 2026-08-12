@@ -112,6 +112,64 @@ body,
   background-color: rgba(17, 28, 48, 0.95);
 }
 
+/* The unread badge is cut out of the surface it sits on with a white ring, so
+   the ring follows that surface into dark mode like `.bg-white` does. */
+.dark .ring-white {
+  --tw-ring-color: #111c30;
+}
+/* A 5% crimson wash disappears against the dark surface; the unread rows of the
+   notification panel need a little more to stay distinguishable. */
+.dark .bg-alert\/5 {
+  background-color: rgba(225, 29, 72, 0.14);
+}
+
+/* ───────────────── Safe areas ─────────────────
+   The layout declares `viewportFit: "cover"`, so in a standalone PWA the page
+   extends under the status bar, the notch and the home indicator. These pad the
+   few elements that touch a screen edge; they resolve to 0 in a browser tab and
+   on devices without insets.
+
+   These rules sit after `@tailwind utilities` and share its (0,1,0)
+   specificity, so they would silently win over any padding utility on the same
+   element. Each is therefore applied only to elements that set no padding on
+   the axis it touches, and the bottom inset uses a margin — the elements that
+   need it already carry `p-3` / `py-6`. */
+.cg-safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.cg-safe-x {
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.cg-safe-bottom {
+  margin-bottom: env(safe-area-inset-bottom);
+}
+/* Padding variant, for the tab bar: its background has to reach the bottom of
+   the screen, so the inset goes inside it rather than under it. */
+.cg-safe-pb {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* ───────────────── Full-height screens ─────────────────
+   On iOS `100vh` is the *large* viewport — the height the page would have if
+   the URL bar were collapsed — so a `min-h-screen` container is taller than
+   what is actually visible and every page carries ~60px of phantom scroll.
+   That is enough on its own to make the bottom tab bar hide itself on an
+   otherwise empty screen, and it pushes centred content off-centre.
+
+   Pairing the two Tailwind utilities does not work: Tailwind emits
+   `.min-h-dvh` before `.min-h-screen`, so `screen` would win. @supports is
+   what actually orders them, and leaves the `100vh` fallback to browsers
+   without dynamic viewport units. */
+.cg-screen {
+  min-height: 100vh;
+}
+@supports (min-height: 100dvh) {
+  .cg-screen {
+    min-height: 100dvh;
+  }
+}
+
 /* ───────────────── Animations (toasts, modal, drawer) ───────────────── */
 @keyframes cg-toast-in {
   from {

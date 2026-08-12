@@ -47,7 +47,17 @@
     },
     "openMenu": "Menü öffnen",
     "closeMenu": "Menü schließen",
-    "confirmLogout": "Abmelden? Alle noch nicht gespeicherten Eingaben gehen verloren."
+    "confirmLogout": "Abmelden? Alle noch nicht gespeicherten Eingaben gehen verloren.",
+    "tab": {
+      "dashboard": "Übersicht",
+      "factures": "Rechnungen",
+      "mesFactures": "Rechnungen",
+      "users": "Benutzer",
+      "infos": "Infos",
+      "maintenance": "Wartung",
+      "profil": "Profil",
+      "plus": "Mehr"
+    }
   },
   "statut": {
     "en_attente": "Ausstehend",
@@ -135,10 +145,10 @@
       "hint": "Die Rechnung wird als Entwurf erstellt: alle aktiven Mieter werden mit Koeffizient 1 zugeordnet, vor der Veröffentlichung anpassbar.",
       "failed": "Erstellung der Rechnung fehlgeschlagen.",
       "submit": "Entwurf erstellen",
-      "montantAnnuelLocataire": "Jahresbetrag pro Mieter (XAF)",
+      "loyerReference": "Jährliche Referenzmiete (XAF)",
       "moisLoyer": "Startmonat (abgedecktes Jahr)",
       "locataires": "Betroffene Mieter",
-      "hintLoyer": "Miete: keine Aufteilung. Der eingegebene Betrag ist von jedem aktiven Mieter für das Jahr geschuldet. Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag.",
+      "hintLoyer": "Miete: keine Aufteilung. Jeder Mieter startet mit der hier eingegebenen Referenzmiete; die eigene Jahresmiete wird anschließend im Entwurf angepasst (unterschiedlich bepreiste Zimmer, jährliche Erhöhung). Nach jeder erfassten Zahlung sehen Mieter, Admin und Vermieter den Monatsbetrag, die Jahressumme und den Restbetrag.",
       "compteur": "Zähler (optional)",
       "confirmCreate": "Diese Rechnung erstellen? Sie beginnt als Entwurf: Beträge und Frist bleiben bis zur Veröffentlichung korrigierbar.",
       "created": "Rechnung als Entwurf erstellt."
@@ -165,7 +175,13 @@
       "payeCeMois": "Diesen Monat gezahlt",
       "payeAnnee": "Gezahlt in {annee}",
       "restantAnnee": "Rest {annee}",
-      "loyerNoCoeff": "Miete: identischer Jahresbetrag pro Mieter, ohne Koeffizient.",
+      "loyerParLocataire": "Miete: Jeder Mieter hat seinen eigenen Jahresbetrag (Tarif seines Zimmers), änderbar solange die Rechnung ein Entwurf ist.",
+      "loyerVariable": "Unterschiedlich",
+      "loyerDe": "Jahresmiete von {name}",
+      "saveLoyers": "Mieten speichern",
+      "confirmLoyers": "Diese Mieten speichern? Jeder Mieter schuldet den auf seiner Zeile eingetragenen Jahresbetrag.",
+      "loyersSaved": "Mieten gespeichert.",
+      "loyersFailed": "Speichern der Mieten fehlgeschlagen.",
       "facturePdf": "Rechnung als PDF",
       "edit": "Entwurf bearbeiten",
       "editTitle": "Entwurf korrigieren",
@@ -177,7 +193,8 @@
       "delete": "Entwurf löschen",
       "confirmDelete": "Diesen Entwurf endgültig löschen? Das lässt sich nicht rückgängig machen.",
       "deleteFailed": "Löschen fehlgeschlagen.",
-      "montantAnnuelLocataire": "Jahresbetrag je Mieter (XAF)",
+      "loyerTous": "Für alle geltende Jahresmiete (XAF)",
+      "loyerTousPlaceholder": "Unverändert",
       "compteur": "Zähler",
       "confirmCoeffs": "Diese Koeffizienten speichern? Die Aufteilung des Betrags auf die Mieter wird neu berechnet.",
       "coeffsSaved": "Koeffizienten gespeichert.",
@@ -260,7 +277,8 @@
     "confirmEncaisser": "{montant} verbuchen? Eine Zahlung wird nicht bearbeitet: Sie kann danach nur mit Begründung storniert werden.",
     "encaisse": "Zahlung erfasst.",
     "annulationDone": "Zahlung storniert; der Saldo wurde neu berechnet.",
-    "confirmPrintRecu": "Die Quittung über {montant} erstellen?"
+    "confirmPrintRecu": "Die Quittung über {montant} erstellen?",
+    "historique": "Erfasste Zahlungen"
   },
   "pagination": {
     "prev": "Zurück",
@@ -322,6 +340,7 @@
   },
   "notifications": {
     "title": "Benachrichtigungen",
+    "unread": "Benachrichtigungen, {count, plural, one {# ungelesen} other {# ungelesen}}",
     "markAll": "Alle als gelesen",
     "empty": "Keine Benachrichtigungen.",
     "pushOn": "Push-Benachrichtigungen aktivieren",
@@ -661,7 +680,8 @@
     "preparing": "Dokument wird erstellt …",
     "downloadFailed": "Das Dokument konnte nicht erstellt werden.",
     "print": "Drucken",
-    "imageUnavailable": "Bild nicht verfügbar"
+    "imageUnavailable": "Bild nicht verfügbar",
+    "actions": "Aktionen"
   },
   "errors": {
     "auth": {
@@ -682,6 +702,7 @@
       "ligneFacture": "Rechnungsposition nicht gefunden.",
       "paiement": "Zahlung nicht gefunden.",
       "compteur": "Zähler nicht gefunden.",
+      "chambre": "Zimmer nicht gefunden.",
       "suggestion": "Vorschlag nicht gefunden.",
       "sondage": "Umfrage nicht gefunden.",
       "signal": "Signal nicht gefunden.",
@@ -711,9 +732,11 @@
       "locatairesNonRattaches": "{count, plural, one {# Mieter ist dieser Rechnung nicht zugeordnet} other {# Mieter sind dieser Rechnung nicht zugeordnet}}.",
       "typeMoisOccupe": "Eine Rechnung „{type}“ besteht bereits für {mois}.",
       "loyerAnneeOccupee": "Eine Mietrechnung deckt bereits das Jahr {annee} ab ({mois}). Die Miete ist ein jährlicher Pauschalbetrag: korrigieren Sie die bestehende Rechnung, statt eine zweite anzulegen.",
-      "loyerMontantAnnuelRequis": "Mietrechnung: Geben Sie den Jahresbetrag an, den jeder Mieter schuldet.",
       "loyerMontantTotalInterdit": "Mietrechnung: Der Pauschalbetrag wird über den Jahresbetrag je Mieter korrigiert, nicht über einen Gesamtbetrag.",
-      "loyerSansCoefficient": "Mietrechnung: identischer Jahresbetrag je Mieter, ohne Aufteilung und ohne Koeffizient.",
+      "loyerSansCoefficient": "Mietrechnung: eigener Jahresbetrag je Mieter, ohne Aufteilung und ohne Koeffizient.",
+      "loyersReserveLoyer": "Mieten je Mieter gelten nur für Mietrechnungen; die übrigen werden aus einem Gesamtbetrag aufgeteilt.",
+      "loyerNouveauLocataire": "Mieter zu einer Mietrechnung mit unterschiedlichen Beträgen hinzugefügt: Geben Sie die für ihn geltende Jahresmiete an.",
+      "loyerTarifManquant": "{count, plural, one {# Mieter bewohnt ein Zimmer ohne Tarif} other {# Mieter bewohnen Zimmer ohne Tarif}}: Hinterlegen Sie die Jahresmiete des Zimmers oder einen Betrag je Mieter für diese Rechnung.",
       "loyerEcheanceTropTot": "Mietrechnung: Der Pauschalbetrag deckt ein Jahr ab, die Fälligkeit muss mindestens {mois} Monate nach Beginn des Zeitraums liegen.",
       "loyerEntree": "Wechsel zur Miete: Geben Sie den Jahresbetrag an, den jeder Mieter schuldet.",
       "loyerSortie": "Verlassen der Mietregelung: Geben Sie den aufzuteilenden Gesamtbetrag an.",
@@ -731,6 +754,13 @@
     "compteur": {
       "libelleDuplique": "Ein Zähler „{libelle}“ besteht bereits für diesen Typ.",
       "utilise": "Zähler in Verwendung: {factures, plural, one {# Rechnung} other {# Rechnungen}} und {chambres, plural, one {# Zimmer} other {# Zimmer}} sind ihm zugeordnet."
+    },
+    "chambre": {
+      "numeroDuplique": "In diesem Block gibt es bereits ein Zimmer mit dieser Nummer.",
+      "occupee": "Zimmer von {count, plural, one {# Mieter} other {# Mietern}} belegt: Verlegen Sie sie, bevor Sie es außer Betrieb nehmen.",
+      "inactive": "Dieses Zimmer ist außer Betrieb genommen.",
+      "capaciteAtteinte": "Kapazität erreicht: Das Zimmer beherbergt bereits so viele Mieter, wie es Plätze hat.",
+      "roleNonLocataire": "Nur ein Mieter bewohnt ein Zimmer."
     },
     "sondage": {
       "cloture": "Diese Umfrage ist geschlossen.",
@@ -776,6 +806,7 @@
       "heureFormat": "Uhrzeit im Format HH:mm erwartet.",
       "aucuneModification": "Keine Änderung übermittelt.",
       "montantXor": "Geben Sie entweder den Gesamtbetrag oder den Betrag je Mieter an.",
+      "montantRegime": "Miete: Der Betrag ergibt sich aus den Zimmertarifen (ein Betrag je Mieter dient nur als Rückfalloption). Jede andere Rechnung wird aus einem Gesamtbetrag aufgeteilt.",
       "dateLimiteHorsPeriode": "Die Fälligkeit muss zwischen dem ersten Tag des abgerechneten Monats und {mois} Monaten danach liegen.",
       "dateLimiteLoyer": "Mietrechnung: Der Pauschalbetrag deckt ein Jahr ab, die Fälligkeit muss daher mindestens {mois} Monate nach Beginn des Zeitraums liegen (zum Beispiel der 31. Dezember)."
     },

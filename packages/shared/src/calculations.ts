@@ -100,6 +100,20 @@ export function repartirFacture(
   return { sommeCoeff, baseUnitaire, lignes };
 }
 
+/**
+ * Reference rent of a "Loyer" invoice, stored as its `baseUnitaire`.
+ *
+ * Each tenant's rent is its own figure — rooms are not priced alike — so a
+ * single reference only exists while every line agrees. `0` reports "varies per
+ * tenant", and is also what tells the service it has no rent to hand a tenant
+ * attached to the draft later: it must be stated rather than guessed.
+ */
+export function baseLoyer(montants: number[]): number {
+  if (montants.length === 0) return 0;
+  const premier = montants[0]!;
+  return montants.every((m) => m === premier) ? premier : 0;
+}
+
 export interface PredictionParams {
   indiceDiff?: number; // I (kWh or m³)
   prixUnit?: number; // P

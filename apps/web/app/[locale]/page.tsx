@@ -40,7 +40,7 @@ export default function HomePage() {
   if (checking) return <Spinner />;
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8 text-center">
+    <main className="cg-screen flex flex-col items-center justify-center gap-6 p-8 text-center">
       <Logo size="lg" />
       <p className="max-w-md text-slate-600">{t("tagline")}</p>
       <Link

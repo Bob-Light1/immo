@@ -60,7 +60,7 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen flex items-center justify-center p-4">
+    <main className="cg-screen flex items-center justify-center p-4">
       <div className="absolute right-4 top-4 flex items-center gap-2">
         <LanguageSwitcher />
         <ThemeToggle />

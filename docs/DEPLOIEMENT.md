@@ -137,6 +137,11 @@ Extrait des valeurs à définir (voir le fichier pour la liste complète) :
 # ─── Domaine public (certificat TLS Caddy) ─────────────────────
 APP_DOMAIN=campus.votre-domaine.cm
 
+# ─── Fuseau horaire de la cité (voir §11) ──────────────────────
+# Les clés de mois (YYYY-MM) et les crons des workers sont lus sur l'horloge
+# LOCALE des conteneurs, qui est en UTC sans cette variable.
+TZ=Africa/Douala
+
 # ─── Base de données (réseau Docker interne) ───────────────────
 # POSTGRES_PASSWORD sert à Compose ET doit être répété LITTÉRALEMENT dans DATABASE_URL.
 POSTGRES_PASSWORD=MOT_DE_PASSE_FORT
@@ -411,9 +416,19 @@ que le DNS pointe vers le serveur — aucune config TLS manuelle.
 
 ## 8. Procédure de mise en ligne (première fois)
 
+> **Dépôt privé** — le serveur n'a pas vos identifiants GitHub. Générer sur le
+> VPS une clé dédiée (`ssh-keygen -t ed25519 -C "vps-campusgest"`), coller la
+> clé publique dans GitHub → *Settings → Deploy keys* du dépôt (lecture seule
+> suffit), puis cloner en SSH. Sinon : URL HTTPS + jeton d'accès personnel.
+
+> **Nom du dossier** — Compose préfixe les volumes avec le nom du répertoire
+> (`campusgest_pgdata`, `campusgest_miniodata`…). Cloner dans un dossier nommé
+> autrement change ces préfixes ; les commandes de sauvegarde du §10 supposent
+> `campusgest`.
+
 ```bash
 # 1. Récupérer le code sur le serveur
-git clone <URL_DU_DEPOT> campusgest && cd campusgest
+git clone git@github.com:Bob-Light1/immo.git campusgest && cd campusgest
 
 # 2. Créer et remplir le .env de production (voir §4 et §5)
 cp .env.production.example .env
@@ -471,17 +486,22 @@ nouveau soit prêt. Toujours vérifier `/api/health` après.
 ## 10. Sauvegardes (indispensable)
 
 ### 10.1 PostgreSQL (quotidien)
+Le script est **déjà dans le dépôt** — inutile d'en écrire un : il fait le dump
+gzip horodaté, purge au-delà de 14 jours (`RETENTION_DAYS`) et écrit dans
+`backups/` (`BACKUP_DIR`).
 ```bash
-# Script /opt/backup-db.sh
-docker compose -f /home/USER/campusgest/docker-compose.prod.yml \
-  exec -T postgres pg_dump -U campusgest campusgest \
-  | gzip > /opt/backups/db-$(date +%F).sql.gz
-find /opt/backups -name 'db-*.sql.gz' -mtime +14 -delete
+./scripts/backup-db.sh          # essai immédiat
+crontab -e
+# 0 2 * * * /home/USER/campusgest/scripts/backup-db.sh >> /var/log/campusgest-backup.log 2>&1
 ```
-Cron : `0 2 * * * /opt/backup-db.sh`
 
 ### 10.2 MinIO (documents/images)
-Sauvegarder le volume `miniodata` (ou `mc mirror local/campusgest /opt/backups/objets`).
+```bash
+# Le volume est préfixé par le nom du dossier cloné (voir §8) :
+docker volume ls | grep miniodata
+docker run --rm -v campusgest_miniodata:/source -v /opt/backups:/backup alpine \
+  tar czf /backup/minio-$(date +%F).tar.gz -C /source .
+```
 
 ### 10.3 Restauration (test à faire au moins une fois)
 ```bash
@@ -500,9 +520,11 @@ gunzip -c db-2026-07-07.sql.gz | \
 - **Logs** : `docker compose -f docker-compose.prod.yml logs -f web workers`.
 - **Jobs planifiés** : vérifier dans les logs `workers` que `echeances` (07:00),
   `anniversaires` (08:00) et `reconductions` (1er du mois 06:00) tournent.
-  ⚠️ Les crons BullMQ sont en **heure serveur (UTC par défaut)** — régler le
-  fuseau du VPS sur `Africa/Douala` si vous voulez ces horaires en heure locale :
-  `sudo timedatectl set-timezone Africa/Douala`.
+  ⚠️ Ces horaires — comme les clés de mois `YYYY-MM` — sont lus sur l'horloge
+  **du conteneur**, en UTC par défaut. `timedatectl` sur l'hôte n'y change rien :
+  c'est `TZ` qui compte (`TZ=Africa/Douala` dans le `.env`, valeur par défaut
+  déjà posée sur `web` et `workers` dans `docker-compose.prod.yml`). Vérifier :
+  `docker compose -f docker-compose.prod.yml exec web date`.
 - **Ressources** : `docker stats`. Passer à 4 vCPU / 8 Go si la charge grimpe.
 
 ---

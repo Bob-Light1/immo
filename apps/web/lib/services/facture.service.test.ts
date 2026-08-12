@@ -37,6 +37,7 @@ import {
   updateFacture,
   deleteFacture,
   setCoefficients,
+  setLoyers,
   publishFacture,
 } from "./facture.service";
 
@@ -186,7 +187,18 @@ describe("updateFacture", () => {
     mois: "2026-01",
     dateLimite: new Date("2026-12-31"),
     baseUnitaire: 240_000n,
-    lignes: [{ locataireId: "a", coefficient: 1 }],
+    lignes: [{ locataireId: "a", coefficient: 1, montantDu: 240_000n }],
+  };
+
+  /** Rents already differentiated: no reference amount left on the invoice. */
+  const loyerDifferencie = {
+    ...loyer,
+    montantTotal: 540_000n,
+    baseUnitaire: 0n,
+    lignes: [
+      { locataireId: "a", coefficient: 1, montantDu: 300_000n },
+      { locataireId: "b", coefficient: 1, montantDu: 240_000n },
+    ],
   };
 
   beforeEach(() => {
@@ -206,6 +218,53 @@ describe("updateFacture", () => {
     prisma.facture.findUnique.mockResolvedValue(loyer);
 
     await expect(updateFacture("f-1", { montantTotal: 500_000 })).rejects.toMatchObject({
+      status: 400,
+    });
+    expect(prisma.facture.update).not.toHaveBeenCalled();
+  });
+
+  it("conserve le loyer de chaque locataire quand la facture est corrigée", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyerDifferencie);
+    prisma.user.findMany.mockResolvedValue(locataires("a", "b"));
+
+    // Correcting the deadline alone must not reprice a single room.
+    await updateFacture("f-1", { dateLimite: new Date("2026-12-31") });
+
+    const lignes = prisma.factureLocataire.upsert.mock.calls.map(([c]) => c);
+    expect(lignes.map((l) => l.update.montantDu)).toEqual([300_000n, 240_000n]);
+    const [{ data }] = prisma.facture.update.mock.calls[0]!;
+    expect(data.montantTotal).toBe(540_000n);
+    expect(data.baseUnitaire).toBe(0n);
+  });
+
+  it("réaligne tous les loyers quand un montant par locataire est fourni", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyerDifferencie);
+    prisma.user.findMany.mockResolvedValue(locataires("a", "b"));
+
+    await updateFacture("f-1", { montantParLocataire: 260_000 });
+
+    const lignes = prisma.factureLocataire.upsert.mock.calls.map(([c]) => c);
+    expect(lignes.map((l) => l.update.montantDu)).toEqual([260_000n, 260_000n]);
+    const [{ data }] = prisma.facture.update.mock.calls[0]!;
+    expect(data.baseUnitaire).toBe(260_000n);
+  });
+
+  it("hérite du loyer de référence pour un locataire rattaché à un loyer uniforme", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+    prisma.user.findMany.mockResolvedValue(locataires("a", "b"));
+
+    await updateFacture("f-1", { locataireIds: ["a", "b"] });
+
+    const lignes = prisma.factureLocataire.upsert.mock.calls.map(([c]) => c);
+    expect(lignes.map((l) => l.update.montantDu)).toEqual([240_000n, 240_000n]);
+  });
+
+  it("exige le loyer d'un locataire rattaché à des loyers différenciés", async () => {
+    // Nothing to infer from: guessing would bill a room at another's tariff.
+    prisma.facture.findUnique.mockResolvedValue(loyerDifferencie);
+    prisma.user.findMany.mockResolvedValue(locataires("a", "b", "c"));
+
+    await expect(updateFacture("f-1", { locataireIds: ["a", "b", "c"] })).rejects.toMatchObject({
       status: 400,
     });
     expect(prisma.facture.update).not.toHaveBeenCalled();
@@ -272,6 +331,87 @@ describe("setCoefficients", () => {
   });
 });
 
+describe("setLoyers", () => {
+  const loyer = {
+    id: "f-1",
+    type: "Loyer",
+    typeKey: "loyer",
+    mois: "2026-01",
+    montantTotal: 720_000n,
+    baseUnitaire: 240_000n,
+    statutPub: "brouillon",
+    lignes: [
+      { locataireId: "a", coefficient: 1, montantDu: 240_000n },
+      { locataireId: "b", coefficient: 1, montantDu: 240_000n },
+      { locataireId: "c", coefficient: 1, montantDu: 240_000n },
+    ],
+  };
+
+  it("fixe un loyer propre à chaque locataire sans toucher aux autres", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+
+    await setLoyers("f-1", {
+      loyers: [
+        { locataireId: "a", montant: 300_000 },
+        { locataireId: "b", montant: 180_000 },
+      ],
+    });
+
+    const montants = prisma.factureLocataire.update.mock.calls.map(([c]) => c.data.montantDu);
+    // The tenant left out keeps the rent already on their line.
+    expect(montants).toEqual([300_000n, 180_000n, 240_000n]);
+    const [{ data }] = prisma.facture.update.mock.calls[0]!;
+    // Rent is never divided: the total is merely the sum of the rooms.
+    expect(data.montantTotal).toBe(720_000n);
+    // Rents no longer agree, so the invoice has no reference amount left.
+    expect(data.baseUnitaire).toBe(0n);
+  });
+
+  it("garde une référence tant que toutes les chambres sont au même tarif", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+
+    await setLoyers("f-1", {
+      loyers: ["a", "b", "c"].map((locataireId) => ({ locataireId, montant: 260_000 })),
+    });
+
+    const [{ data }] = prisma.facture.update.mock.calls[0]!;
+    expect(data.baseUnitaire).toBe(260_000n);
+    expect(data.montantTotal).toBe(780_000n);
+  });
+
+  it("rejette un locataire non rattaché à la facture", async () => {
+    prisma.facture.findUnique.mockResolvedValue(loyer);
+
+    await expect(
+      setLoyers("f-1", { loyers: [{ locataireId: "zz", montant: 300_000 }] }),
+    ).rejects.toMatchObject({ status: 400 });
+    expect(prisma.factureLocataire.update).not.toHaveBeenCalled();
+  });
+
+  it("refuse des loyers sur une facture de charges", async () => {
+    // Charges are split from a total: an amount set line by line would leave
+    // the invoice total and its lines telling two different stories.
+    prisma.facture.findUnique.mockResolvedValue({
+      ...loyer,
+      type: "Eau",
+      typeKey: "eau",
+    });
+
+    await expect(
+      setLoyers("f-1", { loyers: [{ locataireId: "a", montant: 300_000 }] }),
+    ).rejects.toMatchObject({ status: 409 });
+    expect(prisma.factureLocataire.update).not.toHaveBeenCalled();
+  });
+
+  it("refuse des loyers sur une facture publiée", async () => {
+    prisma.facture.findUnique.mockResolvedValue({ ...loyer, statutPub: "publiee" });
+
+    await expect(
+      setLoyers("f-1", { loyers: [{ locataireId: "a", montant: 300_000 }] }),
+    ).rejects.toMatchObject({ status: 409 });
+  });
+});
+
 describe("publishFacture", () => {
   it("refuse de republier et n'écrit rien", async () => {
     prisma.facture.findUnique.mockResolvedValue({
@@ -304,6 +444,32 @@ describe("publishFacture", () => {
 
     await expect(publishFacture("f-1")).rejects.toMatchObject({ status: 409 });
     expect(notifyEach).not.toHaveBeenCalled();
+  });
+
+  it("exclut un locataire désactivé d'un loyer sans toucher aux autres", async () => {
+    // Rent is not a total to divide: the residence must not see its rents rise
+    // because one resident left before publication.
+    prisma.facture.findUnique.mockResolvedValue({
+      id: "f-1",
+      type: "Loyer",
+      mois: "2026-01",
+      dateLimite: new Date("2026-12-31"),
+      statutPub: "brouillon",
+      montantTotal: 780_000n,
+      lignes: [
+        { id: "l1", locataireId: "a", coefficient: 1, montantDu: 300_000n, locataire: { isActive: true } },
+        { id: "l2", locataireId: "b", coefficient: 1, montantDu: 240_000n, locataire: { isActive: true } },
+        { id: "l3", locataireId: "c", coefficient: 1, montantDu: 240_000n, locataire: { isActive: false } },
+      ],
+    });
+    prisma.facture.updateMany.mockResolvedValue({ count: 1 });
+
+    await publishFacture("f-1");
+
+    expect(prisma.factureLocataire.update).not.toHaveBeenCalled();
+    const [{ data }] = prisma.facture.updateMany.mock.calls[0]!;
+    expect(data.montantTotal).toBe(540_000n);
+    expect(data.baseUnitaire).toBe(0n);
   });
 
   it("exclut les locataires désactivés et redistribue leur part", async () => {

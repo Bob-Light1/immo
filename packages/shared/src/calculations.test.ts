@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { repartirFacture, estimerCharge, partEstimee, suiviLoyer } from "./calculations";
+import { repartirFacture, baseLoyer, estimerCharge, partEstimee, suiviLoyer } from "./calculations";
 import { isLoyer } from "./types";
 
 describe("repartirFacture", () => {
@@ -121,6 +121,19 @@ describe("partEstimee", () => {
   it("renvoie null quand il n'y a rien à répartir", () => {
     expect(partEstimee(60_000, 0)).toBeNull();
     expect(partEstimee(60_000, 4, 0)).toBeNull();
+  });
+});
+
+describe("baseLoyer", () => {
+  it("rend le loyer commun quand toutes les chambres sont au même tarif", () => {
+    expect(baseLoyer([240_000, 240_000, 240_000])).toBe(240_000);
+  });
+
+  it("rend 0 dès que deux loyers diffèrent : il n'y a plus de référence", () => {
+    // 0 is what the invoice stores as its `baseUnitaire`, and what tells the
+    // service it has no rent to hand a tenant attached to the draft later.
+    expect(baseLoyer([240_000, 300_000])).toBe(0);
+    expect(baseLoyer([])).toBe(0);
   });
 });
 

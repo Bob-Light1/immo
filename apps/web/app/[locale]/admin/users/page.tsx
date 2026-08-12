@@ -8,17 +8,22 @@ import { apiFetch, getSession, updateSessionUser } from "@/lib/client/session";
 import { DEFAULT_LOCALE, LOCALES, type Locale } from "@campusgest/shared";
 import {
   Card,
-  PageTitle,
   Field,
   ErrorText,
   Spinner,
   EmptyState,
   Pager,
+  TableCard,
+  Thead,
+  Th,
+  Tr,
+  Td,
   inputCls,
   btnPrimary,
   btnSecondary,
 } from "@/components/ui";
 import { useToast, useConfirmAction } from "@/components/Toast";
+import { ChambreSelect } from "@/components/ChambreSelect";
 
 const PAGE_SIZE = 20;
 
@@ -30,6 +35,8 @@ interface UserRow {
   email: string | null;
   phone: string | null;
   language: string;
+  roomId: string | null;
+  room: { id: string; bloc: string; numero: string; loyerAnnuel: number } | null;
   isActive: boolean;
   firstLogin: boolean;
 }
@@ -44,6 +51,7 @@ export default function AdminUsersPage() {
   const apiError = useApiError();
   const tRole = useTranslations("nav.role");
   const tLang = useTranslations("language");
+  const tCommon = useTranslations("common");
   const toast = useToast();
   const confirmAction = useConfirmAction();
   const router = useRouter();
@@ -303,42 +311,46 @@ export default function AdminUsersPage() {
       ) : users.length === 0 ? (
         <EmptyState>{t("empty")}</EmptyState>
       ) : (
-        <Card className="overflow-x-auto p-0">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
-                <th className="px-4 py-3">{t("fullName")}</th>
-                <th className="px-4 py-3">{t("username")}</th>
-                <th className="px-4 py-3">{t("role")}</th>
-                <th className="px-4 py-3">{t("language")}</th>
-                <th className="px-4 py-3">{t("contact")}</th>
-                <th className="px-4 py-3">{t("status")}</th>
-                <th className="px-4 py-3" />
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((u) => (
-                <tr key={u.id} className="border-b border-slate-100 last:border-0">
-                  <td className="px-4 py-3 font-medium">{u.fullName}</td>
-                  <td className="px-4 py-3 font-mono text-xs">{u.username}</td>
-                  <td className="px-4 py-3">{tRole(u.role)}</td>
-                  <td className="px-4 py-3">
-                    <select
-                      className={`${inputCls} w-auto py-1 text-xs`}
-                      value={LOCALES.includes(u.language as Locale) ? u.language : DEFAULT_LOCALE}
-                      disabled={savingLang === u.id}
-                      aria-label={t("language")}
-                      onChange={(e) => void onLanguageChange(u, e.target.value)}
-                    >
-                      {LOCALES.map((l) => (
-                        <option key={l} value={l}>
-                          {tLang(l)}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500">{u.email ?? u.phone ?? "—"}</td>
-                  <td className="px-4 py-3">
+        <TableCard minWidth="min-w-[56rem]">
+          <Thead>
+            <Th>{t("fullName")}</Th>
+            <Th>{t("username")}</Th>
+            <Th>{t("role")}</Th>
+            <Th>{t("language")}</Th>
+            <Th>{t("contact")}</Th>
+            <Th>{t("status")}</Th>
+            <Th align="right" srOnly>
+              {tCommon("actions")}
+            </Th>
+          </Thead>
+          <tbody>
+            {users.map((u) => (
+              <Tr key={u.id}>
+                <Td className="font-medium">{u.fullName}</Td>
+                <Td className="font-mono text-xs">{u.username}</Td>
+                <Td>{tRole(u.role)}</Td>
+                <Td>
+                  <select
+                    className={`${inputCls} w-auto py-1 text-xs`}
+                    value={LOCALES.includes(u.language as Locale) ? u.language : DEFAULT_LOCALE}
+                    disabled={savingLang === u.id}
+                    aria-label={t("language")}
+                    onChange={(e) => void onLanguageChange(u, e.target.value)}
+                  >
+                    {LOCALES.map((l) => (
+                      <option key={l} value={l}>
+                        {tLang(l)}
+                      </option>
+                    ))}
+                  </select>
+                </Td>
+                {/* An address long enough to widen the table is cut rather than
+                    left to push every other column off-screen. */}
+                <Td className="max-w-[16rem] overflow-hidden text-ellipsis text-slate-500">
+                  <span title={u.email ?? u.phone ?? undefined}>{u.email ?? u.phone ?? "—"}</span>
+                </Td>
+                <Td>
+                  <div className="flex flex-wrap items-center gap-1">
                     {u.isActive ? (
                       <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-semibold text-emerald-800">
                         {t("active")}
@@ -349,26 +361,26 @@ export default function AdminUsersPage() {
                       </span>
                     )}
                     {u.firstLogin && u.isActive && (
-                      <span className="ml-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
+                      <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-semibold text-amber-800">
                         {t("firstLogin")}
                       </span>
                     )}
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    {u.role !== "admin" && u.isActive && (
-                      <button
-                        className={`${btnSecondary} px-2 py-1 text-xs`}
-                        onClick={() => onDeactivate(u)}
-                      >
-                        {t("deactivate")}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
+                  </div>
+                </Td>
+                <Td align="right">
+                  {u.role !== "admin" && u.isActive && (
+                    <button
+                      className={`${btnSecondary} px-2 py-1 text-xs`}
+                      onClick={() => onDeactivate(u)}
+                    >
+                      {t("deactivate")}
+                    </button>
+                  )}
+                </Td>
+              </Tr>
+            ))}
+          </tbody>
+        </TableCard>
       )}
       <Pager page={page} total={total} limit={PAGE_SIZE} onChange={setPage} />
     </>

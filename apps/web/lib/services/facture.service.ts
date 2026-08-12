@@ -5,6 +5,7 @@ import { factureLocatairePdf, type FactureLigneData } from "@/lib/pdf";
 import { notifyEach } from "@/lib/services/notification.service";
 import {
   repartirFacture,
+  baseLoyer,
   isLoyer,
   normalizeFactureType,
   suiviLoyer,
@@ -15,6 +16,7 @@ import {
   type CreateFactureInput,
   type UpdateFactureInput,
   type CoefficientsInput,
+  type LoyersInput,
   type Role,
 } from "@campusgest/shared";
 
@@ -93,15 +95,27 @@ async function assertCompteur(compteurId: string | null | undefined) {
  */
 async function resolveLocataires(locataireIds: string[] | undefined) {
   const cible = locataireIds?.length ? locataireIds : undefined;
-  const locataires = await prisma.user.findMany({
+  const rows = await prisma.user.findMany({
     where: {
       role: "locataire",
       isActive: true,
       ...(cible ? { id: { in: cible } } : {}),
     },
     orderBy: { id: "asc" },
-    select: { id: true },
+    // The room comes along for the rent tariff it carries: a rent line is
+    // filled from the room its tenant occupies, not from a residence-wide
+    // figure. `fullName` is here to name whoever has no tariff to bill.
+    select: {
+      id: true,
+      fullName: true,
+      room: { select: { loyerAnnuel: true } },
+    },
   });
+  const locataires: LocataireTarif[] = rows.map((l) => ({
+    id: l.id,
+    fullName: l.fullName,
+    loyerChambre: Number(l.room?.loyerAnnuel ?? 0),
+  }));
 
   if (cible) {
     const trouves = new Set(locataires.map((l) => l.id));
@@ -125,29 +139,117 @@ async function resolveLocataires(locataireIds: string[] | undefined) {
   return locataires;
 }
 
+/**
+ * A tenant to bill, with the annual rent of the room they occupy. `0` is a room
+ * that has no tariff yet — or no room at all — and is what the rent regime
+ * refuses to invent an amount for.
+ */
+interface LocataireTarif {
+  id: string;
+  fullName: string;
+  loyerChambre: number;
+}
+
+/** Names a few of the tenants a message is about, without unrolling a roster. */
+function nommer(locataires: { fullName: string }[], max = 3): string {
+  const noms = locataires.slice(0, max).map((l) => l.fullName);
+  return locataires.length > max ? `${noms.join(", ")}…` : noms.join(", ");
+}
+
+/**
+ * Rent owed by each tenant, read off the room they occupy.
+ *
+ * This is where the tariff enters the invoice: it is set once on the room and
+ * restated there when rents follow inflation, so the year's invoice is raised
+ * from the rooms rather than retyped. `repli` covers a tenant whose room is not
+ * priced (or who has none yet); without it, the tariff has to be stated before
+ * the invoice can exist — billing a room at nothing is not a default anyone
+ * would want silently applied.
+ */
+function loyersDepuisChambres(locataires: LocataireTarif[], repli: number | undefined) {
+  const sansTarif = locataires.filter((l) => l.loyerChambre <= 0);
+  if (sansTarif.length > 0 && repli == null) {
+    throw new ServiceError(
+      400,
+      `${sansTarif.length} locataire(s) sans tarif de chambre (${nommer(sansTarif)}) : renseignez le loyer annuel de leur chambre, ou un montant par locataire pour cette facture.`,
+      "facture.loyerTarifManquant",
+      { count: sansTarif.length, noms: nommer(sansTarif) },
+    );
+  }
+  return new Map(
+    locataires.map((l) => [l.id, l.loyerChambre > 0 ? l.loyerChambre : repli!] as const),
+  );
+}
+
+/**
+ * Rent lines, one amount per tenant.
+ *
+ * Rent is never divided: each line carries the annual amount owed for that
+ * tenant's room, and the invoice total is merely their sum. `montants` holds
+ * what the draft already charges each of them, so a roster change leaves the
+ * others' rent untouched — realigning them on a residence-wide figure would
+ * quietly reprice every room. A tenant with no rent on record falls back to the
+ * reference amount, which only exists while the invoice is uniform; when rents
+ * differ there is nothing to guess from and the Admin has to state theirs.
+ */
+function lignesLoyer(montants: Map<string, number>, locataires: { id: string }[]) {
+  const lignes = locataires.map((l) => {
+    const montantDu = montants.get(l.id);
+    if (montantDu == null) {
+      throw new ServiceError(
+        400,
+        "Locataire ajouté à une facture de loyer aux montants différenciés : indiquez le loyer annuel qui lui revient.",
+        "facture.loyerNouveauLocataire",
+      );
+    }
+    return { locataireId: l.id, coefficient: 1, montantDu };
+  });
+  return {
+    sommeCoeff: lignes.length,
+    baseUnitaire: baseLoyer(lignes.map((l) => l.montantDu)),
+    lignes,
+  };
+}
+
+/**
+ * Rent owed by each tenant of a draft being corrected: what their line already
+ * charges, since a correction elsewhere on the invoice must not reprice anyone.
+ * A tenant just attached to the draft has no line to read, so they are billed
+ * the tariff of their room, failing that the reference rent — which only exists
+ * while the invoice is uniform. `montantParLocataire` overrides the lot. A
+ * tenant left out of the map is one `lignesLoyer` must refuse.
+ */
+function loyersCibles(
+  facture: { baseUnitaire: bigint; lignes: { locataireId: string; montantDu: bigint }[] },
+  montantParLocataire: number | undefined,
+  locataires: { id: string; loyerChambre?: number }[],
+) {
+  if (montantParLocataire != null) {
+    return new Map(locataires.map((l) => [l.id, montantParLocataire]));
+  }
+  const cibles = new Map(facture.lignes.map((l) => [l.locataireId, Number(l.montantDu)]));
+  const reference = Number(facture.baseUnitaire);
+  for (const l of locataires) {
+    if (cibles.has(l.id)) continue;
+    const tarif = l.loyerChambre && l.loyerChambre > 0 ? l.loyerChambre : reference;
+    if (tarif > 0) cibles.set(l.id, tarif);
+  }
+  return cibles;
+}
+
 /** Builds the per-tenant split for either regime. */
 function repartition(
   loyer: boolean,
   input: { montantTotal?: number; montantParLocataire?: number },
-  locataires: { id: string }[],
+  locataires: LocataireTarif[],
 ) {
   if (loyer) {
-    if (input.montantParLocataire == null) {
-      throw new ServiceError(
-        400,
-        "Facture de loyer : renseignez le montant annuel dû par chaque locataire.",
-        "facture.loyerMontantAnnuelRequis",
-      );
-    }
-    return {
-      sommeCoeff: locataires.length,
-      baseUnitaire: input.montantParLocataire,
-      lignes: locataires.map((l) => ({
-        locataireId: l.id,
-        coefficient: 1,
-        montantDu: input.montantParLocataire!,
-      })),
-    };
+    // Each line is filled from the tariff of the tenant's room; the amount typed
+    // on the invoice, if any, is only the fallback for an unpriced one.
+    return lignesLoyer(
+      loyersDepuisChambres(locataires, input.montantParLocataire),
+      locataires,
+    );
   }
   if (input.montantTotal == null) {
     throw new ServiceError(
@@ -167,9 +269,10 @@ function repartition(
  * - When `locataireIds` is empty -> every active tenant.
  * - Initial coefficient = 1 for each of them (editable afterwards).
  *
- * "Loyer" regime: no split. The Admin enters the annual amount owed by each
- * tenant (`montantParLocataire`); every line carries that flat amount and the
- * invoice total is merely their sum.
+ * "Loyer" regime: no split. Each line is the annual rent of the room its tenant
+ * occupies, read from `Chambre.loyerAnnuel`; `montantParLocataire` is only the
+ * fallback for a tenant whose room carries no tariff. The invoice total is
+ * merely the sum of the lines.
  */
 export async function createFacture(adminId: string, input: CreateFactureInput) {
   const typeKey = normalizeFactureType(input.type);
@@ -312,12 +415,13 @@ export async function updateFacture(factureId: string, input: UpdateFactureInput
   // Coefficients already set on the draft are preserved; a tenant joining the
   // invoice starts at 1, as at creation.
   const coeffPrecedents = new Map(facture.lignes.map((l) => [l.locataireId, Number(l.coefficient)]));
+  // Rents already set are kept tenant by tenant; a tenant joining the invoice is
+  // billed the tariff of their room. `montantParLocataire` restates all of them
+  // at once — how the Admin realigns the residence on a single rent, and the
+  // only figure to go on when a change of type turns a draft into a rent
+  // invoice, its lines holding shares of a total until then.
   const split = loyer
-    ? repartition(
-        true,
-        { montantParLocataire: input.montantParLocataire ?? Number(facture.baseUnitaire) },
-        locataires,
-      )
+    ? lignesLoyer(loyersCibles(facture, input.montantParLocataire, locataires), locataires)
     : repartirFacture(
         input.montantTotal ?? Number(facture.montantTotal),
         locataires.map((l) => ({ locataireId: l.id, coefficient: coeffPrecedents.get(l.id) ?? 1 })),
@@ -433,6 +537,87 @@ export async function setCoefficients(factureId: string, input: CoefficientsInpu
   return getFacture(factureId);
 }
 
+/** Annual rent of the room each of these tenants occupies (0 when unpriced). */
+async function tarifsChambres(locataireIds: string[]): Promise<Map<string, number>> {
+  const rows = await prisma.user.findMany({
+    where: { id: { in: locataireIds } },
+    select: { id: true, room: { select: { loyerAnnuel: true } } },
+  });
+  return new Map(rows.map((r) => [r.id, Number(r.room?.loyerAnnuel ?? 0)]));
+}
+
+/**
+ * Sets the annual rent of each tenant on a draft rent invoice.
+ *
+ * The counterpart of `setCoefficients` for the rent regime: rent is not divided
+ * out of a total, so what is corrected here is the amount itself.
+ *
+ * `depuisChambres` re-reads the tariff of each tenant's room — the yearly
+ * revalorisation, entered once on the rooms and pulled into the draft. A tenant
+ * whose room carries no tariff keeps the amount already on their line: the
+ * request is to apply the tariffs on record, not to zero out whoever has none.
+ * Explicit `loyers` are applied on top, so a single rent can still be corrected
+ * by hand afterwards. The invoice total follows from the lines.
+ */
+export async function setLoyers(factureId: string, input: LoyersInput) {
+  const facture = await loadBrouillon(factureId);
+  if (!isLoyer(facture.type)) {
+    throw new ServiceError(
+      409,
+      "Le montant par locataire est réservé au loyer ; les autres factures se répartissent à partir d'un montant total.",
+      "facture.loyersReserveLoyer",
+    );
+  }
+
+  // A tenant absent from the invoice is a client-side mistake: accepting it
+  // silently returned 200 while changing nothing.
+  const attaches = new Set(facture.lignes.map((l) => l.locataireId));
+  const inconnus = (input.loyers ?? []).filter((c) => !attaches.has(c.locataireId));
+  if (inconnus.length > 0) {
+    throw new ServiceError(
+      400,
+      `${inconnus.length} locataire(s) ne sont pas rattachés à cette facture.`,
+      "facture.locatairesNonRattaches",
+      { count: inconnus.length },
+    );
+  }
+
+  const tarifs = input.depuisChambres
+    ? await tarifsChambres(facture.lignes.map((l) => l.locataireId))
+    : new Map<string, number>();
+  const overrides = new Map((input.loyers ?? []).map((l) => [l.locataireId, l.montant]));
+  const result = lignesLoyer(
+    new Map(
+      facture.lignes.map((l) => {
+        const tarif = tarifs.get(l.locataireId) ?? 0;
+        const depuisChambre = tarif > 0 ? tarif : Number(l.montantDu);
+        return [l.locataireId, overrides.get(l.locataireId) ?? depuisChambre];
+      }),
+    ),
+    facture.lignes.map((l) => ({ id: l.locataireId })),
+  );
+  const montantTotal = result.lignes.reduce((s, l) => s + l.montantDu, 0);
+
+  await prisma.$transaction([
+    prisma.facture.update({
+      where: { id: factureId, statutPub: "brouillon" },
+      data: {
+        montantTotal: BigInt(montantTotal),
+        sommeCoeff: result.sommeCoeff,
+        baseUnitaire: BigInt(result.baseUnitaire),
+      },
+    }),
+    ...result.lignes.map((l) =>
+      prisma.factureLocataire.update({
+        where: { factureId_locataireId: { factureId, locataireId: l.locataireId } },
+        data: { montantDu: BigInt(l.montantDu) },
+      }),
+    ),
+  ]);
+
+  return getFacture(factureId);
+}
+
 /**
  * Tells each tenant what they personally owe, and by when. Publication used to
  * be silent: the first thing a tenant heard was the J-2 reminder from the
@@ -502,10 +687,12 @@ export async function publishFacture(factureId: string) {
       await tx.factureLocataire.deleteMany({ where: { id: { in: exclues.map((l) => l.id) } } });
 
       if (isLoyer(facture.type)) {
-        // Rent: removing an inactive tenant redistributes nothing — each annual
-        // flat amount stays intact, only the invoice total goes down.
+        // Rent: removing an inactive tenant redistributes nothing — every other
+        // tenant keeps the rent of their own room, only the total goes down.
         data.montantTotal = actives.reduce((s, l) => s + l.montantDu, 0n);
         data.sommeCoeff = actives.length;
+        // The rents left may agree where they did not, or the reverse.
+        data.baseUnitaire = BigInt(baseLoyer(actives.map((l) => Number(l.montantDu))));
       } else {
         const result = repartirFacture(Number(facture.montantTotal), coeffEntries(actives));
         for (const l of result.lignes) {
